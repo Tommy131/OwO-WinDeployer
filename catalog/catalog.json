@@ -88,7 +88,8 @@
       "category": "system", "default": true,
       "install": { "method": "winget-bundle", "ids": [
         "Microsoft.VCRedist.2015+.x64", "Microsoft.VCRedist.2015+.x86",
-        "Microsoft.VCRedist.2012.x64", "Microsoft.VCRedist.2012.x86", "Microsoft.VCRedist.2010.x64" ] } },
+        "Microsoft.VCRedist.2012.x64", "Microsoft.VCRedist.2012.x86", "Microsoft.VCRedist.2010.x64" ] },
+      "detect": { "arp": "Microsoft Visual C++" } },
 
     { "id": "windows-terminal", "name": "Windows Terminal", "summary": "现代终端", "icon": "assets/icons/terminal.svg",
       "category": "system", "default": true,
@@ -97,7 +98,8 @@
 
     { "id": "huorong", "name": "火绒安全", "summary": "安全 / 杀毒软件", "icon": "assets/icons/huorong.svg",
       "category": "system", "default": true,
-      "install": { "method": "winget", "id": "Huorong.Security" } },
+      "install": { "method": "winget", "id": "Huorong.Security" },
+      "detect": { "arp": "火绒" } },
 
     // ── IDE / 编辑器 ─────────────────────────────
     { "id": "vscode", "name": "VS Code", "summary": "编辑器（含约 80 个扩展）", "icon": "assets/icons/vscode.svg",
@@ -152,19 +154,23 @@
     // ── 办公 / 通讯 ─────────────────────────────
     { "id": "wechat", "name": "微信", "summary": "即时通讯", "icon": "assets/icons/wechat.svg",
       "category": "office", "default": false,
-      "install": { "method": "winget", "id": "Tencent.WeChat" } },
+      "install": { "method": "winget", "id": "Tencent.WeChat" },
+      "detect": { "arp": "微信" } },
 
     { "id": "wecom", "name": "企业微信", "summary": "企业通讯", "icon": "assets/icons/wecom.svg",
       "category": "office", "default": false,
-      "install": { "method": "winget", "id": "Tencent.WeCom" } },
+      "install": { "method": "winget", "id": "Tencent.WeCom" },
+      "detect": { "arp": "企业微信" } },
 
     { "id": "feishu", "name": "飞书", "summary": "协作办公", "icon": "assets/icons/feishu.svg",
       "category": "office", "default": false,
-      "install": { "method": "winget", "id": "ByteDance.Feishu" } },
+      "install": { "method": "winget", "id": "ByteDance.Feishu" },
+      "detect": { "arp": "飞书" } },
 
     { "id": "tencent-meeting", "name": "腾讯会议", "summary": "视频会议", "icon": "assets/icons/tmeeting.svg",
       "category": "office", "default": false,
-      "install": { "method": "winget", "id": "Tencent.TencentMeeting" } },
+      "install": { "method": "winget", "id": "Tencent.TencentMeeting" },
+      "detect": { "arp": "腾讯会议" } },
 
     // ── 媒体 ─────────────────────────────
     { "id": "obs", "name": "OBS Studio", "summary": "录屏 / 直播", "icon": "assets/icons/obs.svg",
@@ -181,7 +187,8 @@
 
     { "id": "netease-music", "name": "网易云音乐", "summary": "音乐播放", "icon": "assets/icons/netease.svg",
       "category": "media", "default": false,
-      "install": { "method": "winget", "id": "NetEase.CloudMusic" } },
+      "install": { "method": "winget", "id": "NetEase.CloudMusic" },
+      "detect": { "arp": "网易云音乐" } },
 
     // ── 数据库 / API / 网络 ─────────────────────────────
     { "id": "dbgate", "name": "DbGate", "summary": "数据库客户端", "icon": "assets/icons/dbgate.svg",
@@ -199,7 +206,8 @@
     // ── 虚拟化 ─────────────────────────────
     { "id": "vmware", "name": "VMware Workstation", "summary": "虚拟化（可选）", "icon": "assets/icons/vmware.svg",
       "category": "vm", "default": false,
-      "install": { "method": "winget", "id": "Broadcom.WorkstationPro" } },
+      "install": { "method": "winget", "id": "Broadcom.WorkstationPro" },
+      "detect": { "arp": "VMware Workstation" } },
 
     // ── 游戏平台（仅客户端本体，不含游戏） ─────────────────────────────
     { "id": "steam", "name": "Steam", "summary": "游戏平台客户端（仅本体）", "icon": "assets/icons/steam.svg",

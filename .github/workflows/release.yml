@@ -1,0 +1,39 @@
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Publish GUI (self-contained single file)
+        run: >
+          dotnet publish src/WinDeploy.App/WinDeploy.App.csproj
+          -c Release -r win-x64 --self-contained true
+          -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+          -o dist/app
+
+      - name: Publish CLI (self-contained single file)
+        run: >
+          dotnet publish src/WinDeploy.Cli/WinDeploy.Cli.csproj
+          -c Release -r win-x64 --self-contained true
+          -p:PublishSingleFile=true -o dist/cli
+
+      - name: Create / update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/app/WinDeploy.exe
+            dist/cli/windeploy.exe

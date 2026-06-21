@@ -51,9 +51,15 @@ public sealed class ConfigEngine
                 {
                     var file = ctx.ResolveRepo(vscode.Config!.Extensions!);
                     var count = r.StdOut.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Length;
-                    await File.WriteAllTextAsync(file,
-                        "# VS Code 扩展清单（导出自本机）。以 # 开头或空行会被忽略。" + Environment.NewLine + r.StdOut, ctx.Ct);
-                    results.Add(ConfigResult.Ok("VS Code 扩展", $"采集 {count} 个"));
+                    var content = "# VS Code 扩展清单（导出自本机）。以 # 开头或空行会被忽略。" + Environment.NewLine + r.StdOut;
+                    await File.WriteAllTextAsync(file, content, ctx.Ct);
+                    var info = new ConfigFileInfo
+                    {
+                        Path = ConfigSync.RepoRel(ctx.RepoRoot, file),
+                        Size = new FileInfo(file).Length,
+                        Preview = ConfigSync.MakePreview(content),
+                    };
+                    results.Add(ConfigResult.Ok("VS Code 扩展", $"采集 {count} 个", new List<ConfigFileInfo> { info }));
                 }
             }
         }

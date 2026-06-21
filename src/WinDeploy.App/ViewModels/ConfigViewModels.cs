@@ -22,6 +22,22 @@ public sealed class ConfigRowViewModel
     public string Target { get; init; } = "";
 }
 
+public sealed class ExportFileViewModel
+{
+    public string Path { get; init; } = "";
+    public string SizeText { get; init; } = "";
+    public string Preview { get; init; } = "";
+}
+
+public sealed class ExportRowViewModel
+{
+    public string Name { get; init; } = "";
+    public string Message { get; init; } = "";
+    public string Kind { get; init; } = "ok";
+    public List<ExportFileViewModel> Files { get; init; } = new();
+    public bool HasFiles => Files.Count > 0;
+}
+
 /// <summary>Shared plumbing for the config-sync and export pages.</summary>
 public abstract class ConfigPageBase : ObservableObject
 {
@@ -111,7 +127,7 @@ public sealed class ConfigSyncViewModel : ConfigPageBase
 
 public sealed class ExportViewModel : ConfigPageBase
 {
-    public ObservableCollection<ResultRowViewModel> Results { get; } = new();
+    public ObservableCollection<ExportRowViewModel> Results { get; } = new();
     public RelayCommand ExportCommand { get; }
 
     private bool _done;
@@ -128,8 +144,29 @@ public sealed class ExportViewModel : ConfigPageBase
         Results.Clear();
         var ctx = Context();
         var results = await Task.Run(() => new ConfigEngine().ExportAsync(cat, ctx, IsInstalled));
-        foreach (var r in results) Results.Add(ToRow(r));
+        foreach (var r in results)
+        {
+            Results.Add(new ExportRowViewModel
+            {
+                Name = r.Name,
+                Message = r.Message ?? "",
+                Kind = r.Status switch { StepStatus.Ok => "ok", StepStatus.Failed => "failed", _ => "skip" },
+                Files = (r.Files ?? new()).Select(f => new ExportFileViewModel
+                {
+                    Path = f.Path,
+                    SizeText = FormatSize(f.Size),
+                    Preview = f.Preview,
+                }).ToList(),
+            });
+        }
         Done = true;
         IsBusy = false;
+    }
+
+    private static string FormatSize(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:0.0} KB";
+        return $"{bytes / (1024.0 * 1024):0.0} MB";
     }
 }

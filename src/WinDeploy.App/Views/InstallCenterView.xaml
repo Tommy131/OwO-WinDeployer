@@ -30,8 +30,19 @@
       <TextBlock Text="{Binding LoadError}" Foreground="{StaticResource FailFg}" TextWrapping="Wrap" />
     </Border>
 
+    <!-- Loading（先检测完已安装状态，再显示列表） -->
+    <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center"
+                Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}">
+      <ProgressBar IsIndeterminate="True" Width="220" Height="4"
+                   Foreground="{StaticResource Accent}" Background="{StaticResource PageBg}" BorderThickness="0" />
+      <TextBlock Text="正在检测已安装软件 …" FontSize="13" Foreground="{StaticResource TextSecondary}"
+                 HorizontalAlignment="Center" Margin="0,12,0,0" />
+    </StackPanel>
+
     <!-- Category groups -->
-    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="24,4,18,18">
+    <ScrollViewer x:Name="Scroller" Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="24,4,18,18"
+                  ScrollChanged="Scroller_ScrollChanged"
+                  Visibility="{Binding IsReady, Converter={StaticResource BoolToVis}}">
       <ItemsControl ItemsSource="{Binding Groups}">
         <ItemsControl.ItemTemplate>
           <DataTemplate>
@@ -49,16 +60,27 @@
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                   <DataTemplate>
-                    <Border Style="{StaticResource Card}" Width="158" Height="138" Margin="0,0,10,10" Padding="12"
+                    <Border Style="{StaticResource Card}" Width="158" MinHeight="150" Margin="0,0,10,10" Padding="12"
+                            Cursor="Hand"
                             Visibility="{Binding IsVisible, Converter={StaticResource BoolToVis}}">
+                      <Border.InputBindings>
+                        <MouseBinding MouseAction="LeftClick"
+                                      Command="{Binding DataContext.OpenDetailCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                      CommandParameter="{Binding}" />
+                      </Border.InputBindings>
                       <StackPanel>
                         <Grid>
-                          <Border Width="36" Height="36" CornerRadius="8" HorizontalAlignment="Left"
-                                  Background="{Binding ChipBackground}">
-                            <TextBlock Text="{Binding Badge}" FontSize="17" FontWeight="SemiBold"
-                                       Foreground="{Binding ChipForeground}"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
-                          </Border>
+                          <Grid Width="36" Height="36" HorizontalAlignment="Left">
+                            <Border CornerRadius="8" Background="{Binding ChipBackground}"
+                                    Visibility="{Binding ShowLetter, Converter={StaticResource BoolToVis}}">
+                              <TextBlock Text="{Binding Badge}" FontSize="17" FontWeight="SemiBold"
+                                         Foreground="{Binding ChipForeground}"
+                                         HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <Image Source="{Binding IconImage}" Stretch="Uniform" Margin="2"
+                                   Visibility="{Binding HasIcon, Converter={StaticResource BoolToVis}}"
+                                   RenderOptions.BitmapScalingMode="HighQuality" />
+                          </Grid>
                           <CheckBox IsChecked="{Binding IsSelected}" HorizontalAlignment="Right" VerticalAlignment="Top" />
                         </Grid>
                         <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="SemiBold" Margin="0,9,0,0"

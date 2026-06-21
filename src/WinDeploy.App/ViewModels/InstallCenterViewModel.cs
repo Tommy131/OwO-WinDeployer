@@ -22,17 +22,36 @@ public sealed class InstallCenterViewModel : ObservableObject
     public ObservableCollection<CategoryGroupViewModel> Groups { get; } = new();
     public ObservableCollection<string> Profiles { get; } = new();
     public RelayCommand StartCommand { get; }
+    public RelayCommand OpenDetailCommand { get; }
 
     /// <summary>Raised when the user clicks 开始安装.</summary>
     public event Action? StartRequested;
 
+    /// <summary>Raised when the user clicks a software card.</summary>
+    public event Action<AppItemViewModel>? DetailRequested;
+
     public InstallCenterViewModel()
-        => StartCommand = new RelayCommand(_ => StartRequested?.Invoke(), _ => SelectedCount > 0);
+    {
+        StartCommand = new RelayCommand(_ => StartRequested?.Invoke(), _ => SelectedCount > 0);
+        OpenDetailCommand = new RelayCommand(p => { if (p is AppItemViewModel vm) DetailRequested?.Invoke(vm); });
+    }
+
+    private bool _isLoading = true;
+    public bool IsLoading
+    {
+        get => _isLoading;
+        set { if (Set(ref _isLoading, value)) OnPropertyChanged(nameof(IsReady)); }
+    }
+    public bool IsReady => !_isLoading;
+
+    /// <summary>Remembered scroll position, restored when returning from the detail page.</summary>
+    public double ScrollOffset { get; set; }
 
     public void Initialize(Catalog catalog, string catalogDir)
     {
         _catalog = catalog;
         _catalogDir = catalogDir;
+        var repoRoot = Path.GetDirectoryName(catalogDir)!;
 
         Groups.Clear();
         foreach (var grp in catalog.Items.GroupBy(i => i.Category))
@@ -41,6 +60,7 @@ public sealed class InstallCenterViewModel : ObservableObject
             foreach (var item in grp)
             {
                 var vm = new AppItemViewModel(item);
+                vm.LoadIcon(repoRoot);
                 vm.SelectionChanged += () => OnSelectionChanged(g);
                 g.Items.Add(vm);
             }

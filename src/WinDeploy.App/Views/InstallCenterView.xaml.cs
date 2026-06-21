@@ -1,8 +1,38 @@
+using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Threading;
+using WinDeploy.App.ViewModels;
 
 namespace WinDeploy.App.Views;
 
 public partial class InstallCenterView : UserControl
 {
-    public InstallCenterView() => InitializeComponent();
+    private bool _restored;
+    private bool _unloading;
+
+    public InstallCenterView()
+    {
+        InitializeComponent();
+        Loaded += OnLoaded;
+        Unloaded += (_, _) => _unloading = true;
+    }
+
+    // Restore the scroll position the view-model remembers (e.g. after returning from detail).
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not InstallCenterViewModel vm) { _restored = true; return; }
+        var target = vm.ScrollOffset;
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            Scroller.ScrollToVerticalOffset(target);
+            _restored = true;
+        }), DispatcherPriority.Loaded);
+    }
+
+    // Save only genuine user scrolls — not the initial 0-offset on (re)load, nor the teardown reset.
+    private void Scroller_ScrollChanged(object sender, ScrollChangedEventArgs e)
+    {
+        if (!_restored || _unloading) return;
+        if (DataContext is InstallCenterViewModel vm) vm.ScrollOffset = e.VerticalOffset;
+    }
 }

@@ -47,6 +47,7 @@ public static class ConfigSync
 
         var n = 0;
         var redacted = 0;
+        var files = new List<ConfigFileInfo>();
         foreach (var f in c.Files)
         {
             var t = Path.Combine(target, f);
@@ -54,16 +55,30 @@ public static class ConfigSync
             var d = Path.Combine(dst, f);
             Directory.CreateDirectory(Path.GetDirectoryName(d)!);
 
+            string? text = null;
             if (Secrets.IsTextConfig(f))
             {
-                var (text, count) = Secrets.Redact(File.ReadAllText(t));
-                File.WriteAllText(d, text);
+                var (redactedText, count) = Secrets.Redact(File.ReadAllText(t));
+                File.WriteAllText(d, redactedText);
                 redacted += count;
+                text = redactedText;
             }
             else File.Copy(t, d, true);
             n++;
+            files.Add(new ConfigFileInfo { Path = RepoRel(ctx.RepoRoot, d), Size = new FileInfo(d).Length, Preview = MakePreview(text) });
         }
         if (n == 0) return ConfigResult.Skip(item.Name, "本机无对应文件");
-        return ConfigResult.Ok(item.Name, redacted > 0 ? $"采集 {n} 个文件（已脱敏 {redacted} 处）" : $"采集 {n} 个文件");
+        var msg = redacted > 0 ? $"采集 {n} 个文件（已脱敏 {redacted} 处）" : $"采集 {n} 个文件";
+        return ConfigResult.Ok(item.Name, msg, files);
+    }
+
+    public static string RepoRel(string repoRoot, string abs)
+        => Path.GetRelativePath(repoRoot, abs).Replace('\\', '/');
+
+    public static string MakePreview(string? text)
+    {
+        if (text is null) return "(二进制文件)";
+        var t = text.Replace("\r\n", "\n").Trim();
+        return t.Length > 600 ? t[..600] + " …" : t;
     }
 }

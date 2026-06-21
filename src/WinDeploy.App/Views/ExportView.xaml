@@ -11,7 +11,7 @@
 
     <StackPanel Grid.Row="0">
       <TextBlock Text="导出" FontSize="20" FontWeight="SemiBold" />
-      <TextBlock Text="扫描本机、把已装软件的配置采集回仓库（敏感信息自动脱敏）。只写仓库，不改本机。"
+      <TextBlock Text="扫描本机、把已装软件的配置采集回仓库（敏感信息自动脱敏）。点每项可展开看文件路径 / 大小 / 概览。"
                  FontSize="13" Foreground="{StaticResource TextSecondary}" Margin="0,3,0,0" TextWrapping="Wrap" />
     </StackPanel>
 
@@ -21,23 +21,40 @@
                  Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}" />
     </StackPanel>
 
-    <Border Grid.Row="2" Style="{StaticResource Card}" Padding="14,4,14,4" Margin="0,14,0,0">
+    <Border Grid.Row="2" Style="{StaticResource Card}" Padding="8,6" Margin="0,14,0,0">
       <ScrollViewer VerticalScrollBarVisibility="Auto">
         <ItemsControl ItemsSource="{Binding Results}">
           <ItemsControl.ItemTemplate>
             <DataTemplate>
-              <Border BorderBrush="{StaticResource BorderSoft}" BorderThickness="0,0,0,1" Padding="2,8">
-                <Grid>
+              <Expander Margin="0,2" IsEnabled="{Binding HasFiles}" HorizontalContentAlignment="Stretch">
+                <Expander.Header>
                   <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="{Binding Name}" FontSize="13" />
-                    <TextBlock Text="{Binding Message}" FontSize="12" Foreground="{StaticResource TextSecondary}"
-                               Margin="10,0,0,0" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    <Border x:Name="Pill" CornerRadius="10" Padding="8,1" Margin="10,0,0,0" Background="{StaticResource OkBg}" VerticalAlignment="Center">
+                      <TextBlock x:Name="PillText" Text="成功" FontSize="11" Foreground="{StaticResource OkFg}" />
+                    </Border>
+                    <TextBlock Text="{Binding Message}" FontSize="12" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" Margin="10,0,0,0" />
                   </StackPanel>
-                  <Border x:Name="Pill" HorizontalAlignment="Right" CornerRadius="10" Padding="9,2" Background="{StaticResource OkBg}">
-                    <TextBlock x:Name="PillText" Text="完成" FontSize="11" Foreground="{StaticResource OkFg}" />
-                  </Border>
-                </Grid>
-              </Border>
+                </Expander.Header>
+                <ItemsControl ItemsSource="{Binding Files}" Margin="26,4,0,8">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <StackPanel Margin="0,0,0,10">
+                        <StackPanel Orientation="Horizontal">
+                          <TextBlock Text="{Binding Path}" FontFamily="Consolas" FontSize="12" />
+                          <TextBlock Text="{Binding SizeText}" FontSize="11" Foreground="{StaticResource TextTertiary}" Margin="10,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                        <Border Background="{StaticResource PageBg}" CornerRadius="6" Padding="10,8" Margin="0,5,0,0" MaxHeight="150">
+                          <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <TextBlock Text="{Binding Preview}" FontFamily="Consolas" FontSize="11"
+                                       Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap" />
+                          </ScrollViewer>
+                        </Border>
+                      </StackPanel>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </Expander>
               <DataTemplate.Triggers>
                 <DataTrigger Binding="{Binding Kind}" Value="failed">
                   <Setter TargetName="Pill" Property="Background" Value="{StaticResource FailBg}" />

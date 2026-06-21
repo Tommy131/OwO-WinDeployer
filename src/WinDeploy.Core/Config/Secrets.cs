@@ -10,6 +10,9 @@ public static partial class Secrets
 {
     private const string Mask = "***REDACTED***";
 
+    /// <summary>Extra key substrings to redact (settable from the GUI settings page).</summary>
+    public static string[] ExtraKeywords { get; set; } = Array.Empty<string>();
+
     // Provider-prefixed token blobs (GitHub, Slack, AWS, OpenAI, …).
     [GeneratedRegex(@"\b(gh[opusr]_|github_pat_|xox[baprs]-|sk-[A-Za-z0-9]|AKIA|ASIA)[A-Za-z0-9_\-]{6,}\b")]
     private static partial Regex TokenBlob();
@@ -40,6 +43,13 @@ public static partial class Secrets
         content = TokenBlob().Replace(content, _ => { n++; return Mask; });
         content = JsonSecret().Replace(content, m => { n++; return m.Groups[1].Value + Mask + m.Groups[3].Value; });
         content = IniSecret().Replace(content, m => { n++; return m.Groups[1].Value + Mask; });
+
+        foreach (var kw in ExtraKeywords)
+        {
+            if (string.IsNullOrWhiteSpace(kw)) continue;
+            var re = new Regex("(\"[^\"]*" + Regex.Escape(kw) + "[^\"]*\"\\s*:\\s*\")([^\"]*)(\")", RegexOptions.IgnoreCase);
+            content = re.Replace(content, m => { n++; return m.Groups[1].Value + Mask + m.Groups[3].Value; });
+        }
         return (content, n);
     }
 }

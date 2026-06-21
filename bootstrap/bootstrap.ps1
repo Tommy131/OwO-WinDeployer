@@ -1,10 +1,11 @@
 #requires -version 5
-# WinDeploy 引导脚本 —— 在全新设备上一行启动：
+# WinDeploy 引导 —— 在全新设备上一行启动：
 #   irm https://raw.githubusercontent.com/Tommy131/win-provision/main/bootstrap/bootstrap.ps1 | iex
 $ErrorActionPreference = 'Stop'
 
 $Root = Join-Path $env:USERPROFILE '.win-provision'
 $Repo = 'https://github.com/Tommy131/win-provision.git'
+$ExeUrl = 'https://github.com/Tommy131/win-provision/releases/latest/download/WinDeploy.exe'
 
 function Have($c) { [bool](Get-Command $c -ErrorAction SilentlyContinue) }
 
@@ -13,12 +14,12 @@ Write-Host '== WinDeploy bootstrap ==' -ForegroundColor Cyan
 if (-not (Have 'winget')) {
     Write-Warning 'winget（App Installer）缺失，请先从 Microsoft Store 安装 “App Installer” 后重试。'
 }
-
 if (-not (Have 'git')) {
     Write-Host '安装 Git ...' -ForegroundColor Cyan
     winget install --id Git.Git -e --accept-source-agreements --accept-package-agreements --disable-interactivity
 }
 
+# 拉取仓库（携带 catalog / configs；GUI 会在 exe 旁定位这些数据）
 if (Test-Path (Join-Path $Root '.git')) {
     Write-Host "更新仓库 $Root ..." -ForegroundColor Cyan
     git -C $Root pull --ff-only
@@ -27,12 +28,19 @@ if (Test-Path (Join-Path $Root '.git')) {
     git clone --depth 1 $Repo $Root
 }
 
-# 现阶段从源码运行（需 .NET SDK）。正式分发将改为下载 Release 中的自包含 WinDeploy.exe。
-if (Have 'dotnet') {
-    dotnet run --project (Join-Path $Root 'src/WinDeploy.Cli') -- plan --profile dev
-    Write-Host ''
-    Write-Host '预览完成。开始安装请运行：' -ForegroundColor Green
-    Write-Host "  dotnet run --project `"$Root/src/WinDeploy.Cli`" -- apply --profile dev"
-} else {
-    Write-Warning '未检测到 .NET SDK。正式版会内置自包含 exe；当前可先安装 .NET SDK 后重试。'
+# 优先用 Release 的自包含 exe（目标机免装 .NET）；失败则回退到源码运行
+$Exe = Join-Path $Root 'WinDeploy.exe'
+try {
+    Write-Host '下载最新 WinDeploy.exe ...' -ForegroundColor Cyan
+    Invoke-WebRequest -Uri $ExeUrl -OutFile $Exe -UseBasicParsing
+    Start-Process $Exe -WorkingDirectory $Root
+    Write-Host '已启动 WinDeploy。' -ForegroundColor Green
+} catch {
+    Write-Warning "下载 Release exe 失败（可能尚未发布）：$($_.Exception.Message)"
+    if (Have 'dotnet') {
+        Write-Host '回退：从源码运行 GUI ...' -ForegroundColor Cyan
+        Start-Process dotnet -ArgumentList @('run', '--project', (Join-Path $Root 'src/WinDeploy.App')) -WorkingDirectory $Root
+    } else {
+        Write-Warning '无 Release exe 且未装 .NET SDK。请安装 .NET SDK 后重试，或等仓库发布 Release。'
+    }
 }

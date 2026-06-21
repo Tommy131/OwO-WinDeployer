@@ -74,6 +74,9 @@ public sealed class DetectSpec
     public string? Cmd { get; set; }
     public string? Path { get; set; }
     public string? WingetId { get; set; }
+
+    /// <summary>Display-name prefix to match in ARP (`winget list`) — for apps winget doesn't track by id.</summary>
+    public string? Arp { get; set; }
 }
 
 /// <summary>Config payload that travels in the repo regardless of install state.</summary>

@@ -48,6 +48,8 @@ return command switch
     "apply-config" => await CmdApplyConfig(catalog, resolver, repoRoot, opts.Has("yes")),
     "export" => await CmdExport(catalog, resolver, repoRoot),
     "ssh-setup" => await CmdSshSetup(repoRoot, opts.Has("register")),
+    "sync" => await CmdSync(catalog, resolver, repoRoot, profile, only, all, category),
+    "save" => await CmdSave(repoRoot, opts.Get("message"), opts.Has("push")),
     _ => Unknown(command),
 };
 
@@ -162,6 +164,36 @@ async Task<int> CmdApply(Catalog cat, PathResolver pr, string root, Profile? pro
     return summary.Failed > 0 ? 1 : 0;
 }
 
+async Task<int> CmdSync(Catalog cat, PathResolver pr, string root, Profile? prof,
+    IReadOnlyCollection<string>? sel, bool selAll, string? cat2)
+{
+    Log.Step("git pull --ff-only");
+    var pull = await Proc.RunAsync("git", new[] { "-C", root, "pull", "--ff-only" });
+    Log.Info(pull.Ok ? "已拉取最新" : "拉取未成功（可能无远程 / 有冲突）");
+
+    Log.Step("套用配置");
+    var ctx = new EngineContext { Path = pr, RepoRoot = root, Ct = CancellationToken.None };
+    var cfg = await new ConfigEngine().ApplyAsync(cat, ctx, it => Detection.IsInstalledAsync(it, pr), includeAsk: false);
+    PrintConfig(cfg);
+
+    Log.Step("安装计划（如需安装，运行 apply）");
+    return await CmdPlan(cat, pr, prof, sel, selAll, cat2);
+}
+
+async Task<int> CmdSave(string root, string? message, bool push)
+{
+    await Proc.RunAsync("git", new[] { "-C", root, "add", "-A" });
+    var msg = message ?? $"sync from {Environment.MachineName} {DateTime.Now:yyyy-MM-dd HH:mm}";
+    var commit = await Proc.RunAsync("git", new[] { "-C", root, "commit", "-m", msg });
+    Log.Info(commit.Ok ? $"已提交：{msg}" : "无改动或提交失败");
+    if (push)
+    {
+        var p = await Proc.RunAsync("git", new[] { "-C", root, "push" });
+        Log.Info(p.Ok ? "已 push" : "push 失败（检查远程）");
+    }
+    return 0;
+}
+
 void PrintHelp()
 {
     Console.WriteLine("""
@@ -176,6 +208,8 @@ void PrintHelp()
       apply-config            套用配置（VS Code/Git/env…，按 applyWhen）
       export                  采集本机配置回写仓库
       ssh-setup [--register]  生成本机 SSH 密钥并套用 ssh 配置
+      sync                    git pull → 套用配置 + 显示安装计划
+      save [--message m] [--push]   提交 configs 改动（--push 推送到远程）
 
     选项:
       --profile <名称>        使用预设 (catalog/profiles/<名称>.json)

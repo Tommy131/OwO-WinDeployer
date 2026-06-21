@@ -77,6 +77,12 @@
       <DataTemplate DataType="{x:Type vm:ExportViewModel}">
         <views:ExportView />
       </DataTemplate>
+      <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
+        <views:SettingsView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type vm:DetailViewModel}">
+        <views:DetailView />
+      </DataTemplate>
       <DataTemplate DataType="{x:Type vm:PlaceholderViewModel}">
         <views:PlaceholderView />
       </DataTemplate>

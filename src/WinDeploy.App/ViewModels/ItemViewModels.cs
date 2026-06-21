@@ -1,4 +1,6 @@
+using System.IO;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using WinDeploy.Core.Models;
 
 namespace WinDeploy.App.ViewModels;
@@ -63,6 +65,32 @@ public sealed class AppItemViewModel : ObservableObject
     public string Badge => Model.Name.Length > 0 ? Model.Name[..1].ToUpperInvariant() : "?";
     public Brush ChipBackground { get; }
     public Brush ChipForeground { get; }
+
+    /// <summary>Brand icon thumbnail (assets/icons/&lt;id&gt;.png); null falls back to the letter badge.</summary>
+    public ImageSource? IconImage { get; private set; }
+    public bool HasIcon => IconImage != null;
+    public bool ShowLetter => IconImage == null;
+
+    public void LoadIcon(string repoRoot)
+    {
+        try
+        {
+            var path = Path.Combine(repoRoot, "assets", "icons", Model.Id + ".png");
+            if (!File.Exists(path)) return;
+            var bmp = new BitmapImage();
+            bmp.BeginInit();
+            bmp.CacheOption = BitmapCacheOption.OnLoad;          // don't lock the file
+            bmp.CreateOptions = BitmapCreateOptions.IgnoreColorProfile;
+            bmp.UriSource = new Uri(path);
+            bmp.EndInit();
+            bmp.Freeze();
+            IconImage = bmp;
+            OnPropertyChanged(nameof(IconImage));
+            OnPropertyChanged(nameof(HasIcon));
+            OnPropertyChanged(nameof(ShowLetter));
+        }
+        catch { /* keep the letter fallback */ }
+    }
 
     private bool _isSelected;
     public bool IsSelected

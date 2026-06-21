@@ -1,7 +1,9 @@
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
+using WinDeploy.App.Services;
 using WinDeploy.Core;
+using WinDeploy.Core.Config;
 using WinDeploy.Core.Engine;
 using WinDeploy.Core.Engine.Installers;
 using WinDeploy.Core.Models;
@@ -20,17 +22,20 @@ public sealed class MainViewModel : ObservableObject
     public ProgressViewModel Progress { get; } = new();
     public ConfigSyncViewModel ConfigSync { get; } = new();
     public ExportViewModel Export { get; } = new();
+    public SettingsViewModel Settings { get; } = new();
 
     public MainViewModel()
     {
         Install.StartRequested += OnStartRequested;
+        Install.DetailRequested += OnDetailRequested;
+        Settings.Saved += () => Secrets.ExtraKeywords = SettingsViewModel.ParseKeywords(Settings.RedactKeywords);
         Load();
 
         NavItems.Add(new NavItemViewModel("", "软件安装中心", Install));
         NavItems.Add(new NavItemViewModel("", "配置同步", ConfigSync));
         NavItems.Add(new NavItemViewModel("", "运行进度", Progress));
         NavItems.Add(new NavItemViewModel("", "导出", Export));
-        NavItems.Add(new NavItemViewModel("", "设置", new PlaceholderViewModel("设置", "路径变量向导、仓库地址、镜像源、脱敏清单")));
+        NavItems.Add(new NavItemViewModel("", "设置", Settings));
         SelectedNav = NavItems[0];
     }
 
@@ -48,25 +53,40 @@ public sealed class MainViewModel : ObservableObject
     {
         var dir = CatalogLoader.FindCatalogDir(AppContext.BaseDirectory)
                   ?? CatalogLoader.FindCatalogDir(Environment.CurrentDirectory);
-        if (dir == null) { Install.LoadError = "找不到 catalog/catalog.json"; return; }
+        if (dir == null) { Install.LoadError = "找不到 catalog/catalog.json"; Install.IsLoading = false; return; }
 
         var path = Path.Combine(dir, "catalog.json");
         _repoRoot = Path.GetDirectoryName(dir)!;
         try { _catalog = CatalogLoader.Load(path); }
-        catch (Exception ex) { Install.LoadError = ex.Message; return; }
+        catch (Exception ex) { Install.LoadError = ex.Message; Install.IsLoading = false; return; }
 
-        _resolver = new PathResolver(_catalog.PathVars);
+        var settings = SettingsStore.Load();
+        var vars = new Dictionary<string, string>(_catalog.PathVars, StringComparer.OrdinalIgnoreCase);
+        if (!string.IsNullOrWhiteSpace(settings.DevRoot)) vars["DevRoot"] = settings.DevRoot!;
+        if (!string.IsNullOrWhiteSpace(settings.ToolsDir)) vars["ToolsDir"] = settings.ToolsDir!;
+        _resolver = new PathResolver(vars);
+        Secrets.ExtraKeywords = SettingsViewModel.ParseKeywords(settings.RedactKeywords);
+
         Install.Initialize(_catalog, dir);
         ConfigSync.Initialize(_catalog, _resolver, _repoRoot);
         Export.Initialize(_catalog, _resolver, _repoRoot);
         _ = DetectAllAsync();
     }
 
+    /// <summary>Detect every item (throttled-parallel) BEFORE revealing the list.</summary>
     private async Task DetectAllAsync()
     {
-        foreach (var group in Install.Groups)
-            foreach (var item in group.Items)
-                item.Installed = await Detection.IsInstalledAsync(item.Model, _resolver);
+        var items = Install.Groups.SelectMany(g => g.Items).ToList();
+        using var gate = new SemaphoreSlim(8);
+        var tasks = items.Select(async vm =>
+        {
+            await gate.WaitAsync();
+            try { vm.Installed = await Detection.IsInstalledAsync(vm.Model, _resolver); }
+            catch { vm.Installed = false; }
+            finally { gate.Release(); }
+        });
+        await Task.WhenAll(tasks);
+        Install.IsLoading = false;
     }
 
     private void OnStartRequested()
@@ -79,6 +99,9 @@ public sealed class MainViewModel : ObservableObject
         SelectedNav = NavItems.First(n => ReferenceEquals(n.Page, Progress));
         _ = RunAsync(selected);
     }
+
+    private void OnDetailRequested(AppItemViewModel item)
+        => Current = new DetailViewModel(item, back: () => Current = Install);
 
     private async Task RunAsync(List<CatalogItem> selected)
     {

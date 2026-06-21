@@ -42,6 +42,8 @@ public static class Proc
         foreach (var a in args) psi.ArgumentList.Add(a);
         psi.RedirectStandardOutput = true;
         psi.RedirectStandardError = true;
+        psi.StandardOutputEncoding = Encoding.UTF8; // winget/git emit UTF-8; needed for CJK names
+        psi.StandardErrorEncoding = Encoding.UTF8;
         psi.UseShellExecute = false;
         psi.CreateNoWindow = true;
         if (cwd != null) psi.WorkingDirectory = cwd;
