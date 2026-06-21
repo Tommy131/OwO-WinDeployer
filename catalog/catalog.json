@@ -1,0 +1,213 @@
+{
+  "schemaVersion": 1,
+
+  // 路径变量：首次运行设定一次，让清单跨设备通用（不假设 D 盘存在）。
+  "pathVars": {
+    "DevRoot": "%USERPROFILE%/dev",
+    "ToolsDir": "%LOCALAPPDATA%/tools"
+  },
+
+  "categories": ["dev", "system", "ide", "ai", "office", "media", "db-api", "vm", "games"],
+
+  "items": [
+    // ── 开发工具链（默认强制） ─────────────────────────────
+    { "id": "git", "name": "Git", "summary": "分布式版本控制", "icon": "assets/icons/git.svg",
+      "category": "dev", "default": true,
+      "install": { "method": "winget", "id": "Git.Git" },
+      "detect": { "cmd": "git" },
+      "config": { "source": "configs/git", "target": "%USERPROFILE%", "files": [".gitconfig"], "applyWhen": "always" } },
+
+    { "id": "gh", "name": "GitHub CLI", "summary": "GitHub 命令行", "icon": "assets/icons/gh.svg",
+      "category": "dev", "default": true,
+      "install": { "method": "winget", "id": "GitHub.cli" },
+      "detect": { "cmd": "gh" } },
+
+    { "id": "nodejs", "name": "Node.js 24", "summary": "JavaScript 运行时（便携包）", "icon": "assets/icons/nodejs.svg",
+      "category": "dev", "default": true, "version": "24.15.0",
+      "install": { "method": "portable",
+        "url": "https://nodejs.org/dist/v24.15.0/node-v24.15.0-win-x64.zip",
+        "extractTo": "${ToolsDir}/nodejs", "strip": 1, "path": ["${ToolsDir}/nodejs"] },
+      "detect": { "path": "${ToolsDir}/nodejs/node.exe" } },
+
+    { "id": "python", "name": "Python 3.10", "summary": "Python 解释器", "icon": "assets/icons/python.svg",
+      "category": "dev", "default": true,
+      "install": { "method": "winget", "id": "Python.Python.3.10" },
+      "detect": { "cmd": "python" } },
+
+    { "id": "miniconda", "name": "Miniconda3", "summary": "Python 环境与包管理", "icon": "assets/icons/conda.svg",
+      "category": "dev", "default": true,
+      "install": { "method": "winget", "id": "Anaconda.Miniconda3" },
+      "detect": { "path": "%USERPROFILE%/miniconda3/Scripts/conda.exe" } },
+
+    { "id": "jdk17", "name": "Oracle JDK 17", "summary": "Java 开发套件", "icon": "assets/icons/java.svg",
+      "category": "dev", "default": true,
+      "install": { "method": "winget", "id": "Oracle.JDK.17" },
+      "detect": { "cmd": "javac" } },
+
+    { "id": "go", "name": "Go", "summary": "Go 语言工具链", "icon": "assets/icons/go.svg",
+      "category": "dev", "default": true,
+      "install": { "method": "winget", "id": "GoLang.Go" },
+      "detect": { "cmd": "go" } },
+
+    { "id": "dotnet-sdk", "name": ".NET SDK 10", "summary": ".NET 软件开发工具包", "icon": "assets/icons/dotnet.svg",
+      "category": "dev", "default": true,
+      "install": { "method": "winget", "id": "Microsoft.DotNet.SDK.10" },
+      "detect": { "cmd": "dotnet" } },
+
+    { "id": "cmake", "name": "CMake", "summary": "跨平台构建系统", "icon": "assets/icons/cmake.svg",
+      "category": "dev", "default": true,
+      "install": { "method": "winget", "id": "Kitware.CMake" },
+      "detect": { "cmd": "cmake" } },
+
+    { "id": "ffmpeg", "name": "FFmpeg", "summary": "音视频处理工具", "icon": "assets/icons/ffmpeg.svg",
+      "category": "dev", "default": true,
+      "install": { "method": "winget", "id": "Gyan.FFmpeg" },
+      "detect": { "cmd": "ffmpeg" } },
+
+    { "id": "pandoc", "name": "Pandoc", "summary": "文档格式转换", "icon": "assets/icons/pandoc.svg",
+      "category": "dev", "default": true,
+      "install": { "method": "winget", "id": "JohnMacFarlane.Pandoc" },
+      "detect": { "cmd": "pandoc" } },
+
+    // TODO: 把 url 换成具体的 winlibs zip 直链（release 页面仅作占位）。
+    { "id": "mingw", "name": "MinGW-w64 (WinLibs)", "summary": "GCC/G++ 工具链（便携包）", "icon": "assets/icons/gcc.svg",
+      "category": "dev", "default": true,
+      "install": { "method": "portable",
+        "url": "https://github.com/brechtsanders/winlibs_mingw/releases/latest",
+        "extractTo": "${ToolsDir}/mingw64", "strip": 1, "path": ["${ToolsDir}/mingw64/bin"] },
+      "detect": { "path": "${ToolsDir}/mingw64/bin/gcc.exe" } },
+
+    { "id": "flutter", "name": "Flutter + Dart", "summary": "跨平台 UI SDK（移动开发）", "icon": "assets/icons/flutter.svg",
+      "category": "dev", "default": false,
+      "install": { "method": "git", "repo": "https://github.com/flutter/flutter.git", "branch": "stable",
+        "dest": "${DevRoot}/flutter", "path": ["${DevRoot}/flutter/bin"] },
+      "detect": { "path": "${DevRoot}/flutter/bin/flutter.bat" } },
+
+    // ── 系统依赖（默认强制） ─────────────────────────────
+    { "id": "vcredist", "name": "VC++ 运行库合集", "summary": "Visual C++ 运行库 2010–2015+", "icon": "assets/icons/vcredist.svg",
+      "category": "system", "default": true,
+      "install": { "method": "winget-bundle", "ids": [
+        "Microsoft.VCRedist.2015+.x64", "Microsoft.VCRedist.2015+.x86",
+        "Microsoft.VCRedist.2012.x64", "Microsoft.VCRedist.2012.x86", "Microsoft.VCRedist.2010.x64" ] } },
+
+    { "id": "windows-terminal", "name": "Windows Terminal", "summary": "现代终端", "icon": "assets/icons/terminal.svg",
+      "category": "system", "default": true,
+      "install": { "method": "winget", "id": "Microsoft.WindowsTerminal" },
+      "detect": { "cmd": "wt" } },
+
+    { "id": "huorong", "name": "火绒安全", "summary": "安全 / 杀毒软件", "icon": "assets/icons/huorong.svg",
+      "category": "system", "default": true,
+      "install": { "method": "winget", "id": "Huorong.Security" } },
+
+    // ── IDE / 编辑器 ─────────────────────────────
+    { "id": "vscode", "name": "VS Code", "summary": "编辑器（含约 80 个扩展）", "icon": "assets/icons/vscode.svg",
+      "category": "ide", "default": true,
+      "install": { "method": "winget", "id": "Microsoft.VisualStudioCode", "scope": "user" },
+      "detect": { "cmd": "code" },
+      "config": { "source": "configs/vscode", "target": "%APPDATA%/Code/User", "files": ["settings.json", "keybindings.json"],
+                  "extensions": "configs/vscode/extensions.txt", "applyWhen": "ifInstalled" } },
+
+    { "id": "vscode-ext", "name": "VS Code 扩展", "summary": "批量安装约 80 个扩展", "icon": "assets/icons/vscode.svg",
+      "category": "ide", "default": true, "depends": ["vscode"],
+      "install": { "method": "vscode-ext", "extensions": "configs/vscode/extensions.txt" } },
+
+    { "id": "vs2026", "name": "Visual Studio 2026", "summary": "重型 C++/.NET IDE（可选）", "icon": "assets/icons/vs.svg",
+      "category": "ide", "default": false,
+      "install": { "method": "winget", "id": "Microsoft.VisualStudio.Community" } },
+
+    { "id": "android-studio", "name": "Android Studio", "summary": "Android 开发 IDE（可选）", "icon": "assets/icons/android.svg",
+      "category": "ide", "default": false,
+      "install": { "method": "winget", "id": "Google.AndroidStudio" } },
+
+    { "id": "arduino", "name": "Arduino IDE", "summary": "Arduino 开发（可选）", "icon": "assets/icons/arduino.svg",
+      "category": "ide", "default": false,
+      "install": { "method": "winget", "id": "ArduinoSA.IDE.stable" } },
+
+    { "id": "unity-hub", "name": "Unity Hub", "summary": "游戏引擎（可选）", "icon": "assets/icons/unity.svg",
+      "category": "ide", "default": false,
+      "install": { "method": "winget", "id": "Unity.UnityHub" } },
+
+    { "id": "sublime-merge", "name": "Sublime Merge", "summary": "Git 客户端", "icon": "assets/icons/sublime.svg",
+      "category": "ide", "default": false,
+      "install": { "method": "winget", "id": "SublimeHQ.SublimeMerge" } },
+
+    // ── AI 工具 ─────────────────────────────
+    { "id": "comfyui", "name": "ComfyUI Desktop", "summary": "AI 绘画工作流", "icon": "assets/icons/comfyui.svg",
+      "category": "ai", "default": false,
+      "install": { "method": "winget", "id": "Comfy.ComfyUI-Desktop" } },
+
+    { "id": "lmstudio", "name": "LM Studio", "summary": "本地大模型运行", "icon": "assets/icons/lmstudio.svg",
+      "category": "ai", "default": false,
+      "install": { "method": "winget", "id": "ElementLabs.LMStudio" },
+      "config": { "source": "configs/lmstudio", "target": "%USERPROFILE%/.lmstudio", "applyWhen": "ask" } },
+
+    { "id": "claude", "name": "Claude", "summary": "AI 助手桌面端", "icon": "assets/icons/claude.svg",
+      "category": "ai", "default": false,
+      "install": { "method": "winget", "id": "Anthropic.Claude" } },
+
+    { "id": "windsurf", "name": "Windsurf", "summary": "AI 编辑器", "icon": "assets/icons/windsurf.svg",
+      "category": "ai", "default": false,
+      "install": { "method": "winget", "id": "Codeium.Windsurf" } },
+
+    // ── 办公 / 通讯 ─────────────────────────────
+    { "id": "wechat", "name": "微信", "summary": "即时通讯", "icon": "assets/icons/wechat.svg",
+      "category": "office", "default": false,
+      "install": { "method": "winget", "id": "Tencent.WeChat" } },
+
+    { "id": "wecom", "name": "企业微信", "summary": "企业通讯", "icon": "assets/icons/wecom.svg",
+      "category": "office", "default": false,
+      "install": { "method": "winget", "id": "Tencent.WeCom" } },
+
+    { "id": "feishu", "name": "飞书", "summary": "协作办公", "icon": "assets/icons/feishu.svg",
+      "category": "office", "default": false,
+      "install": { "method": "winget", "id": "ByteDance.Feishu" } },
+
+    { "id": "tencent-meeting", "name": "腾讯会议", "summary": "视频会议", "icon": "assets/icons/tmeeting.svg",
+      "category": "office", "default": false,
+      "install": { "method": "winget", "id": "Tencent.TencentMeeting" } },
+
+    // ── 媒体 ─────────────────────────────
+    { "id": "obs", "name": "OBS Studio", "summary": "录屏 / 直播", "icon": "assets/icons/obs.svg",
+      "category": "media", "default": false,
+      "install": { "method": "winget", "id": "OBSProject.OBSStudio" } },
+
+    { "id": "vlc", "name": "VLC", "summary": "媒体播放器", "icon": "assets/icons/vlc.svg",
+      "category": "media", "default": false,
+      "install": { "method": "winget", "id": "VideoLAN.VLC" } },
+
+    { "id": "irfanview", "name": "IrfanView", "summary": "看图工具", "icon": "assets/icons/irfanview.svg",
+      "category": "media", "default": false,
+      "install": { "method": "winget", "id": "IrfanSkiljan.IrfanView" } },
+
+    { "id": "netease-music", "name": "网易云音乐", "summary": "音乐播放", "icon": "assets/icons/netease.svg",
+      "category": "media", "default": false,
+      "install": { "method": "winget", "id": "NetEase.CloudMusic" } },
+
+    // ── 数据库 / API / 网络 ─────────────────────────────
+    { "id": "dbgate", "name": "DbGate", "summary": "数据库客户端", "icon": "assets/icons/dbgate.svg",
+      "category": "db-api", "default": false,
+      "install": { "method": "winget", "id": "JanProchazka.dbgate" } },
+
+    { "id": "apifox", "name": "Apifox", "summary": "API 调试", "icon": "assets/icons/apifox.svg",
+      "category": "db-api", "default": false,
+      "install": { "method": "winget", "id": "Ruihu.Apifox" } },
+
+    { "id": "winscp", "name": "WinSCP", "summary": "SFTP / SCP 客户端", "icon": "assets/icons/winscp.svg",
+      "category": "db-api", "default": false,
+      "install": { "method": "winget", "id": "WinSCP.WinSCP" } },
+
+    // ── 虚拟化 ─────────────────────────────
+    { "id": "vmware", "name": "VMware Workstation", "summary": "虚拟化（可选）", "icon": "assets/icons/vmware.svg",
+      "category": "vm", "default": false,
+      "install": { "method": "winget", "id": "Broadcom.WorkstationPro" } },
+
+    // ── 游戏平台（仅客户端本体，不含游戏） ─────────────────────────────
+    { "id": "steam", "name": "Steam", "summary": "游戏平台客户端（仅本体）", "icon": "assets/icons/steam.svg",
+      "category": "games", "default": false,
+      "install": { "method": "winget", "id": "Valve.Steam" } },
+
+    { "id": "epic", "name": "Epic Games", "summary": "游戏平台客户端（仅本体）", "icon": "assets/icons/epic.svg",
+      "category": "games", "default": false,
+      "install": { "method": "winget", "id": "EpicGames.EpicGamesLauncher" } }
+  ]
+}

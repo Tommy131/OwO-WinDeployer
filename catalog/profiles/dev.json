@@ -1,0 +1,5 @@
+{
+  "name": "dev",
+  "select": ["@category:dev", "@category:system", "vscode", "vscode-ext", "windows-terminal"],
+  "deselect": ["flutter"]
+}

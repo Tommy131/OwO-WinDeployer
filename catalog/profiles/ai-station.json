@@ -1,0 +1,5 @@
+{
+  "name": "ai-station",
+  "select": ["@category:dev", "@category:system", "@category:ai", "vscode", "vscode-ext"],
+  "deselect": ["flutter"]
+}

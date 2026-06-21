@@ -1,0 +1,14 @@
+# .NET build output
+bin/
+obj/
+.vs/
+*.user
+
+# WinDeploy artifacts
+artifacts/
+publish/
+
+# 安全：配置仓库中绝不提交任何私钥
+configs/ssh/id_*
+configs/ssh/*.pem
+configs/ssh/*.key
