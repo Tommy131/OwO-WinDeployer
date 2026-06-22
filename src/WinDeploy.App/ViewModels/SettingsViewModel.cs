@@ -17,6 +17,7 @@ public sealed class SettingsViewModel : ObservableObject
         _theme = _s.Theme ?? "system";
         SettingsPath = SettingsStore.FilePath;
         SaveCommand = new RelayCommand(_ => Save());
+        OpenFolderCommand = new RelayCommand(_ => OpenFolder());
     }
 
     private string _devRoot;
@@ -57,7 +58,18 @@ public sealed class SettingsViewModel : ObservableObject
     public string Note { get => _note; set => Set(ref _note, value); }
 
     public RelayCommand SaveCommand { get; }
+    public RelayCommand OpenFolderCommand { get; }
     public event Action? Saved;
+
+    private void OpenFolder()
+    {
+        try
+        {
+            System.IO.Directory.CreateDirectory(SettingsStore.Folder);
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(SettingsStore.Folder) { UseShellExecute = true });
+        }
+        catch { /* ignore */ }
+    }
 
     private void Save()
     {

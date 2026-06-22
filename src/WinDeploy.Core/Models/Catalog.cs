@@ -44,6 +44,7 @@ public sealed class InstallSpec
     // winget
     public string? Id { get; set; }
     public string? Scope { get; set; }
+    public string? Source { get; set; }   // e.g. "msstore" for Store-only packages
 
     // winget-bundle
     public List<string>? Ids { get; set; }
@@ -83,6 +84,10 @@ public sealed class DetectSpec
 
     /// <summary>Display-name prefix to match in ARP (`winget list`) — for apps winget doesn't track by id.</summary>
     public string? Arp { get; set; }
+
+    /// <summary>Process base-name hint for running detection (e.g. MSIX/Store apps like Claude that
+    /// have no classic ARP entry). Used only by process matching, not install detection.</summary>
+    public string? Proc { get; set; }
 }
 
 /// <summary>Config payload that travels in the repo regardless of install state.</summary>

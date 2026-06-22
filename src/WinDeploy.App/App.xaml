@@ -23,6 +23,8 @@
       <SolidColorBrush x:Key="OkBg" Color="#EAF3DE" />
       <SolidColorBrush x:Key="FailFg" Color="#A32D2D" />
       <SolidColorBrush x:Key="FailBg" Color="#FCEBEB" />
+      <SolidColorBrush x:Key="WarnFg" Color="#9A5B00" />
+      <SolidColorBrush x:Key="WarnBg" Color="#FBEFDD" />
       <SolidColorBrush x:Key="NavBg" Color="#FBFBF9" />
 
       <!-- Base text -->
@@ -128,6 +130,31 @@
                       BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6" Padding="{TemplateBinding Padding}">
                 <ContentPresenter />
               </Border>
+            </ControlTemplate>
+          </Setter.Value>
+        </Setter>
+      </Style>
+
+      <!-- Small round STOP button on cards (■) -->
+      <Style x:Key="CardStopButton" TargetType="Button">
+        <Setter Property="Width" Value="22" />
+        <Setter Property="Height" Value="22" />
+        <Setter Property="FontSize" Value="10" />
+        <Setter Property="Foreground" Value="{DynamicResource FailFg}" />
+        <Setter Property="Background" Value="{DynamicResource FailBg}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+          <Setter.Value>
+            <ControlTemplate TargetType="Button">
+              <Border x:Name="B" Background="{TemplateBinding Background}" CornerRadius="11">
+                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+              </Border>
+              <ControlTemplate.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                  <Setter TargetName="B" Property="Background" Value="{DynamicResource FailFg}" />
+                  <Setter Property="Foreground" Value="{DynamicResource CardBg}" />
+                </Trigger>
+              </ControlTemplate.Triggers>
             </ControlTemplate>
           </Setter.Value>
         </Setter>
@@ -354,6 +381,11 @@
         <Setter Property="Foreground" Value="{DynamicResource Accent}" />
         <Setter Property="Background" Value="{DynamicResource AccentBg}" />
         <Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+      </Style>
+      <Style x:Key="WarnButton" TargetType="Button" BasedOn="{StaticResource MiniButton}">
+        <Setter Property="Foreground" Value="{DynamicResource WarnFg}" />
+        <Setter Property="Background" Value="{DynamicResource WarnBg}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource WarnFg}" />
       </Style>
 
       <!-- Page → View map -->

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using WinDeploy.Core.Engine.Installers;
 using WinDeploy.Core.Models;
 using WinDeploy.Core.Util;
@@ -20,7 +21,7 @@ public static class Updater
         switch (ins.Method)
         {
             case "winget" when ins.Id != null:
-                return Interpret(await Upgrade(ins.Id, ctx.Ct));
+                return Interpret(await Upgrade(ins.Id, ctx));
 
             case "winget-bundle" when ins.Ids is { Count: > 0 } ids:
             {
@@ -28,7 +29,7 @@ public static class Updater
                 var changed = 0;
                 foreach (var id in ids)
                 {
-                    var o = Interpret(await Upgrade(id, ctx.Ct));
+                    var o = Interpret(await Upgrade(id, ctx));
                     if (o.Status == StepStatus.Failed) failed.Add(id);
                     else if (o.Message == Updated) changed++;
                 }
@@ -81,11 +82,16 @@ public static class Updater
     private const string Updated = "已更新";
     private const string UpToDate = "已是最新";
 
-    private static Task<ProcResult> Upgrade(string id, CancellationToken ct) => Proc.RunAsync("winget", new[]
+    private static Task<ProcResult> Upgrade(string id, EngineContext ctx)
     {
-        "upgrade", "--id", id, "-e",
-        "--accept-source-agreements", "--accept-package-agreements", "--disable-interactivity",
-    }, ct: ct);
+        var sw = Stopwatch.StartNew();
+        string? last = null;
+        return Proc.RunStreamingAsync("winget", new[]
+        {
+            "upgrade", "--id", id, "-e",
+            "--accept-source-agreements", "--accept-package-agreements", "--disable-interactivity",
+        }, tok => last = WingetProgress.Handle(tok, ctx, sw, last), ct: ctx.Ct);
+    }
 
     /// <summary>winget upgrade exits non-zero when nothing applies; treat that as "已是最新", not failure.</summary>
     private static StepOutcome Interpret(ProcResult r)

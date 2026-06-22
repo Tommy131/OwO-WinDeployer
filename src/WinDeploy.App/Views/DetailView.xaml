@@ -106,24 +106,35 @@
 
           <!-- 运行：启动（绿）/ 结束进程（红，仅运行时）/ 重启（蓝） -->
           <StackPanel Orientation="Horizontal" Margin="0,0,0,10" Visibility="{Binding CanLaunch, Converter={StaticResource BoolToVis}}">
-            <Button Content="▶ 启动" Style="{StaticResource OkButton}" Command="{Binding LaunchCommand}" ToolTip="启动该软件" />
-            <Button Content="■ 结束进程" Style="{StaticResource DangerButton}" Command="{Binding StopCommand}" Margin="8,0,0,0"
+            <Button Content="▶ 启动" Style="{StaticResource OkButton}" Command="{Binding LaunchCommand}" Margin="0,0,8,0" ToolTip="启动该软件" />
+            <Button Content="■ 结束进程" Style="{StaticResource DangerButton}" Command="{Binding StopCommand}" Margin="0,0,8,0"
                     Visibility="{Binding CanStop, Converter={StaticResource BoolToVis}}" ToolTip="结束该软件的所有进程" />
-            <Button Content="↻ 重启" Style="{StaticResource InfoButton}" Command="{Binding RestartCommand}" Margin="8,0,0,0" ToolTip="结束后重新启动" />
+            <Button Content="↻ 重启" Style="{StaticResource InfoButton}" Command="{Binding RestartCommand}" ToolTip="结束后重新启动" />
           </StackPanel>
 
-          <!-- 管理：安装 / 检查更新（蓝）/ 降级 / 卸载（红） · 随版本选择器联动 -->
+          <!-- 管理：前往官网下载 / 安装 / 检查更新（蓝）/ 降级（橙）/ 卸载（红） · 随版本选择器联动 -->
           <StackPanel Orientation="Horizontal">
-            <Button Content="安装" Style="{StaticResource PrimaryButton}" Command="{Binding InstallCommand}"
+            <Button Content="前往官网下载" Style="{StaticResource PrimaryButton}" Command="{Binding OpenHomepageCommand}" Margin="0,0,8,0"
+                    Visibility="{Binding ShowManualDownload, Converter={StaticResource BoolToVis}}"
+                    ToolTip="该软件需从官网手动下载安装" />
+            <Button Content="安装" Style="{StaticResource PrimaryButton}" Command="{Binding InstallCommand}" Margin="0,0,8,0"
                     Visibility="{Binding ShowInstall, Converter={StaticResource BoolToVis}}" ToolTip="按所选版本安装该软件" />
-            <Button Content="检查 / 更新" Style="{StaticResource InfoButton}" Command="{Binding UpdateCommand}"
+            <Button Content="检查 / 更新" Style="{StaticResource InfoButton}" Command="{Binding UpdateCommand}" Margin="0,0,8,0"
                     Visibility="{Binding ShowUpdate, Converter={StaticResource BoolToVis}}"
                     ToolTip="winget upgrade / git pull / 便携包重拉，更新到最新版本" />
-            <Button Content="降级" Style="{StaticResource MiniButton}" Command="{Binding DowngradeCommand}" Margin="8,0,0,0"
+            <Button Content="降级" Style="{StaticResource WarnButton}" Command="{Binding DowngradeCommand}" Margin="0,0,8,0"
                     Visibility="{Binding ShowDowngrade, Converter={StaticResource BoolToVis}}"
                     ToolTip="安装所选的较低版本（仅 winget）" />
-            <Button Content="卸载…" Style="{StaticResource DangerButton}" Command="{Binding UninstallCommand}" Margin="8,0,0,0"
+            <Button Content="卸载…" Style="{StaticResource DangerButton}" Command="{Binding UninstallCommand}"
                     Visibility="{Binding CanUninstall, Converter={StaticResource BoolToVis}}" ToolTip="卸载该软件" />
+          </StackPanel>
+
+          <!-- 开发环境：手动配置环境变量（PATH / JAVA_HOME 等） -->
+          <StackPanel Margin="0,12,0,0" Visibility="{Binding ShowEnvButton, Converter={StaticResource BoolToVis}}">
+            <Button Content="设置环境变量 …" Style="{StaticResource MiniButton}" Command="{Binding EnvVarsCommand}"
+                    HorizontalAlignment="Left" ToolTip="打开环境变量页，手动配置 PATH / JAVA_HOME 等" />
+            <TextBlock Text="开发工具链：winget 安装通常会自动加入 PATH；如需 JAVA_HOME / ANDROID_HOME 等可在此手动配置。"
+                       FontSize="11" Foreground="{DynamicResource TextTertiary}" TextWrapping="Wrap" Margin="0,4,0,0" />
           </StackPanel>
         </StackPanel>
       </Border>

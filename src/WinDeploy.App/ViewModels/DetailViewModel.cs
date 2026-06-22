@@ -29,6 +29,10 @@ public sealed class DetailViewModel : ObservableObject
     public RelayCommand LaunchCommand { get; }
     public RelayCommand StopCommand { get; }
     public RelayCommand RestartCommand { get; }
+    public RelayCommand EnvVarsCommand { get; }
+
+    /// <summary>Raised when the user clicks 「设置环境变量」 — host navigates to the env-vars page.</summary>
+    public event Action? EnvVarsRequested;
 
     public event Action<CatalogItem>? InstallRequested;
     public event Action<CatalogItem>? UpdateRequested;
@@ -52,6 +56,7 @@ public sealed class DetailViewModel : ObservableObject
         LaunchCommand = new RelayCommand(_ => LaunchRequested?.Invoke(Item.Model), _ => CanLaunch);
         StopCommand = new RelayCommand(_ => StopRequested?.Invoke(Item.Model), _ => CanStop);
         RestartCommand = new RelayCommand(_ => RestartRequested?.Invoke(Item.Model), _ => CanRestart);
+        EnvVarsCommand = new RelayCommand(_ => EnvVarsRequested?.Invoke());
 
         var ins = item.Model.Install;
         Source = ins.Method switch
@@ -106,9 +111,16 @@ public sealed class DetailViewModel : ObservableObject
     public bool IsInstalled => Item.IsInstalled;
     public string StatusText => Item.IsInstalled ? "已安装" : "未安装";
 
+    /// <summary>Dev toolchains (go / node / jdk / mingw / ffmpeg…) often need PATH/JAVA_HOME etc.</summary>
+    public bool ShowEnvButton => Item.Model.Category is "dev" or "ide";
+
+    public bool IsManual => Item.Model.Install.Method == "manual";
+    /// <summary>Manual-download software, not installed → show 「前往官网下载」 instead of 安装.</summary>
+    public bool ShowManualDownload => IsManual && !Item.IsInstalled;
+
     // Version-selector ↔ button linkage:
     //   未安装 → 安装；已安装且选「最新」或 ≥ 当前版本 → 检查/更新；已安装且选低于当前版本 → 降级。
-    public bool ShowInstall => !Item.IsInstalled;
+    public bool ShowInstall => !Item.IsInstalled && !IsManual;
     public bool ShowDowngrade => Item.IsInstalled && CanChooseVersion && _selectedVersion != Latest
                                  && _version != "—" && CompareVersions(_selectedVersion, _version) < 0;
     public bool ShowUpdate => Item.IsInstalled && Updater.CanUpdate(Item.Model) && !ShowDowngrade;

@@ -92,6 +92,17 @@ public sealed class AppItemViewModel : ObservableObject
         catch { /* keep the letter fallback */ }
     }
 
+    /// <summary>Override the icon with the app's real icon extracted from its installed .exe.</summary>
+    public void SetIconFromExe(string exePath)
+    {
+        var img = Services.IconExtractor.FromExe(exePath);
+        if (img == null) return;
+        IconImage = img;
+        OnPropertyChanged(nameof(IconImage));
+        OnPropertyChanged(nameof(HasIcon));
+        OnPropertyChanged(nameof(ShowLetter));
+    }
+
     private bool _isSelected;
     public bool IsSelected
     {
@@ -112,12 +123,29 @@ public sealed class AppItemViewModel : ObservableObject
             {
                 OnPropertyChanged(nameof(StatusText));
                 OnPropertyChanged(nameof(IsInstalled));
+                OnPropertyChanged(nameof(ShowLaunch));
+                OnPropertyChanged(nameof(ShowStop));
             }
         }
     }
 
     public bool IsInstalled => _installed == true;
     public string StatusText => _installed switch { null => "检测中…", true => "已装", _ => "未装" };
+
+    private bool _hasRunningProc;
+    /// <summary>The software currently has running processes (live-updated while the list is visible).</summary>
+    public bool HasRunningProc
+    {
+        get => _hasRunningProc;
+        set
+        {
+            if (!Set(ref _hasRunningProc, value)) return;
+            OnPropertyChanged(nameof(ShowLaunch));
+            OnPropertyChanged(nameof(ShowStop));
+        }
+    }
+    public bool ShowLaunch => IsInstalled && !_hasRunningProc;   // ▶ 启动
+    public bool ShowStop => IsInstalled && _hasRunningProc;      // ■ 停止
 
     private bool _hasUpdate;
     /// <summary>An upgrade is available (set during the startup update check).</summary>
@@ -168,6 +196,7 @@ public sealed class CategoryGroupViewModel : ObservableObject
 /// <summary>One row in the running-progress list: status pill + start/end/duration + expandable steps.</summary>
 public sealed class ProgressItemViewModel : ObservableObject
 {
+    public string Id { get; set; } = "";
     public string Name { get; }
     public string Method { get; }
     public System.Collections.ObjectModel.ObservableCollection<string> Details { get; } = new();
@@ -217,11 +246,19 @@ public sealed class ProgressItemViewModel : ObservableObject
     {
         Details.Add(line);
         OnPropertyChanged(nameof(HasDetails));
+        OnPropertyChanged(nameof(ExpandGlyph));
     }
     public bool HasDetails => Details.Count > 0;
 
     private bool _isDetailsOpen;
-    public bool IsDetailsOpen { get => _isDetailsOpen; set => Set(ref _isDetailsOpen, value); }
+    public bool IsDetailsOpen
+    {
+        get => _isDetailsOpen;
+        set { if (Set(ref _isDetailsOpen, value)) OnPropertyChanged(nameof(ExpandGlyph)); }
+    }
+
+    /// <summary>Left-side expand indicator: ▶ collapsed, ▼ open, blank when there are no details.</summary>
+    public string ExpandGlyph => !HasDetails ? "" : _isDetailsOpen ? "▼" : "▶";
 
     private void Raise()
     {

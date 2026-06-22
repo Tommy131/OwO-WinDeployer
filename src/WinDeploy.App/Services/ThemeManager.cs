@@ -32,6 +32,8 @@ public static class ThemeManager
         ("OkBg",          "#EAF3DE", "#1F3010"),
         ("FailFg",        "#A32D2D", "#E88A8A"),
         ("FailBg",        "#FCEBEB", "#3A1515"),
+        ("WarnFg",        "#9A5B00", "#E0A24E"),
+        ("WarnBg",        "#FBEFDD", "#3A2A12"),
         ("NavBg",         "#FBFBF9", "#232323"),
     };
 

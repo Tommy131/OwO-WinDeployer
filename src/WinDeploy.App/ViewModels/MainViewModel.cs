@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
+using System.Windows.Threading;
 using WinDeploy.App.Services;
 using WinDeploy.Core;
 using WinDeploy.Core.Config;
@@ -17,6 +18,9 @@ public sealed class MainViewModel : ObservableObject
     private string _repoRoot = "";
     private Catalog? _catalog;
     private CancellationTokenSource? _cts;
+    private readonly SemaphoreSlim _opGate = new(1, 1);   // serialize operations so a new task queues, not replaces
+    private DispatcherTimer? _installWatch;
+    private readonly Dictionary<int, string?> _installPathCache = new();
 
     public ObservableCollection<NavItemViewModel> NavItems { get; } = new();
     public InstallCenterViewModel Install { get; } = new();
@@ -35,6 +39,7 @@ public sealed class MainViewModel : ObservableObject
         Install.UpdateRequested += OnUpdateRequested;
         Install.DetailRequested += OnDetailRequested;
         Install.LaunchRequested += item => _ = RunOpAsync(item.Model, "launch");
+        Install.StopRequested += item => _ = ConfirmRiskAndRun(item.Model, "stop");
         Install.RefreshRequested += () => _ = DetectAllAsync();
         Processes.OperationRequested += (item, op) => _ = ConfirmRiskAndRun(item, op);
         Progress.CancelRequested += () => _cts?.Cancel();
@@ -61,7 +66,52 @@ public sealed class MainViewModel : ObservableObject
     }
 
     private object? _current;
-    public object? Current { get => _current; set => Set(ref _current, value); }
+    public object? Current
+    {
+        get => _current;
+        set { if (Set(ref _current, value)) UpdateInstallWatch(); }
+    }
+
+    /// <summary>Run a 2-second running-state scan only while the install center is the visible page,
+    /// so cards can show 运行中 / toggle ▶↔■ live.</summary>
+    private void UpdateInstallWatch()
+    {
+        if (ReferenceEquals(_current, Install))
+        {
+            _installWatch ??= new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
+            _installWatch.Tick -= OnInstallWatch;
+            _installWatch.Tick += OnInstallWatch;
+            _ = UpdateInstallRunningAsync();
+            _installWatch.Start();
+        }
+        else _installWatch?.Stop();
+    }
+
+    private void OnInstallWatch(object? sender, EventArgs e) => _ = UpdateInstallRunningAsync();
+
+    private async Task UpdateInstallRunningAsync()
+    {
+        var items = Install.Groups.SelectMany(g => g.Items).Where(i => i.IsInstalled).Select(i => i.Model).ToList();
+        if (items.Count == 0)
+        {
+            foreach (var vm in Install.Groups.SelectMany(g => g.Items)) vm.HasRunningProc = false;
+            return;
+        }
+        var pr = _resolver;
+        var cache = _installPathCache;
+        var running = await Task.Run(() =>
+        {
+            var targets = new List<(string Id, string Proc, string? Dir)>();
+            foreach (var it in items)
+            {
+                try { var t = ProcessControl.ResolveTarget(it, pr); if (t != null) targets.Add((it.Id, t.Value.Proc, t.Value.Dir)); }
+                catch { /* skip */ }
+            }
+            return ProcessControl.ScanAll(targets, cache).Select(x => x.Id).ToHashSet();
+        });
+        foreach (var vm in Install.Groups.SelectMany(g => g.Items))
+            vm.HasRunningProc = vm.IsInstalled && running.Contains(vm.Id);
+    }
 
     private void Load()
     {
@@ -113,6 +163,20 @@ public sealed class MainViewModel : ObservableObject
 
         Install.IsLoading = false;
         _ = PrefetchDetailsAsync(items);
+        _ = RefreshIconsAsync(items);
+    }
+
+    /// <summary>For installed items, replace the bundled icon with the app's real icon from its .exe.</summary>
+    private async Task RefreshIconsAsync(IReadOnlyList<AppItemViewModel> items)
+    {
+        foreach (var vm in items)
+        {
+            if (!vm.IsInstalled) continue;
+            string? exe = null;
+            try { exe = await Task.Run(() => Launcher.ResolveExePath(vm.Model, _resolver)); }
+            catch { /* skip */ }
+            if (exe != null) vm.SetIconFromExe(exe);
+        }
     }
 
     /// <summary>One `winget upgrade` pass → flag installed items that have an available upgrade.</summary>
@@ -160,6 +224,7 @@ public sealed class MainViewModel : ObservableObject
         vm.LaunchRequested += m => _ = RunOpAsync(m, "launch");
         vm.StopRequested += m => _ = ConfirmRiskAndRun(m, "stop");
         vm.RestartRequested += m => _ = ConfirmRiskAndRun(m, "restart");
+        vm.EnvVarsRequested += () => SelectedNav = NavItems.First(n => ReferenceEquals(n.Page, EnvVars));
         Current = vm;
     }
 
@@ -203,55 +268,59 @@ public sealed class MainViewModel : ObservableObject
     {
         SelectedNav = NavItems.First(n => ReferenceEquals(n.Page, Progress));
         var verb = Verb(op);
-        var pi = new PlanItem { Item = item, Status = PlanStatus.ToInstall };
-        Progress.Begin(new[] { pi }, verb);
-        Progress.OnStart(pi);
+        var row = Progress.Enqueue(item.Id, item.Name, item.Install.Method);   // 排队 until the lock frees
 
-        var ctx = NewCtx(out var ct);
-        var preCandidates = op == "uninstall" ? LeftoverScanner.Candidates(item, _resolver) : null;
-
-        StepOutcome outcome;
-        var cancelled = false;
+        await _opGate.WaitAsync();
         try
         {
-            outcome = op switch
+            var ctx = NewCtx(out var ct);
+            Progress.BeginRun(verb, 1);
+            Progress.Start(row);
+            var preCandidates = op == "uninstall" ? LeftoverScanner.Candidates(item, _resolver) : null;
+
+            StepOutcome outcome;
+            var cancelled = false;
+            try
             {
-                "install" => await _engine.RunOneAsync(item, ctx),
-                "update" => await Updater.UpdateAsync(item, ctx),
-                "downgrade" => await Updater.DowngradeAsync(item, ctx),
-                "uninstall" => await Uninstaller.UninstallAsync(item, _resolver, purge, ct, ctx.Report),
-                "launch" => await Task.Run(() => LaunchOp(item)),
-                "stop" => await Task.Run(() => StopOp(item)),
-                "restart" => await RestartOp(item),
-                _ => StepOutcome.Fail("未知操作"),
-            };
+                outcome = op switch
+                {
+                    "install" => await _engine.RunOneAsync(item, ctx),
+                    "update" => await Updater.UpdateAsync(item, ctx),
+                    "downgrade" => await Updater.DowngradeAsync(item, ctx),
+                    "uninstall" => await Uninstaller.UninstallAsync(item, _resolver, purge, ct, ctx.Report),
+                    "launch" => await Task.Run(() => LaunchOp(item, ctx)),
+                    "stop" => await Task.Run(() => StopOp(item, ctx)),
+                    "restart" => await RestartOp(item, ctx),
+                    _ => StepOutcome.Fail("未知操作"),
+                };
+            }
+            catch (OperationCanceledException) { cancelled = true; outcome = StepOutcome.Fail("已取消"); }
+            catch (Exception ex) { outcome = StepOutcome.Fail(ex.Message); }
+
+            if (cancelled && op == "install")
+            {
+                var freed = Cleanup.RemoveInstallResidue(item, _resolver);
+                outcome = StepOutcome.Fail(freed > 0 ? $"已取消，已清理残留 {Mb(freed)}" : "已取消（无残留）");
+            }
+
+            AuditLog.Action($"{verb} {item.Name}：{Zh(outcome.Status)} {outcome.Message}".TrimEnd());
+            Progress.Done(row, outcome.Status, outcome.Message);
+            Progress.EndRun();
+
+            if (op is "install" or "update" or "uninstall" or "downgrade")
+            {
+                Detection.ResetCache();
+                Arp.Refresh();
+                DetailService.Invalidate(item.Id);
+                UpdateChecker.Reset();
+                await RefreshInstalledFlag(item);
+                await RunUpdateCheckAsync();
+            }
+
+            if (op == "uninstall" && !cancelled && outcome.Status == StepStatus.Ok && preCandidates != null)
+                PromptLeftoverCleanup(item, preCandidates);
         }
-        catch (OperationCanceledException) { cancelled = true; outcome = StepOutcome.Fail("已取消"); }
-        catch (Exception ex) { outcome = StepOutcome.Fail(ex.Message); }
-
-        if (cancelled && op == "install")
-        {
-            var freed = Cleanup.RemoveInstallResidue(item, _resolver);
-            outcome = StepOutcome.Fail(freed > 0 ? $"已取消，已清理残留 {Mb(freed)}" : "已取消（无残留）");
-        }
-
-        var res = new RunResult { Item = item, Status = outcome.Status, Message = outcome.Message };
-        AuditLog.Action($"{verb} {item.Name}：{Zh(res.Status)} {res.Message}".TrimEnd());
-        Progress.OnDone(res);
-        Progress.Complete();
-
-        if (op is "install" or "update" or "uninstall" or "downgrade")
-        {
-            Detection.ResetCache();
-            Arp.Refresh();
-            DetailService.Invalidate(item.Id);
-            UpdateChecker.Reset();
-            await RefreshInstalledFlag(item);
-            await RunUpdateCheckAsync();
-        }
-
-        if (op == "uninstall" && !cancelled && outcome.Status == StepStatus.Ok && preCandidates != null)
-            PromptLeftoverCleanup(item, preCandidates);
+        finally { _opGate.Release(); }
     }
 
     private EngineContext NewCtx(out CancellationToken ct)
@@ -266,6 +335,7 @@ public sealed class MainViewModel : ObservableObject
             RepoRoot = _repoRoot,
             Ct = ct,
             Report = msg => disp.Invoke(() => Progress.OnStep(msg)),
+            Progress = msg => disp.Invoke(() => Progress.OnLiveProgress(msg)),
         };
     }
 
@@ -288,25 +358,35 @@ public sealed class MainViewModel : ObservableObject
         ? $"{bytes / 1024.0 / 1024 / 1024:0.0} GB"
         : $"{bytes / 1024.0 / 1024:0.0} MB";
 
-    private StepOutcome LaunchOp(CatalogItem item)
+    private StepOutcome LaunchOp(CatalogItem item, EngineContext ctx)
     {
-        var ok = Launcher.TryLaunch(item, _resolver, out var detail);
+        var ok = Launcher.TryLaunch(item, _resolver, out var detail, ctx.Step);
         return ok ? StepOutcome.Done("已启动 " + detail) : StepOutcome.Fail(detail);
     }
 
-    private StepOutcome StopOp(CatalogItem item)
+    private StepOutcome StopOp(CatalogItem item, EngineContext ctx)
     {
-        var n = ProcessControl.KillAll(item, _resolver);
+        var procs = ProcessControl.Find(item, _resolver);
+        ctx.Step($"找到 {procs.Count} 个进程");
+        var n = 0;
+        foreach (var p in procs)
+            if (ProcessControl.Kill(p.Pid)) { n++; ctx.Step($"已结束 {p.Name} (PID {p.Pid})"); }
         return StepOutcome.Done(n > 0 ? $"已结束 {n} 个进程" : "没有正在运行的进程");
     }
 
-    private async Task<StepOutcome> RestartOp(CatalogItem item)
+    private async Task<StepOutcome> RestartOp(CatalogItem item, EngineContext ctx)
     {
-        var n = await Task.Run(() => ProcessControl.KillAll(item, _resolver));
+        var n = await Task.Run(() =>
+        {
+            var k = 0;
+            foreach (var p in ProcessControl.Find(item, _resolver)) if (ProcessControl.Kill(p.Pid)) k++;
+            return k;
+        });
+        ctx.Step($"已结束 {n} 个进程");
         await Task.Delay(600);
         var (ok, detail) = await Task.Run(() =>
         {
-            var r = Launcher.TryLaunch(item, _resolver, out var d);
+            var r = Launcher.TryLaunch(item, _resolver, out var d, ctx.Step);
             return (r, d);
         });
         return ok
@@ -326,34 +406,41 @@ public sealed class MainViewModel : ObservableObject
     {
         var dispatcher = Application.Current.Dispatcher;
         AuditLog.Action($"开始安装 {selected.Count} 项：{string.Join(", ", selected.Select(s => s.Id))}");
-        var ctx = NewCtx(out var ct);
-        var plan = await _engine.BuildPlanAsync(selected, _resolver);
-        Progress.Begin(plan);
+        var rows = selected.GroupBy(s => s.Id).ToDictionary(g => g.Key, g => Progress.Enqueue(g.Key, g.First().Name, g.First().Install.Method));
 
-        CatalogItem? current = null;
-        var summary = await _engine.ApplyAsync(plan, ctx, dryRun: false,
-            onStart: pi => { current = pi.Item; dispatcher.Invoke(() => Progress.OnStart(pi)); },
-            onDone: r =>
-            {
-                if (r.Message != "already installed")
-                    AuditLog.Action($"安装 {r.Item.Name}：{Zh(r.Status)} {r.Message}".TrimEnd());
-                dispatcher.Invoke(() => Progress.OnDone(r));
-            });
-
-        if (ct.IsCancellationRequested && current != null)
+        await _opGate.WaitAsync();
+        try
         {
-            var freed = Cleanup.RemoveInstallResidue(current, _resolver);
-            AuditLog.Action($"已取消安装 {current.Name}" + (freed > 0 ? $"，清理残留 {Mb(freed)}" : ""));
+            var ctx = NewCtx(out var ct);
+            var plan = await _engine.BuildPlanAsync(selected, _resolver);
+            Progress.BeginRun("安装", plan.Count(p => p.Status == PlanStatus.ToInstall));
+
+            CatalogItem? current = null;
+            var summary = await _engine.ApplyAsync(plan, ctx, dryRun: false,
+                onStart: pi => { current = pi.Item; dispatcher.Invoke(() => { if (rows.TryGetValue(pi.Item.Id, out var r)) Progress.Start(r); }); },
+                onDone: r =>
+                {
+                    if (r.Message != "already installed")
+                        AuditLog.Action($"安装 {r.Item.Name}：{Zh(r.Status)} {r.Message}".TrimEnd());
+                    dispatcher.Invoke(() => { if (rows.TryGetValue(r.Item.Id, out var row)) Progress.Done(row, r.Status, r.Message); });
+                });
+
+            if (ct.IsCancellationRequested && current != null)
+            {
+                var freed = Cleanup.RemoveInstallResidue(current, _resolver);
+                AuditLog.Action($"已取消安装 {current.Name}" + (freed > 0 ? $"，清理残留 {Mb(freed)}" : ""));
+            }
+
+            AuditLog.Action($"安装结束 · 成功 {summary.Ok} · 失败 {summary.Failed} · 跳过 {summary.Skipped}");
+            Progress.EndRun();
+
+            Detection.ResetCache();
+            Arp.Refresh();
+            UpdateChecker.Reset();
+            foreach (var it in selected) await RefreshInstalledFlag(it);
+            await RunUpdateCheckAsync();
         }
-
-        AuditLog.Action($"安装结束 · 成功 {summary.Ok} · 失败 {summary.Failed} · 跳过 {summary.Skipped}");
-        dispatcher.Invoke(() => Progress.Complete());
-
-        Detection.ResetCache();
-        Arp.Refresh();
-        UpdateChecker.Reset();
-        foreach (var it in selected) await RefreshInstalledFlag(it);
-        await RunUpdateCheckAsync();
+        finally { _opGate.Release(); }
     }
 
     private void OnUpdateRequested()
@@ -374,42 +461,38 @@ public sealed class MainViewModel : ObservableObject
     {
         var dispatcher = Application.Current.Dispatcher;
         AuditLog.Action($"开始更新 {items.Count} 项：{string.Join(", ", items.Select(i => i.Id))}");
-        var plan = items.Select(i => new PlanItem { Item = i, Status = PlanStatus.ToInstall }).ToList();
-        Progress.Begin(plan, verb: "更新");
+        var rows = items.GroupBy(i => i.Id).ToDictionary(g => g.Key, g => Progress.Enqueue(g.Key, g.First().Name, g.First().Install.Method));
 
-        var ctx = NewCtx(out var ct);
-        var ok = 0; var failed = 0;
-        foreach (var pi in plan)
+        await _opGate.WaitAsync();
+        try
         {
-            if (ct.IsCancellationRequested) break;
-            dispatcher.Invoke(() => Progress.OnStart(pi));
-            RunResult res;
-            try
+            var ctx = NewCtx(out var ct);
+            Progress.BeginRun("更新", items.Count);
+            var ok = 0; var failed = 0;
+            foreach (var item in items)
             {
-                var outcome = await Updater.UpdateAsync(pi.Item, ctx);
-                res = new RunResult { Item = pi.Item, Status = outcome.Status, Message = outcome.Message };
+                if (ct.IsCancellationRequested) break;
+                var row = rows[item.Id];
+                dispatcher.Invoke(() => Progress.Start(row));
+                StepOutcome outcome;
+                try { outcome = await Updater.UpdateAsync(item, ctx); }
+                catch (OperationCanceledException) { outcome = StepOutcome.Fail("已取消"); }
+                catch (Exception ex) { outcome = StepOutcome.Fail(ex.Message); }
+                if (outcome.Status == StepStatus.Failed) failed++; else ok++;
+                AuditLog.Action($"更新 {item.Name}：{Zh(outcome.Status)} {outcome.Message}".TrimEnd());
+                dispatcher.Invoke(() => Progress.Done(row, outcome.Status, outcome.Message));
             }
-            catch (OperationCanceledException)
-            {
-                res = new RunResult { Item = pi.Item, Status = StepStatus.Failed, Message = "已取消" };
-            }
-            catch (Exception ex)
-            {
-                res = new RunResult { Item = pi.Item, Status = StepStatus.Failed, Message = ex.Message };
-            }
-            if (res.Status == StepStatus.Failed) failed++; else ok++;
-            AuditLog.Action($"更新 {pi.Item.Name}：{Zh(res.Status)} {res.Message}".TrimEnd());
-            dispatcher.Invoke(() => Progress.OnDone(res));
+
+            Detection.ResetCache();
+            Arp.Refresh();
+            foreach (var i in items) DetailService.Invalidate(i.Id);
+            UpdateChecker.Reset();
+            AuditLog.Action($"更新结束 · 成功 {ok} · 失败 {failed}");
+            Progress.EndRun();
+
+            foreach (var i in items) await RefreshInstalledFlag(i);
+            await RunUpdateCheckAsync();
         }
-
-        Detection.ResetCache();
-        Arp.Refresh();
-        foreach (var i in items) DetailService.Invalidate(i.Id);
-        UpdateChecker.Reset();
-        AuditLog.Action($"更新结束 · 成功 {ok} · 失败 {failed}");
-        dispatcher.Invoke(() => Progress.Complete());
-
-        foreach (var i in items) await RefreshInstalledFlag(i);
-        await RunUpdateCheckAsync();
+        finally { _opGate.Release(); }
     }
 }

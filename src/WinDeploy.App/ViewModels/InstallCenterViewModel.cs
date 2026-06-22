@@ -28,6 +28,7 @@ public sealed class InstallCenterViewModel : ObservableObject
     public RelayCommand UpdateSelectedCommand { get; }
     public RelayCommand OpenDetailCommand { get; }
     public RelayCommand LaunchCommand { get; }
+    public RelayCommand StopCommand { get; }
     public RelayCommand SelectAllCommand { get; }
     public RelayCommand InvertCommand { get; }
     public RelayCommand RestoreCommand { get; }
@@ -50,12 +51,16 @@ public sealed class InstallCenterViewModel : ObservableObject
     /// <summary>Raised when the user clicks a card's ▶ quick-launch button.</summary>
     public event Action<AppItemViewModel>? LaunchRequested;
 
+    /// <summary>Raised when the user clicks a card's ■ stop button.</summary>
+    public event Action<AppItemViewModel>? StopRequested;
+
     public InstallCenterViewModel()
     {
         StartCommand = new RelayCommand(_ => StartRequested?.Invoke(), _ => SelectedCount > 0);
         UpdateSelectedCommand = new RelayCommand(_ => UpdateRequested?.Invoke(), _ => UpdatableSelectedCount > 0);
         OpenDetailCommand = new RelayCommand(p => { if (p is AppItemViewModel vm) DetailRequested?.Invoke(vm); });
         LaunchCommand = new RelayCommand(p => { if (p is AppItemViewModel vm) LaunchRequested?.Invoke(vm); });
+        StopCommand = new RelayCommand(p => { if (p is AppItemViewModel vm) StopRequested?.Invoke(vm); });
         SelectAllCommand = new RelayCommand(_ => SetAll(true));
         InvertCommand = new RelayCommand(_ => Invert());
         RestoreCommand = new RelayCommand(_ => Restore(), _ => _snapshot != null);

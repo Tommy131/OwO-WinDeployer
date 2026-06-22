@@ -22,12 +22,21 @@ public static class SettingsStore
     private static readonly JsonSerializerOptions Opt = new() { WriteIndented = true };
 
     public static string FilePath => FilePathValue;
+    public static string Folder => DirPath;
 
     public static AppSettings Load()
     {
-        try { if (File.Exists(FilePathValue)) return JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(FilePathValue)) ?? new(); }
+        try
+        {
+            if (File.Exists(FilePathValue))
+                return JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(FilePathValue)) ?? new();
+        }
         catch { /* fall through to defaults */ }
-        return new AppSettings();
+
+        // Create the file on first run so the path shown in the UI always exists.
+        var def = new AppSettings();
+        Save(def);
+        return def;
     }
 
     public static void Save(AppSettings s)

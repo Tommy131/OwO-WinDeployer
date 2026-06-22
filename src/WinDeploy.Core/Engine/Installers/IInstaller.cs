@@ -14,6 +14,11 @@ public sealed class EngineContext
 
     public void Step(string msg) => Report?.Invoke(msg);
 
+    /// <summary>Optional live progress (overwritten in place): download bytes / % / ETA.</summary>
+    public Action<string>? Progress { get; init; }
+
+    public void Live(string msg) => Progress?.Invoke(msg);
+
     /// <summary>Resolve a repo-relative path (e.g. "configs/vscode/extensions.txt") to absolute.</summary>
     public string ResolveRepo(string relative)
         => System.IO.Path.GetFullPath(System.IO.Path.Combine(RepoRoot, relative));

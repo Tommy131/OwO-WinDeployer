@@ -1,9 +1,62 @@
+using System.Diagnostics;
 using System.IO.Compression;
 using System.Security.Cryptography;
+using System.Text.RegularExpressions;
 using WinDeploy.Core.Models;
 using WinDeploy.Core.Util;
 
 namespace WinDeploy.Core.Engine.Installers;
+
+/// <summary>Routes winget output: progress tokens ("X MB / Y MB", "NN%") → live overwrite line;
+/// meaningful text lines (Found / Downloading / Successfully…) → appended steps (deduped).</summary>
+internal static class WingetProgress
+{
+    private static readonly Regex Pair = new(@"([\d.]+)\s*(B|KB|MB|GB)\s*/\s*([\d.]+)\s*(B|KB|MB|GB)",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex Pct = new(@"(\d{1,3})\s*%", RegexOptions.Compiled);
+
+    /// <summary>Handle one token; returns the new "last step" string for dedup.</summary>
+    public static string? Handle(string tok, EngineContext ctx, Stopwatch sw, string? last)
+    {
+        var t = tok.Trim();
+        if (t.Length == 0) return last;
+        if (TryProgress(t, sw, out var live)) { ctx.Live(live); return last; }
+        if (!t.Any(char.IsLetter)) return last;     // bar / spinner noise
+        if (t == last) return last;
+        ctx.Step(t);
+        return t;
+    }
+
+    private static bool TryProgress(string t, Stopwatch sw, out string live)
+    {
+        live = "";
+        var m = Pair.Match(t);
+        if (m.Success)
+        {
+            var cur = Bytes(m.Groups[1].Value, m.Groups[2].Value);
+            var tot = Bytes(m.Groups[3].Value, m.Groups[4].Value);
+            if (tot > 0)
+            {
+                var secs = sw.Elapsed.TotalSeconds;
+                var rate = secs > 0.1 ? cur / secs : 0;
+                var eta = rate > 0 ? (tot - cur) / rate : 0;
+                live = $"下载 {Mb(cur)} / {Mb(tot)} · {cur * 100.0 / tot:0}%{(rate > 0 ? " · " + Mb(rate) + "/s" : "")} · 约剩 {Eta(eta)}";
+                return true;
+            }
+        }
+        var pm = Pct.Match(t);
+        if (pm.Success && !t.Any(char.IsLetter)) { live = $"进度 {pm.Groups[1].Value}%"; return true; }
+        return false;
+    }
+
+    private static double Bytes(string val, string unit)
+    {
+        if (!double.TryParse(val, out var v)) return 0;
+        return unit.ToUpperInvariant() switch { "GB" => v * 1024 * 1024 * 1024, "MB" => v * 1024 * 1024, "KB" => v * 1024, _ => v };
+    }
+    private static string Mb(double b) => b >= 1024.0 * 1024 * 1024 ? $"{b / 1024 / 1024 / 1024:0.0} GB" : $"{b / 1024 / 1024:0.0} MB";
+    private static string Eta(double s) => s >= 60 ? $"{(int)(s / 60)}分{(int)(s % 60)}秒" : $"{s:0}秒";
+}
 
 public sealed class WingetInstaller : IInstaller
 {
@@ -19,10 +72,13 @@ public sealed class WingetInstaller : IInstaller
             "--accept-source-agreements", "--accept-package-agreements", "--disable-interactivity",
         };
         if (ins.Scope != null) { args.Add("--scope"); args.Add(ins.Scope); }
+        if (ins.Source != null) { args.Add("--source"); args.Add(ins.Source); }
         if (item.Version != null) { args.Add("--version"); args.Add(item.Version); }
         if (item.InstallPathOverride != null) { args.Add("--location"); args.Add(ctx.Path.Resolve(item.InstallPathOverride)); }
         ctx.Step($"winget 安装 {ins.Id}{(item.Version != null ? " " + item.Version : "")} …");
-        var r = await Proc.RunAsync("winget", args, ct: ctx.Ct);
+        var sw = Stopwatch.StartNew();
+        string? last = null;
+        var r = await Proc.RunStreamingAsync("winget", args, tok => last = WingetProgress.Handle(tok, ctx, sw, last), ct: ctx.Ct);
         return r.Ok ? StepOutcome.Done() : StepOutcome.Fail($"winget exit {r.ExitCode}");
     }
 }
@@ -63,10 +119,7 @@ public sealed class PortableInstaller : IInstaller
         var tmpEx = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"windeploy_{item.Id}_x");
 
         ctx.Step($"开始下载 {ins.Url} …");
-        using (var http = new HttpClient { Timeout = TimeSpan.FromMinutes(30) })
-        await using (var src = await http.GetStreamAsync(ins.Url, ctx.Ct))
-        await using (var f = File.Create(tmpZip))
-            await src.CopyToAsync(f, ctx.Ct);
+        await Download.ToFileAsync(ins.Url, tmpZip, ctx, ctx.Ct);
 
         if (ins.Sha256 is { Length: > 0 } sha && sha != "…")
         {
@@ -155,10 +208,7 @@ public sealed class ExeInstaller : IInstaller
 
         var tmp = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"windeploy_{item.Id}_setup.exe");
         ctx.Step($"下载安装包 {ins.Url} …");
-        using (var http = new HttpClient { Timeout = TimeSpan.FromMinutes(30) })
-        await using (var src = await http.GetStreamAsync(ins.Url, ctx.Ct))
-        await using (var f = File.Create(tmp))
-            await src.CopyToAsync(f, ctx.Ct);
+        await Download.ToFileAsync(ins.Url, tmp, ctx, ctx.Ct);
 
         ctx.Step("运行安装程序 …");
         var args = string.IsNullOrWhiteSpace(ins.Args)
@@ -168,6 +218,19 @@ public sealed class ExeInstaller : IInstaller
 
         try { File.Delete(tmp); } catch { /* best effort */ }
         return r.Ok ? StepOutcome.Done() : StepOutcome.Fail($"安装程序退出码 {r.ExitCode}");
+    }
+}
+
+/// <summary>For software that can't be auto-installed (no winget / unstable URL): the user downloads it
+/// from the homepage themselves. Reported as a skip so batch installs don't fail.</summary>
+public sealed class ManualInstaller : IInstaller
+{
+    public string Method => "manual";
+
+    public Task<StepOutcome> RunAsync(CatalogItem item, EngineContext ctx)
+    {
+        ctx.Step("需从官网手动下载安装");
+        return Task.FromResult(StepOutcome.Skip("请前往官网手动下载"));
     }
 }
 

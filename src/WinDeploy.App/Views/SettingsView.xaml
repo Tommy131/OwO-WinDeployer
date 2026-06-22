@@ -70,9 +70,12 @@
             <TextBlock FontSize="12" Foreground="{DynamicResource TextSecondary}">
               <Run Text="WinDeploy · Windows 环境复刻器" />
             </TextBlock>
-            <TextBlock FontSize="12" Foreground="{DynamicResource TextTertiary}" Margin="0,3,0,0">
-              <Run Text="设置文件：" /><Run Text="{Binding SettingsPath, Mode=OneWay}" />
+            <TextBlock FontSize="12" Foreground="{DynamicResource TextTertiary}" Margin="0,3,0,0" TextWrapping="Wrap">
+              <Run Text="数据目录（设置 / 日志 / 运行进度日志）：" /><Run Text="{Binding SettingsPath, Mode=OneWay}" />
             </TextBlock>
+            <Button Content="打开数据目录" Style="{StaticResource MiniButton}" Command="{Binding OpenFolderCommand}"
+                    HorizontalAlignment="Left" Margin="0,8,0,0"
+                    ToolTip="在资源管理器中打开 %LOCALAPPDATA%\WinDeploy（含 settings.json、logs\app.log、logs\progress.jsonl）" />
           </StackPanel>
         </Border>
 

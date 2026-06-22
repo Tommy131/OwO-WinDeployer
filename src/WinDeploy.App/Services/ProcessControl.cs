@@ -14,13 +14,7 @@ public static class ProcessControl
 {
     /// <summary>The item's process name + install dir (for verification), or null if unresolved.</summary>
     public static (string Proc, string? Dir)? ResolveTarget(CatalogItem item, PathResolver pr)
-    {
-        var exe = Launcher.ResolveExe(item, pr);
-        if (string.IsNullOrWhiteSpace(exe)) return null;
-        var name = Path.GetFileNameWithoutExtension(exe);
-        if (string.IsNullOrWhiteSpace(name)) return null;
-        return (name, Path.GetDirectoryName(exe));
-    }
+        => Launcher.ProcessTarget(item, pr);
 
     /// <summary>Running processes named <paramref name="procName"/> (verified under <paramref name="baseDir"/> when readable).</summary>
     public static List<ProcItem> FindByName(string procName, string? baseDir)
@@ -54,7 +48,12 @@ public static class ProcessControl
     public static List<ProcItem> Find(CatalogItem item, PathResolver pr)
     {
         var t = ResolveTarget(item, pr);
-        return t == null ? new List<ProcItem>() : FindByName(t.Value.Proc, t.Value.Dir);
+        if (t == null) return new List<ProcItem>();
+        // Use the same dir+name matching as the live process page so detail/card agree
+        // (FindByName alone misses dir-only targets like MSIX/Steam).
+        var cache = new Dictionary<int, string?>();
+        return ScanAll(new List<(string, string, string?)> { (item.Id, t.Value.Proc, t.Value.Dir) }, cache)
+            .Select(x => x.Proc).ToList();
     }
 
     /// <summary>One full process enumeration matched against many targets at once — by install-dir

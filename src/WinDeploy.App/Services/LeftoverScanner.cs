@@ -23,8 +23,8 @@ public static class LeftoverScanner
         var set = new List<string>();
         void Add(string? p) { if (!string.IsNullOrWhiteSpace(p)) set.Add(p!); }
 
-        var exe = Launcher.ResolveExe(item, pr);
-        if (exe != null) Add(Path.GetDirectoryName(exe));
+        var t = Launcher.ProcessTarget(item, pr);
+        if (t?.Dir != null) Add(t.Value.Dir);
 
         var arp = Arp.Find(item.Detect?.Arp, item.Name, null);
         Add(arp?.InstallLocation);
