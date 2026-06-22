@@ -11,11 +11,15 @@ public sealed class NavItemViewModel
     public string Label { get; }
     public object Page { get; }
 
-    public NavItemViewModel(string glyph, string label, object page)
+    /// <summary>Advanced / professional page — only shown in the nav when 开发人员模式 is on.</summary>
+    public bool Advanced { get; }
+
+    public NavItemViewModel(string glyph, string label, object page, bool advanced = false)
     {
         Glyph = glyph;
         Label = label;
         Page = page;
+        Advanced = advanced;
     }
 }
 

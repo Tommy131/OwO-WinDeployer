@@ -7,6 +7,7 @@ obj/
 # WinDeploy artifacts
 artifacts/
 publish/
+dist/
 
 # 离线安装包 / 下载的大体积二进制（如 VMware .7z），不入库
 assets/packages/

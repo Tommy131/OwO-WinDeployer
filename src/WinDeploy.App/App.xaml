@@ -481,6 +481,21 @@
       <DataTemplate DataType="{x:Type vm:StartupViewModel}">
         <views:StartupView />
       </DataTemplate>
+      <DataTemplate DataType="{x:Type vm:SystemOverviewViewModel}">
+        <views:SystemOverviewView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type vm:MaintenanceViewModel}">
+        <views:MaintenanceView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type vm:WslViewModel}">
+        <views:WslView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type vm:TweaksViewModel}">
+        <views:TweaksView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type vm:AdvancedToolsViewModel}">
+        <views:AdvancedToolsView />
+      </DataTemplate>
       <DataTemplate DataType="{x:Type vm:DetailViewModel}">
         <views:DetailView />
       </DataTemplate>

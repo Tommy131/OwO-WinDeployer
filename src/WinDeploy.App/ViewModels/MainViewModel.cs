@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Threading;
@@ -36,6 +36,11 @@ public sealed class MainViewModel : ObservableObject
     public StartupViewModel Startup { get; } = new();
     public LogViewModel Logs { get; } = new();
     public SettingsViewModel Settings { get; } = new();
+    public SystemOverviewViewModel SystemOverview { get; } = new();
+    public MaintenanceViewModel Maintenance { get; } = new();
+    public WslViewModel Wsl { get; } = new();
+    public TweaksViewModel Tweaks { get; } = new();
+    public AdvancedToolsViewModel AdvancedTools { get; } = new();
 
     public string AppName => WinDeploy.App.AppInfo.Name;
     public string WindowTitle => WinDeploy.App.AppInfo.TitleWithVersion;
@@ -58,20 +63,11 @@ public sealed class MainViewModel : ObservableObject
         Processes.OperationRequested += (item, op) => _ = ConfirmRiskAndRun(item, op);
         Progress.CancelRequested += () => _cts?.Cancel();
         Settings.Saved += () => Secrets.ExtraKeywords = SettingsViewModel.ParseKeywords(Settings.RedactKeywords);
-        Settings.DeveloperModeChanged += on => Install.SetDeveloperMode(on);
+        Settings.DeveloperModeChanged += on => { _devMode = on; Install.SetDeveloperMode(on); RebuildNav(); };
         Load();
 
-        NavItems.Add(new NavItemViewModel("", "软件安装中心", Install));
-        NavItems.Add(new NavItemViewModel("", "配置同步", ConfigSync));
-        NavItems.Add(new NavItemViewModel("", "运行进度", Progress));
-        NavItems.Add(new NavItemViewModel("", "进程管理", Processes));
-        NavItems.Add(new NavItemViewModel("", "启动项", Startup));
-        NavItems.Add(new NavItemViewModel("", "导出", Export));
-        NavItems.Add(new NavItemViewModel("", "环境变量", EnvVars));
-        NavItems.Add(new NavItemViewModel("", "终端", Terminal));
-        NavItems.Add(new NavItemViewModel("", "日志", Logs));
-        NavItems.Add(new NavItemViewModel("", "设置", Settings));
-        SelectedNav = NavItems[0];
+        BuildNav();
+        RebuildNav();
 
         _ = CheckSelfUpdateAsync();
     }
@@ -96,6 +92,41 @@ public sealed class MainViewModel : ObservableObject
             });
         }
         catch { /* stay quiet */ }
+    }
+
+    private bool _devMode = SettingsStore.Load().DeveloperMode;
+    private readonly List<NavItemViewModel> _allNav = new();
+
+    /// <summary>Master nav list. Items flagged Advanced=true only appear when 开发人员模式 is on.</summary>
+    private void BuildNav()
+    {
+        _allNav.Clear();
+        _allNav.Add(new("", "软件安装中心", Install));
+        _allNav.Add(new("", "配置同步", ConfigSync));
+        _allNav.Add(new("", "运行进度", Progress));
+        _allNav.Add(new("", "系统概览", SystemOverview));
+        _allNav.Add(new("", "系统维护", Maintenance));
+        _allNav.Add(new("", "进程管理", Processes));
+        _allNav.Add(new("", "启动项", Startup));
+        _allNav.Add(new("", "导出", Export));
+        _allNav.Add(new("", "环境变量", EnvVars));
+        _allNav.Add(new("", "终端", Terminal));
+        // ── 开发人员模式专属（高级 / 专业功能） ──
+        _allNav.Add(new("", "WSL", Wsl, advanced: true));
+        _allNav.Add(new("", "系统调优", Tweaks, advanced: true));
+        _allNav.Add(new("", "高级工具", AdvancedTools, advanced: true));
+        _allNav.Add(new("", "日志", Logs));
+        _allNav.Add(new("", "设置", Settings));
+    }
+
+    /// <summary>Re-filter the visible nav by developer mode, keeping the current page if still visible.</summary>
+    private void RebuildNav()
+    {
+        var keep = SelectedNav;
+        NavItems.Clear();
+        foreach (var n in _allNav)
+            if (!n.Advanced || _devMode) NavItems.Add(n);
+        SelectedNav = keep != null && NavItems.Contains(keep) ? keep : NavItems.FirstOrDefault();
     }
 
     private NavItemViewModel? _selectedNav;
@@ -198,6 +229,7 @@ public sealed class MainViewModel : ObservableObject
         ConfigSync.Initialize(_catalog, _resolver, _repoRoot);
         Export.Initialize(_catalog, _resolver, _repoRoot);
         Processes.Initialize(_catalog, _resolver, _repoRoot);
+        AdvancedTools.Initialize(_catalog, _resolver, _repoRoot, dir);
         _ = DetectAllAsync();
     }
 

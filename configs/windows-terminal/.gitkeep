@@ -1,0 +1,2 @@
+# Windows Terminal settings.json 的同步目录。
+# 运行「导出」会把本机 settings.json 采集到这里；「配置同步」会在已装时套用。

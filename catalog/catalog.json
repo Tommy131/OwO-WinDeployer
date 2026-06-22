@@ -7,7 +7,7 @@
     "ToolsDir": "%LOCALAPPDATA%/tools"
   },
 
-  "categories": ["dev", "system", "ide", "ai", "office", "media", "db-api", "vm", "games"],
+  "categories": ["dev", "system", "ide", "ai", "office", "media", "db-api", "vm", "games", "tools"],
 
   "items": [
     // ── 开发工具链（默认强制） ─────────────────────────────
@@ -25,17 +25,26 @@
     { "id": "nodejs", "name": "Node.js 24", "summary": "JavaScript 运行时", "icon": "assets/icons/nodejs.svg",
       "category": "dev", "default": true,
       "install": { "method": "winget", "id": "OpenJS.NodeJS" },
-      "detect": { "cmd": "node" } },
+      "detect": { "cmd": "node" },
+      "config": { "source": "configs/nodejs", "target": "%USERPROFILE%", "files": [".npmrc"], "applyWhen": "ifInstalled" } },
 
     { "id": "python", "name": "Python 3.10", "summary": "Python 解释器", "icon": "assets/icons/python.svg",
       "category": "dev", "default": true,
       "install": { "method": "winget", "id": "Python.Python.3.10" },
-      "detect": { "cmd": "python" } },
+      "detect": { "cmd": "python" },
+      "config": { "source": "configs/python", "target": "%APPDATA%/pip", "files": ["pip.ini"], "applyWhen": "ifInstalled" } },
 
     { "id": "miniconda", "name": "Miniconda3", "summary": "Python 环境与包管理", "icon": "assets/icons/conda.svg",
       "category": "dev", "default": true,
       "install": { "method": "winget", "id": "Anaconda.Miniconda3" },
-      "detect": { "path": "%USERPROFILE%/miniconda3/Scripts/conda.exe" } },
+      "detect": { "path": "%USERPROFILE%/miniconda3/Scripts/conda.exe" },
+      "config": { "source": "configs/miniconda", "target": "%USERPROFILE%", "files": [".condarc"], "applyWhen": "ifInstalled" } },
+
+    { "id": "pwsh", "name": "PowerShell 7", "summary": "跨平台 PowerShell（同步 $PROFILE 配置）", "icon": "assets/icons/pwsh.svg",
+      "category": "dev", "default": false,
+      "install": { "method": "winget", "id": "Microsoft.PowerShell" },
+      "detect": { "cmd": "pwsh" },
+      "config": { "source": "configs/pwsh", "target": "%USERPROFILE%/Documents/PowerShell", "files": ["Microsoft.PowerShell_profile.ps1"], "applyWhen": "ifInstalled" } },
 
     { "id": "jdk17", "name": "Oracle JDK 17", "summary": "Java 开发套件", "icon": "assets/icons/java.svg",
       "category": "dev", "default": true,
@@ -93,10 +102,11 @@
         "Microsoft.VCRedist.2012.x64", "Microsoft.VCRedist.2012.x86", "Microsoft.VCRedist.2010.x64" ] },
       "detect": { "arp": "Microsoft Visual C++" } },
 
-    { "id": "windows-terminal", "name": "Windows Terminal", "summary": "现代终端", "icon": "assets/icons/terminal.svg",
+    { "id": "windows-terminal", "name": "Windows Terminal", "summary": "现代终端（同步 settings.json）", "icon": "assets/icons/terminal.svg",
       "category": "system", "default": true,
       "install": { "method": "winget", "id": "Microsoft.WindowsTerminal" },
-      "detect": { "cmd": "wt" } },
+      "detect": { "cmd": "wt" },
+      "config": { "source": "configs/windows-terminal", "target": "%LOCALAPPDATA%/Packages/Microsoft.WindowsTerminal_8wekyb3d8bbwe/LocalState", "files": ["settings.json"], "applyWhen": "ifInstalled" } },
 
     { "id": "huorong", "name": "火绒安全", "summary": "安全 / 杀毒软件（官网手动下载）", "icon": "assets/icons/huorong.svg",
       "category": "system", "default": false,

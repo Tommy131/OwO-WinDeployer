@@ -1,0 +1,7 @@
+# conda 配置（由 OwO! Win Deployer 同步）。目标：%USERPROFILE%\.condarc
+channels:
+  - defaults
+channel_priority: flexible
+# 示例：设置镜像源（按需取消注释）
+# channels:
+#   - https://mirrors.tuna.tsinghua.edu.cn/anaconda/pkgs/main

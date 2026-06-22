@@ -2,6 +2,7 @@ using WinDeploy.Core;
 using WinDeploy.Core.Config;
 using WinDeploy.Core.Engine;
 using WinDeploy.Core.Engine.Installers;
+using WinDeploy.Core.Export;
 using WinDeploy.Core.Models;
 using WinDeploy.Core.Util;
 
@@ -14,6 +15,11 @@ if (argList.Count == 0 || argList[0] is "help" or "-h" or "--help")
 
 string command = argList[0];
 var opts = Opts.Parse(argList.Skip(1).ToList());
+
+// --log <file>: tee all console output to a file (for unattended / scheduled runs).
+if (opts.Get("log") is string logPath) { try { Tee.Start(logPath); } catch { /* keep running */ } }
+// --silent implies --yes and plain (uncoloured) output for log friendliness.
+if (opts.Has("silent")) Log.UseColor = false;
 
 // Locate catalog/ (explicit --catalog, else walk up from cwd, else from the exe location).
 string? catalogDir = opts.Get("catalog") is string cp
@@ -40,16 +46,42 @@ var only = opts.Get("only")?.Split(',', StringSplitOptions.RemoveEmptyEntries | 
 bool all = opts.Has("all");
 string? category = opts.Get("category");
 
+// ⑪ 主机名 → 预设：未显式指定任何选择时，按 catalog/hosts.json 匹配本机预设。
+if (profile == null && (only is null || only.Length == 0) && !all && category == null
+    && command is "apply" or "plan" or "sync" or "download-only" or "export-dsc")
+{
+    if (HostProfiles.Resolve(catalogDir) is string hp)
+    {
+        try { profile = CatalogLoader.LoadProfile(catalogDir, hp); Log.Info($"按主机名 {Environment.MachineName} 匹配预设：{hp}"); }
+        catch { Log.Warn($"hosts.json 指定的预设 '{hp}' 不存在"); }
+    }
+}
+
+// ① 锁定版本：apply/plan 时套用 lock.json 中钉定的版本。
+if (opts.Has("locked") && command is "apply" or "plan")
+{
+    var lf = Lockfile.Load(catalogDir);
+    if (lf != null) Log.Info($"已加载 lock.json：钉定 {lf.ApplyTo(catalog)} 个版本");
+    else Log.Warn("未找到 catalog/lock.json（先运行 windeploy lock 生成）");
+}
+
 return command switch
 {
     "list" => CmdList(catalog),
     "plan" => await CmdPlan(catalog, resolver, profile, only, all, category),
-    "apply" => await CmdApply(catalog, resolver, repoRoot, profile, only, all, category, opts.Has("yes")),
+    "apply" => await CmdApply(catalog, resolver, repoRoot, profile, only, all, category, opts.Has("yes") || opts.Has("silent")),
     "apply-config" => await CmdApplyConfig(catalog, resolver, repoRoot, opts.Has("yes")),
     "export" => await CmdExport(catalog, resolver, repoRoot),
     "ssh-setup" => await CmdSshSetup(repoRoot, opts.Has("register")),
     "sync" => await CmdSync(catalog, resolver, repoRoot, profile, only, all, category),
     "save" => await CmdSave(repoRoot, opts.Get("message"), opts.Has("push")),
+    "doctor" => await CmdDoctor(catalog, resolver),
+    "validate" => CmdValidate(catalog, repoRoot),
+    "lock" => await CmdLock(catalog, catalogDir),
+    "export-dsc" => CmdExportDsc(catalog, profile, only, all, category, opts.Get("out")),
+    "inventory" => await CmdInventory(opts.Get("format"), opts.Get("out")),
+    "download-only" => await CmdDownloadOnly(catalog, resolver, repoRoot, profile, only, all, category, opts.Get("out")),
+    "migrate" => await CmdMigrate(catalog, resolver, repoRoot, opts),
     _ => Unknown(command),
 };
 
@@ -194,6 +226,123 @@ async Task<int> CmdSave(string root, string? message, bool push)
     return 0;
 }
 
+async Task<int> CmdDoctor(Catalog cat, PathResolver pr)
+{
+    Log.Step("环境体检 …");
+    var findings = await Doctor.RunAsync(cat, pr);
+    Console.WriteLine();
+    foreach (var f in findings)
+    {
+        var tag = f.Level switch { HealthLevel.Error => "✗", HealthLevel.Warn => "!", _ => "✓" };
+        Console.WriteLine($"  {tag} {f.Title}");
+        foreach (var line in f.Detail.Split('\n')) Console.WriteLine($"      {line}");
+        if (f.Fix != null) Console.WriteLine($"      → {f.Fix}");
+    }
+    Console.WriteLine();
+    var errors = findings.Count(f => f.Level == HealthLevel.Error);
+    var warns = findings.Count(f => f.Level == HealthLevel.Warn);
+    Log.Info($"完成 · 错误 {errors} · 警告 {warns}");
+    return errors > 0 ? 1 : 0;
+}
+
+int CmdValidate(Catalog cat, string root)
+{
+    var issues = CatalogValidator.Validate(cat, root);
+    Console.WriteLine();
+    foreach (var i in issues.OrderBy(i => i.Level))
+        Console.WriteLine($"  {(i.Level == IssueLevel.Error ? "✗" : "!")} [{i.ItemId}] {i.Message}");
+    var errors = issues.Count(i => i.Level == IssueLevel.Error);
+    var warns = issues.Count(i => i.Level == IssueLevel.Warn);
+    Console.WriteLine();
+    if (issues.Count == 0) Log.Ok("catalog.json 校验通过，无问题");
+    else Log.Info($"校验完成 · 错误 {errors} · 警告 {warns}");
+    return errors > 0 ? 1 : 0;
+}
+
+async Task<int> CmdLock(Catalog cat, string catDir)
+{
+    Log.Step("采集已装版本 → lock.json …");
+    var lf = await Lockfile.CaptureAsync(cat, DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+    lf.Save(catDir);
+    Log.Ok($"已写入 {Lockfile.DefaultPath(catDir)} · 钉定 {lf.Versions.Count} 个版本");
+    Log.Info("提交 lock.json 后，其它机器可用 windeploy apply --locked 复刻相同版本");
+    return 0;
+}
+
+int CmdExportDsc(Catalog cat, Profile? prof, IReadOnlyCollection<string>? sel, bool selAll, string? cat2, string? outPath)
+{
+    var items = Selection.Resolve(cat, prof, sel, selAll, cat2);
+    var yaml = DscExport.Build(items);
+    var path = outPath ?? "windeploy.dsc.yaml";
+    File.WriteAllText(path, yaml);
+    Log.Ok($"已导出 winget configure 配置：{Path.GetFullPath(path)}");
+    Log.Info($"在目标机运行：winget configure -f \"{path}\"");
+    return 0;
+}
+
+async Task<int> CmdInventory(string? format, string? outPath)
+{
+    Log.Step("读取已装软件清单 …");
+    var items = await Inventory.ListAsync();
+    var fmt = (format ?? "csv").ToLowerInvariant();
+    var text = fmt switch
+    {
+        "json" => Inventory.ToJson(items),
+        "html" => Inventory.ToHtml(items),
+        _ => Inventory.ToCsv(items),
+    };
+    if (outPath != null) { File.WriteAllText(outPath, text); Log.Ok($"已导出 {items.Count} 项 → {Path.GetFullPath(outPath)}"); }
+    else Console.WriteLine(text);
+    return 0;
+}
+
+async Task<int> CmdDownloadOnly(Catalog cat, PathResolver pr, string root, Profile? prof,
+    IReadOnlyCollection<string>? sel, bool selAll, string? cat2, string? outDir)
+{
+    var items = Selection.Resolve(cat, prof, sel, selAll, cat2);
+    if (items.Count == 0) { Log.Warn("没有匹配的软件"); return 0; }
+    var dir = outDir ?? Path.Combine(Directory.GetCurrentDirectory(), "windeploy-offline");
+    Log.Step($"预下载 {items.Count} 项 → {dir}");
+    var ctx = new EngineContext
+    {
+        Path = pr, RepoRoot = root, Ct = CancellationToken.None,
+        Report = Log.Info,
+    };
+    var results = await OfflineKit.DownloadAsync(items, dir, ctx);
+    PrintConfig(results);
+    Log.Info($"完成 · 文件位于 {Path.GetFullPath(dir)}");
+    return results.Any(r => r.Status == StepStatus.Failed) ? 1 : 0;
+}
+
+async Task<int> CmdMigrate(Catalog cat, PathResolver pr, string root, Opts o)
+{
+    var sub = o.Get("export") != null ? "export" : o.Get("import") != null ? "import" : null;
+    var dir = o.Get("export") ?? o.Get("import");
+    if (sub == null || dir == null)
+    {
+        Log.Err("用法: windeploy migrate --export <目录>  |  windeploy migrate --import <目录>");
+        return 1;
+    }
+    var ctx = new EngineContext { Path = pr, RepoRoot = root, Ct = CancellationToken.None };
+    if (sub == "export")
+    {
+        Log.Step($"导出迁移工具包 → {dir}");
+        var results = await MigrationKit.ExportAsync(cat, ctx, dir, it => Detection.IsInstalledAsync(it, pr));
+        PrintConfig(results);
+        Log.Ok($"迁移工具包已生成：{Path.GetFullPath(dir)}（含 configs/、manifest.json、RESTORE.txt）");
+        return 0;
+    }
+    else
+    {
+        Log.Step($"从迁移工具包还原 ← {dir}");
+        var (results, manifest) = MigrationKit.Import(dir, root);
+        PrintConfig(results);
+        if (manifest is { InstalledIds.Count: > 0 })
+            Log.Info($"还原软件：windeploy apply --only {string.Join(",", manifest.InstalledIds)}");
+        return 0;
+    }
+}
+
 void PrintHelp()
 {
     Console.WriteLine("""
@@ -210,19 +359,33 @@ void PrintHelp()
       ssh-setup [--register]  生成本机 SSH 密钥并套用 ssh 配置
       sync                    git pull → 套用配置 + 显示安装计划
       save [--message m] [--push]   提交 configs 改动（--push 推送到远程）
+      doctor                  环境体检（PATH 重复/失效、*_HOME 失效、已装但不在 PATH）
+      validate                校验 catalog.json（CI 友好；有错误时退出码 1）
+      lock                    采集已装版本写入 catalog/lock.json（可复现）
+      export-dsc [--out f]    导出为 winget configure (DSC) YAML
+      inventory [--format csv|json|html] [--out f]   导出本机已装软件清单
+      download-only [--out d] 仅预下载所选软件安装包（离线/U 盘部署）
+      migrate --export <目录> | --import <目录>      迁移工具包导出 / 还原
 
     选项:
       --profile <名称>        使用预设 (catalog/profiles/<名称>.json)
       --only <id,id>          仅这些 id
       --category <类别>       仅该类别
       --all                   全部
-      --yes                   apply 时跳过确认
+      --yes / --silent        apply 时跳过确认（--silent 另关闭彩色输出）
+      --locked                apply/plan 时套用 lock.json 钉定的版本
+      --log <文件>            将输出同时写入日志文件（无人值守）
       --catalog <路径>        指定 catalog.json
 
     示例:
       windeploy plan  --profile dev
-      windeploy apply --profile dev --yes
-      windeploy apply --only git,nodejs
+      windeploy apply --profile dev --silent --log deploy.log
+      windeploy apply --profile dev --locked
+      windeploy doctor
+      windeploy validate
+      windeploy inventory --format html --out inventory.html
+      windeploy export-dsc --profile full --out full.dsc.yaml
+      windeploy migrate --export D:\kit
     """);
 }
 
@@ -247,4 +410,25 @@ sealed class Opts
 
     public bool Has(string k) => _d.ContainsKey(k);
     public string? Get(string k) => _d.TryGetValue(k, out var v) ? v : null;
+}
+
+/// <summary>Tees Console.Out to a file as well as the terminal (for --log / unattended runs).</summary>
+static class Tee
+{
+    public static void Start(string path)
+    {
+        var full = System.IO.Path.GetFullPath(path);
+        System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(full)!);
+        var writer = new System.IO.StreamWriter(full, append: true) { AutoFlush = true };
+        writer.WriteLine($"==== {DateTime.Now:yyyy-MM-dd HH:mm:ss} windeploy ====");
+        Console.SetOut(new TeeWriter(Console.Out, writer));
+    }
+
+    private sealed class TeeWriter(System.IO.TextWriter a, System.IO.TextWriter b) : System.IO.TextWriter
+    {
+        public override System.Text.Encoding Encoding => a.Encoding;
+        public override void Write(char c) { a.Write(c); b.Write(c); }
+        public override void Write(string? s) { a.Write(s); b.Write(s); }
+        public override void WriteLine(string? s) { a.WriteLine(s); b.WriteLine(s); }
+    }
 }

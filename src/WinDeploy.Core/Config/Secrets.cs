@@ -28,13 +28,17 @@ public static partial class Secrets
 
     private static readonly HashSet<string> TextExt = new(StringComparer.OrdinalIgnoreCase)
     {
-        ".json", ".txt", ".xml", ".yml", ".yaml", ".ini", ".conf", ".config", ".cfg", ".toml", ".env", "",
+        ".json", ".txt", ".xml", ".yml", ".yaml", ".ini", ".conf", ".config", ".cfg", ".toml", ".env", ".ps1", "",
+    };
+
+    // Dotfiles whose basename (not extension) marks them as text so secrets in them get redacted on export.
+    private static readonly HashSet<string> TextNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".gitconfig", "config", ".npmrc", ".condarc", ".wslconfig", ".yarnrc", ".netrc",
     };
 
     public static bool IsTextConfig(string fileName)
-        => TextExt.Contains(Path.GetExtension(fileName))
-           || fileName.Equals(".gitconfig", StringComparison.OrdinalIgnoreCase)
-           || fileName.Equals("config", StringComparison.OrdinalIgnoreCase);
+        => TextExt.Contains(Path.GetExtension(fileName)) || TextNames.Contains(fileName);
 
     /// <summary>Returns the redacted text and how many secrets were masked.</summary>
     public static (string Text, int Count) Redact(string content)

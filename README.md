@@ -24,6 +24,26 @@
 | M2 | 配置套用 / 采集 + 导出脱敏 + env + SSH 每台新生成 | ✅ |
 | M3 | WPF 软件安装中心（图标卡片逐项勾选）+ 运行进度 + 配置/导出页 | ✅ |
 | M4 | 自包含单文件发布 + Release CI + 多机同步（sync/save） | ✅ |
+| M5 | 系统管理与专业工具：系统概览 / 系统维护（SFC·DISM·清理·事件日志）/ WSL / 系统调优 / 高级工具（体检·校验·锁定·DSC·离线包·迁移），开发人员模式门控 | ✅ |
+
+## M5 新增功能
+
+**普通用户可见（左侧导航）**
+
+- **系统概览**：CPU / 内存 / 磁盘（含 SMART）/ 电池 / Windows 激活状态一览；一键导出本机软件清单（CSV / HTML / JSON）。
+- **系统维护**：一键 `SFC` / `DISM /RestoreHealth` / `chkdsk` / 重置网络栈 / 清 Windows Update 缓存 / 重建图标缓存（按需 UAC 提权）；垃圾/缓存清理（Temp、WU 缓存、缩略图、Windows.old…）；最近 7 天严重/错误事件与崩溃速诊。
+
+**仅「开发人员模式」可见**
+
+- **WSL**：发行版列表、在线安装、设为默认、启动、停止、导出备份(.tar)、注销。
+- **系统调优**：可逆注册表调整（显示扩展名/隐藏文件、深色模式、经典右键菜单、关遥测…），实时读取当前状态、一键开关。
+- **高级工具**：环境体检、catalog 校验、生成 `lock.json`、导出 `winget configure` (DSC)、离线部署包、迁移工具包导出/还原、主机名→预设映射编辑。
+
+> 在「设置 → 开发者选项」勾选**开发人员模式**即可解锁上述专业功能页（即时生效）。
+
+**配置同步新增 dotfiles**：Windows Terminal `settings.json`、PowerShell `$PROFILE`、`.npmrc`、`.condarc`、`pip.ini`（沿用现有「配置同步 / 导出」机制，导出自动脱敏）。
+
+**主机名→预设**：将 `catalog/hosts.example.json` 复制为 `hosts.json` 后，`plan/apply/sync` 未显式指定时按本机名自动选预设。
 
 ## 构建与运行（需 .NET SDK 10）
 
@@ -45,12 +65,19 @@ dotnet run --project src/WinDeploy.Cli -- apply --profile dev --yes
 |---|---|
 | `list` | 列出 catalog 全部软件 |
 | `plan` | 显示安装/已装计划（不执行） |
-| `apply` | 执行安装 |
+| `apply` | 执行安装（`--silent` 无人值守、`--locked` 按 lock.json 钉版本、`--log <文件>` 落日志） |
 | `apply-config` | 套用配置（VS Code/Git/env…，按 applyWhen） |
 | `export` | 采集本机配置回写仓库（自动脱敏 token/密钥） |
 | `ssh-setup [--register]` | 生成本机 SSH 密钥并套用 ssh 配置（`--register` 登记到 GitHub） |
 | `sync` | `git pull` → 套用配置 + 显示安装计划 |
 | `save [--message m] [--push]` | 提交 configs 改动（`--push` 推送远程） |
+| `doctor` | 环境体检：PATH 重复/失效、`*_HOME` 失效、已装但不在 PATH |
+| `validate` | 校验 catalog.json（CI 友好，有错误时退出码 1） |
+| `lock` | 采集已装版本写入 `catalog/lock.json`（跨机可复现） |
+| `export-dsc [--out f]` | 导出为 `winget configure` (DSC) YAML，供 Intune/GPO/SCCM 无人值守 |
+| `inventory [--format csv\|json\|html] [--out f]` | 导出本机已装软件清单 |
+| `download-only [--out d]` | 仅预下载所选软件安装包（离线 / U 盘部署） |
+| `migrate --export <目录> \| --import <目录>` | 迁移工具包导出 / 还原（configs + 软件清单） |
 
 ## 发布（自包含单文件，目标机免装 .NET）
 

@@ -1,0 +1,102 @@
+<UserControl x:Class="WinDeploy.App.Views.WslView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Grid Margin="24,18,24,18">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+
+    <StackPanel Grid.Row="0">
+      <TextBlock Text="WSL 管理" FontSize="20" FontWeight="SemiBold" />
+      <TextBlock Text="管理 Windows Subsystem for Linux 发行版：安装、设为默认、启动、停止、导出备份(.tar)、注销。"
+                 FontSize="13" Foreground="{DynamicResource TextSecondary}" Margin="0,3,0,0" TextWrapping="Wrap" />
+    </StackPanel>
+
+    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,0">
+      <Button Content="↻ 刷新" Style="{StaticResource MiniButton}" Command="{Binding RefreshCommand}" />
+      <Button Content="关闭所有实例" Style="{StaticResource MiniButton}" Margin="8,0,0,0" Command="{Binding ShutdownCommand}"
+              Visibility="{Binding FeatureEnabled, Converter={StaticResource BoolToVis}}" />
+      <TextBlock Text="{Binding Note}" FontSize="12" Foreground="{DynamicResource TextTertiary}" VerticalAlignment="Center" Margin="14,0,0,0"
+                 TextWrapping="Wrap" MaxWidth="520" />
+    </StackPanel>
+
+    <!-- Install row (only when the WSL feature is enabled) -->
+    <Border Grid.Row="2" Style="{StaticResource Card}" Padding="14,11" Margin="0,12,0,0"
+            Visibility="{Binding FeatureEnabled, Converter={StaticResource BoolToVis}}">
+      <StackPanel Orientation="Horizontal">
+        <TextBlock Text="安装发行版：" FontSize="13" VerticalAlignment="Center" />
+        <ComboBox Width="240" Height="30" Margin="8,0,0,0" ItemsSource="{Binding Online}" SelectedItem="{Binding SelectedOnline}"
+                  DisplayMemberPath="Friendly" VerticalAlignment="Center" />
+        <Button Content="安装" Style="{StaticResource InfoButton}" Margin="8,0,0,0" Command="{Binding InstallCommand}" />
+        <TextBlock Text="（从上方下拉选择发行版后安装）" FontSize="11" Foreground="{DynamicResource TextTertiary}"
+                   VerticalAlignment="Center" Margin="10,0,0,0" />
+      </StackPanel>
+    </Border>
+
+    <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto" Margin="0,12,0,0">
+      <StackPanel>
+        <!-- WSL 功能未启用：先去控制面板启用 -->
+        <Border Style="{StaticResource Card}" Padding="18,16" Margin="0,2,0,0"
+                Visibility="{Binding FeatureDisabled, Converter={StaticResource BoolToVis}}">
+          <StackPanel>
+            <TextBlock Text="WSL 功能尚未启用" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource WarnFg}" />
+            <TextBlock TextWrapping="Wrap" FontSize="13" Foreground="{DynamicResource TextSecondary}" Margin="0,8,0,0"
+                       Text="本机虽有 wsl.exe，但「适用于 Linux 的 Windows 子系统」可选功能未启用，需先启用才能下载 / 运行发行版：" />
+            <TextBlock TextWrapping="Wrap" FontSize="13" Margin="0,10,0,0" LineHeight="22"
+                       Text="① 打开「控制面板 → 程序 → 启用或关闭 Windows 功能」（或点下方按钮）&#x0a;② 勾选「适用于 Linux 的 Windows 子系统」与「虚拟机平台」（WSL2 需要）&#x0a;③ 确定并重启电脑&#x0a;④ 回到本页点「刷新检测」，即可在线安装发行版" />
+            <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
+              <Button Content="打开 Windows 功能" Style="{StaticResource PrimaryButton}" Command="{Binding OpenFeaturesCommand}" />
+              <Button Content="一键启用（需管理员·重启）" Style="{StaticResource MiniButton}" Margin="8,0,0,0" Command="{Binding EnableFeatureCommand}" />
+              <Button Content="刷新检测" Style="{StaticResource MiniButton}" Margin="8,0,0,0" Command="{Binding RefreshCommand}" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+        <ItemsControl ItemsSource="{Binding Distros}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <Border Style="{StaticResource Card}" Padding="14,11" Margin="0,0,0,8">
+                <Grid>
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                  </Grid.ColumnDefinitions>
+                  <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                    <StackPanel Orientation="Horizontal">
+                      <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
+                      <Border CornerRadius="6" Padding="6,1" Margin="8,0,0,0" Background="{DynamicResource AccentBg}" VerticalAlignment="Center"
+                              Visibility="{Binding IsDefault, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Text="默认" FontSize="10" Foreground="{DynamicResource Accent}" />
+                      </Border>
+                      <Border CornerRadius="6" Padding="6,1" Margin="5,0,0,0" Background="{DynamicResource OkBg}" VerticalAlignment="Center"
+                              Visibility="{Binding Running, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Text="运行中" FontSize="10" Foreground="{DynamicResource OkFg}" />
+                      </Border>
+                    </StackPanel>
+                    <TextBlock FontSize="11.5" Foreground="{DynamicResource TextSecondary}" Margin="0,4,0,0">
+                      <Run Text="{Binding State}" /><Run Text="  ·  " /><Run Text="{Binding Version}" />
+                    </TextBlock>
+                  </StackPanel>
+                  <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Content="启动" Style="{StaticResource OkButton}"
+                            Command="{Binding DataContext.LaunchCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" />
+                    <Button Content="设为默认" Style="{StaticResource MiniButton}" Margin="6,0,0,0"
+                            Command="{Binding DataContext.SetDefaultCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" />
+                    <Button Content="停止" Style="{StaticResource MiniButton}" Margin="6,0,0,0"
+                            Command="{Binding DataContext.TerminateCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" />
+                    <Button Content="导出备份" Style="{StaticResource MiniButton}" Margin="6,0,0,0"
+                            Command="{Binding DataContext.ExportCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" />
+                    <Button Content="注销" Style="{StaticResource DangerButton}" Margin="6,0,0,0"
+                            Command="{Binding DataContext.UnregisterCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" />
+                  </StackPanel>
+                </Grid>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

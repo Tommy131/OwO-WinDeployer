@@ -11,13 +11,11 @@ public sealed class StartupRowViewModel : ObservableObject
 {
     public StartupEntry Entry { get; }
 
-    public StartupRowViewModel(StartupEntry e)
+    public StartupRowViewModel(StartupEntry e, ImageSource? icon)
     {
         Entry = e;
         Badge = e.Name.Length > 0 ? e.Name[..1].ToUpperInvariant() : "?";
-        // Prefer the bundled icon cache (matched by name/exe to a catalog item); else the exe's real icon.
-        try { IconImage = IconResolver.Resolve(e.Name, e.ExePath); }
-        catch { /* letter fallback */ }
+        IconImage = icon;
     }
 
     public string Name => Entry.Name;
@@ -63,12 +61,41 @@ public sealed class StartupViewModel : ObservableObject
     private string _summary = "点击刷新以扫描启动项";
     public string Summary { get => _summary; private set => Set(ref _summary, value); }
 
-    public void Refresh()
+    public void Refresh() => _ = RefreshAsync();
+
+    /// <summary>Scan startup entries and resolve each icon off the UI thread (process enumeration + icon
+    /// extraction are slow), then populate. Icon order: bundled catalog → entry exe → live process → letter.</summary>
+    private async Task RefreshAsync()
     {
+        Summary = "正在扫描启动项 …";
+        var rows = await Task.Run(() =>
+        {
+            var entries = StartupService.List().OrderBy(e => e.Name, StringComparer.OrdinalIgnoreCase).ToList();
+            var running = RunningIcons.Snapshot();
+            return entries.Select(e => new StartupRowViewModel(e, ResolveIcon(e, running))).ToList();
+        });
+
         Items.Clear();
-        foreach (var e in StartupService.List().OrderBy(e => e.Name, StringComparer.OrdinalIgnoreCase))
-            Items.Add(new StartupRowViewModel(e));
+        foreach (var r in rows) Items.Add(r);
         UpdateSummary();
+    }
+
+    /// <summary>Best icon for a startup entry: bundled catalog icon / its own exe, else the icon of a
+    /// matching running process, else null (the row shows the first-letter badge).</summary>
+    private static ImageSource? ResolveIcon(StartupEntry e, RunningIcons running)
+    {
+        try { if (IconResolver.Resolve(e.Name, e.ExePath) is { } icon) return icon; }
+        catch { /* fall through */ }
+
+        // Borrow the icon from the entry's live process (covers entries whose own path is unresolved,
+        // missing, or whose launcher exe has no embedded icon).
+        try
+        {
+            var livePath = running.ResolvePath(e.ExePath, e.Name);
+            if (livePath != null && IconExtractor.FromExe(livePath) is { } procIcon) return procIcon;
+        }
+        catch { /* letter fallback */ }
+        return null;
     }
 
     private void UpdateSummary()

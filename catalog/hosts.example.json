@@ -1,0 +1,9 @@
+// 主机名 → 预设映射（⑪）。把本文件复制为 catalog/hosts.json 即生效。
+// 当 plan / apply / sync 未显式指定 --profile/--only/--all/--category 时，
+// 按本机 MachineName 自动选用对应预设。键可为精确名或含单个 * 通配；"*" 为兜底。
+{
+  "DEVBOX": "dev",
+  "WORKSTATION-*": "full",
+  "LAPTOP-*": "dev",
+  "*": "dev"
+}
