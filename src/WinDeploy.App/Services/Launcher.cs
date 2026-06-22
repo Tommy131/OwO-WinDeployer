@@ -66,11 +66,17 @@ public static class Launcher
         var loc = ExeFromInstallLocation(arp, item);
         if (loc != null) { log?.Invoke("InstallLocation 挑选 → " + loc); return loc; }
 
+        var spec = ExeFromInstallSpec(item, pr);
+        if (spec != null) { log?.Invoke("安装路径(便携/自定义) → " + spec); return spec; }
+
         var lnk = FindStartMenuShortcut(item.Name);
         if (lnk != null) { log?.Invoke("开始菜单快捷方式 → " + lnk); return lnk; }
 
         var det = ExeFromDetect(item, pr);
         if (det != null) { log?.Invoke("detect → " + det); return det; }
+
+        var run = ExeFromRunKey(item);
+        if (run != null) { log?.Invoke("启动项注册表 → " + run); return run; }
 
         log?.Invoke("未能定位可执行文件");
         return null;
@@ -83,7 +89,9 @@ public static class Launcher
         return ValidExeFromDisplayIcon(arp?.DisplayIcon)
                ?? ExeFromDisplayIconDir(arp, item)
                ?? ExeFromInstallLocation(arp, item)
-               ?? ExeFromDetect(item, pr);
+               ?? ExeFromInstallSpec(item, pr)
+               ?? ExeFromDetect(item, pr)
+               ?? ExeFromRunKey(item);
     }
 
     /// <summary>Process-matching target (name + install dir) — no Start-menu. Falls back to an install
@@ -94,7 +102,9 @@ public static class Launcher
         var exe = ValidExeFromDisplayIcon(arp?.DisplayIcon)
                   ?? ExeFromDisplayIconDir(arp, item)
                   ?? ExeFromInstallLocation(arp, item)
-                  ?? ExeFromDetect(item, pr);
+                  ?? ExeFromInstallSpec(item, pr)
+                  ?? ExeFromDetect(item, pr)
+                  ?? ExeFromRunKey(item);
         if (!string.IsNullOrWhiteSpace(exe))
         {
             var name = Path.GetFileNameWithoutExtension(exe);
@@ -104,11 +114,20 @@ public static class Launcher
         if (dir != null) return ("", dir);
 
         // No ARP (MSIX / Store apps like Claude run from WindowsApps): match by process base-name.
+        // A portable app's process name is usually its package id (e.g. cc-switch → "cc-switch.exe").
         var proc = item.Detect?.Proc;
-        if (string.IsNullOrWhiteSpace(proc)) proc = SingleAsciiToken(item.Name) ?? IdLastSegment(item.Install.Id);
+        if (string.IsNullOrWhiteSpace(proc)) proc = SingleAsciiToken(item.Name) ?? IdLastSegment(item.Install.Id) ?? ProcTokenFromId(item.Id);
         if (!string.IsNullOrWhiteSpace(proc)) return (proc!, null);
 
         return null;
+    }
+
+    /// <summary>The catalog id as a process base-name candidate (allows '-'/'_', e.g. "cc-switch"); null if
+    /// it isn't a clean process-name token.</summary>
+    private static string? ProcTokenFromId(string? id)
+    {
+        if (string.IsNullOrWhiteSpace(id)) return null;
+        return id.All(c => c < 128 && (char.IsLetterOrDigit(c) || c is '-' or '_')) ? id : null;
     }
 
     /// <summary>The name if it's a single ASCII alphanumeric token (e.g. "Claude", "Discord"); else null.</summary>
@@ -147,6 +166,24 @@ public static class Launcher
         var p = PathOfDisplayIcon(arp?.DisplayIcon);
         var dir = p != null ? Path.GetDirectoryName(p) : null;
         return dir != null && Directory.Exists(dir) ? PickExe(dir, item.Name, item.Id) : null;
+    }
+
+    /// <summary>Pick the exe from the resolved install location: the user's custom path override first,
+    /// then the catalog's portable extractTo / git dest. Catches apps installed to a non-default folder.</summary>
+    private static string? ExeFromInstallSpec(CatalogItem item, PathResolver pr)
+    {
+        var spec = item.InstallPathOverride ?? item.Install.ExtractTo ?? item.Install.Dest;
+        if (string.IsNullOrWhiteSpace(spec)) return null;
+        var resolved = pr.Resolve(spec);
+        if (File.Exists(resolved) && IsRunnable(resolved)) return resolved;
+        return Directory.Exists(resolved) ? PickExe(resolved, item.Name, item.Id) : null;
+    }
+
+    /// <summary>Last resort: the exe registered in a Windows "Run" startup key (a custom-path portable
+    /// app the catalog has no location for, like cc-switch under D:\Tools).</summary>
+    private static string? ExeFromRunKey(CatalogItem item)
+    {
+        try { return RunKeys.FindExe(item.Name, item.Id); } catch { return null; }
     }
 
     private static string? ExeFromDetect(CatalogItem item, PathResolver pr)

@@ -3,6 +3,7 @@ using System.IO;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Threading;
 
 namespace WinDeploy.App.Services;
 
@@ -47,12 +48,32 @@ public static class RunHistory
 
     public static void Append(RunRecord record)
     {
-        try
+        string line;
+        try { line = JsonSerializer.Serialize(record, Json); }
+        catch { return; }
+
+        // Retry: the file may be transiently locked (an editor with the file open to inspect it,
+        // antivirus, or the search indexer) — a single AppendAllText would silently lose the record,
+        // leaving rows on the page that never reach disk. Back off briefly and try again.
+        for (var attempt = 0; ; attempt++)
         {
-            var line = JsonSerializer.Serialize(record, Json);
-            lock (Gate) File.AppendAllText(FilePath, line + Environment.NewLine, new UTF8Encoding(false));
+            try
+            {
+                lock (Gate)
+                    using (var fs = new FileStream(FilePath, FileMode.Append, FileAccess.Write, FileShare.ReadWrite))
+                    using (var w = new StreamWriter(fs, new UTF8Encoding(false)))
+                        w.Write(line + Environment.NewLine);
+                return;
+            }
+            catch (IOException) when (attempt < 8) { Thread.Sleep(25); }
+            catch (UnauthorizedAccessException) when (attempt < 8) { Thread.Sleep(25); }
+            catch (Exception ex)
+            {
+                // Final failure: surface it to the audit log instead of vanishing silently.
+                try { AuditLog.Action($"运行记录写入失败（{Path.GetFileName(FilePath)}）：{ex.Message}"); } catch { }
+                return;
+            }
         }
-        catch { /* never break the run */ }
     }
 
     /// <summary>Read all records (best effort), newest last.</summary>

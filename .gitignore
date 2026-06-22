@@ -8,6 +8,9 @@ obj/
 artifacts/
 publish/
 
+# 离线安装包 / 下载的大体积二进制（如 VMware .7z），不入库
+assets/packages/
+
 # 安全：配置仓库中绝不提交任何私钥
 configs/ssh/id_*
 configs/ssh/*.pem

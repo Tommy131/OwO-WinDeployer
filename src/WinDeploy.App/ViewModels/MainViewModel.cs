@@ -135,6 +135,13 @@ public sealed class MainViewModel : ObservableObject
         _resolver = new PathResolver(vars);
         Secrets.ExtraKeywords = SettingsViewModel.ParseKeywords(settings.RedactKeywords);
 
+        // Restore custom install locations so portable/git apps installed outside their default folder
+        // are still detected, launchable, and process-matched after a restart.
+        if (settings.InstallPaths is { Count: > 0 })
+            foreach (var item in _catalog.Items)
+                if (settings.InstallPaths.TryGetValue(item.Id, out var p) && !string.IsNullOrWhiteSpace(p))
+                    item.InstallPathOverride = p;
+
         Install.Initialize(_catalog, dir);
         ConfigSync.Initialize(_catalog, _resolver, _repoRoot);
         Export.Initialize(_catalog, _resolver, _repoRoot);
@@ -171,6 +178,22 @@ public sealed class MainViewModel : ObservableObject
                     if (StoreApps.HasMsixApp(vm.Model.Name)) vm.Installed = true;
         }
         catch { /* StartApps unavailable */ }
+
+        // Portable/git apps installed to a custom folder the catalog/settings don't know about
+        // (e.g. cc-switch under D:\Tools): locate the real .exe (ARP / install-spec / Run key / Start menu)
+        // and remember its directory so detection, launch, and process status all work afterwards.
+        foreach (var vm in items.Where(i => i.Installed != true
+                     && i.Model.Install.Method is "portable" or "git" or "exe" or "manual"))
+        {
+            try
+            {
+                var exe = await Task.Run(() => Launcher.ResolveExePath(vm.Model, _resolver));
+                if (exe == null) continue;
+                vm.Installed = true;
+                BackfillInstallPath(vm.Model, exe);
+            }
+            catch { /* skip */ }
+        }
 
         await RunUpdateCheckAsync(items);   // badge installed apps that have an upgrade
 
@@ -363,6 +386,11 @@ public sealed class MainViewModel : ObservableObject
 
             if (op is "install" or "update" or "uninstall" or "downgrade")
             {
+                if (outcome.Status == StepStatus.Ok)
+                {
+                    if (op == "uninstall") SettingsStore.SetInstallPath(item.Id, null);
+                    else PersistInstallPath(item);
+                }
                 Detection.ResetCache();
                 Arp.Refresh();
                 DetailService.Invalidate(item.Id);
@@ -498,6 +526,29 @@ public sealed class MainViewModel : ObservableObject
             : StepOutcome.Fail("重启失败：" + detail);
     }
 
+    /// <summary>Persist (or clear) an item's custom install location after a successful install/update so
+    /// it survives a restart. Only methods that have a meaningful install folder are remembered.</summary>
+    private static void PersistInstallPath(CatalogItem item)
+    {
+        if (item.Install.Method is "portable" or "git" or "winget")
+            SettingsStore.SetInstallPath(item.Id, item.InstallPathOverride);
+    }
+
+    /// <summary>Remember where a custom-located app actually lives (its exe's folder), discovered at
+    /// detection time, so detection / launch / process-status keep working on later launches.</summary>
+    private static void BackfillInstallPath(CatalogItem item, string exePath)
+    {
+        try
+        {
+            var dir = Path.GetDirectoryName(exePath);
+            if (string.IsNullOrWhiteSpace(dir)) return;
+            if (string.Equals(item.InstallPathOverride, dir, StringComparison.OrdinalIgnoreCase)) return;
+            item.InstallPathOverride = dir;
+            SettingsStore.SetInstallPath(item.Id, dir);
+        }
+        catch { /* best effort */ }
+    }
+
     private async Task RefreshInstalledFlag(CatalogItem item)
     {
         var vm = Install.Groups.SelectMany(g => g.Items).FirstOrDefault(i => i.Id == item.Id);
@@ -536,6 +587,7 @@ public sealed class MainViewModel : ObservableObject
                 {
                     if (r.Message != "already installed")
                         AuditLog.Action($"安装 {r.Item.Name}：{Zh(r.Status)} {r.Message}".TrimEnd());
+                    if (r.Status == StepStatus.Ok) PersistInstallPath(r.Item);
                     dispatcher.Invoke(() => { if (rows.TryGetValue(r.Item.Id, out var row)) Progress.Done(row, r.Status, r.Message); });
                 });
 
@@ -544,6 +596,11 @@ public sealed class MainViewModel : ObservableObject
                 var freed = Cleanup.RemoveInstallResidue(current, _resolver);
                 AuditLog.Action($"已取消安装 {current.Name}" + (freed > 0 ? $"，清理残留 {Mb(freed)}" : ""));
             }
+
+            // Persist any rows abandoned by cancellation (still 排队/运行中) so they don't linger
+            // on the page unrecorded.
+            foreach (var row in rows.Values.Where(r => r.Kind is "queued" or "running"))
+                dispatcher.Invoke(() => Progress.Done(row, StepStatus.Failed, "已取消"));
 
             AuditLog.Action($"安装结束 · 成功 {summary.Ok} · 失败 {summary.Failed} · 跳过 {summary.Skipped}");
             Progress.EndRun();
@@ -596,6 +653,9 @@ public sealed class MainViewModel : ObservableObject
                 AuditLog.Action($"更新 {item.Name}：{Zh(outcome.Status)} {outcome.Message}".TrimEnd());
                 dispatcher.Invoke(() => Progress.Done(row, outcome.Status, outcome.Message));
             }
+
+            foreach (var row in rows.Values.Where(r => r.Kind is "queued" or "running"))
+                dispatcher.Invoke(() => Progress.Done(row, StepStatus.Failed, "已取消"));
 
             Detection.ResetCache();
             Arp.Refresh();

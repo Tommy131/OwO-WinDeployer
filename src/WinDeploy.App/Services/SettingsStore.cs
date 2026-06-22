@@ -12,6 +12,10 @@ public sealed class AppSettings
     public string? Mirror { get; set; }
     public string? RedactKeywords { get; set; }
     public string? Theme { get; set; }   // system | light | dark
+
+    /// <summary>Custom install locations chosen per item (id → path), so a portable/git/winget app
+    /// installed outside its default location is still found after a restart.</summary>
+    public Dictionary<string, string> InstallPaths { get; set; } = new();
 }
 
 /// <summary>Persists GUI settings to %LOCALAPPDATA%/WinDeploy/settings.json.</summary>
@@ -43,6 +47,21 @@ public static class SettingsStore
     public static void Save(AppSettings s)
     {
         try { Directory.CreateDirectory(DirPath); File.WriteAllText(FilePathValue, JsonSerializer.Serialize(s, Opt)); }
+        catch { /* best effort */ }
+    }
+
+    /// <summary>Remember (or forget, when <paramref name="path"/> is null/empty) a per-item custom install
+    /// path. Load-modify-save so it never clobbers other settings.</summary>
+    public static void SetInstallPath(string id, string? path)
+    {
+        try
+        {
+            var s = Load();
+            s.InstallPaths ??= new();
+            if (string.IsNullOrWhiteSpace(path)) s.InstallPaths.Remove(id);
+            else s.InstallPaths[id] = path.Trim();
+            Save(s);
+        }
         catch { /* best effort */ }
     }
 }

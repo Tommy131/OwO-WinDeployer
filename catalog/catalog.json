@@ -323,6 +323,62 @@
       "homepage": "https://e5renew.com/#download",
       "install": { "method": "manual" },
       "detect": { "path": "${ToolsDir}/Microsoft365 E5 Renew Plus/Microsoft365 E5 Renew Plus.exe" },
-      "config": { "source": "configs/m365-e5-renew", "target": "${ToolsDir}/Microsoft365 E5 Renew Plus", "files": ["Config.cfg"], "applyWhen": "ifInstalled" } }
+      "config": { "source": "configs/m365-e5-renew", "target": "${ToolsDir}/Microsoft365 E5 Renew Plus", "files": ["Config.cfg"], "applyWhen": "ifInstalled" } },
+
+    // ── 硬件检测 / 诊断 / 跑分 ─────────────────────────────
+    { "id": "hwinfo", "name": "HWiNFO", "summary": "硬件信息 / 传感器监控", "icon": "assets/icons/hwinfo.svg",
+      "category": "system", "default": false,
+      "homepage": "https://www.hwinfo.com/download/",
+      "install": { "method": "winget", "id": "REALiX.HWiNFO" },
+      "detect": { "arp": "HWiNFO" } },
+
+    { "id": "cpu-z", "name": "CPU-Z", "summary": "CPU / 主板 / 内存信息", "icon": "assets/icons/cpu-z.svg",
+      "category": "system", "default": false,
+      "homepage": "https://www.cpuid.com/softwares/cpu-z.html",
+      "install": { "method": "winget", "id": "CPUID.CPU-Z" },
+      "detect": { "arp": "CPU-Z" } },
+
+    { "id": "gpu-z", "name": "GPU-Z", "summary": "显卡信息 / 传感器", "icon": "assets/icons/gpu-z.svg",
+      "category": "system", "default": false,
+      "homepage": "https://www.techpowerup.com/gpuz/",
+      "install": { "method": "winget", "id": "TechPowerUp.GPU-Z" },
+      "detect": { "arp": "GPU-Z" } },
+
+    { "id": "crystaldiskmark", "name": "CrystalDiskMark", "summary": "磁盘读写跑分", "icon": "assets/icons/crystaldiskmark.svg",
+      "category": "system", "default": false,
+      "homepage": "https://crystalmark.info/en/software/crystaldiskmark/",
+      "install": { "method": "winget", "id": "CrystalDewWorld.CrystalDiskMark" },
+      "detect": { "arp": "CrystalDiskMark" } },
+
+    { "id": "furmark", "name": "FurMark 2", "summary": "GPU 烤机 / 压力测试", "icon": "assets/icons/furmark.svg",
+      "category": "system", "default": false,
+      "homepage": "https://geeks3d.com/furmark/",
+      "install": { "method": "winget", "id": "Geeks3D.FurMark.2" },
+      "detect": { "arp": "FurMark" } },
+
+    { "id": "msi-afterburner", "name": "MSI Afterburner", "summary": "显卡超频 / 风扇 / 监控", "icon": "assets/icons/msi-afterburner.svg",
+      "category": "system", "default": false,
+      "homepage": "https://www.msi.com/Landing/afterburner/graphics-cards",
+      "install": { "method": "winget", "id": "Guru3D.Afterburner" },
+      "detect": { "arp": "MSI Afterburner" } },
+
+    { "id": "ntpwedit", "name": "NTPWEdit", "summary": "Windows 本地账户密码重置（官网手动下载）", "icon": "assets/icons/ntpwedit.svg",
+      "category": "system", "default": false,
+      "homepage": "https://github.com/jmclaren7/ntpwedit/releases",
+      "install": { "method": "manual" },
+      "detect": { "arp": "NTPWEdit" } },
+
+    // ── 游戏辅助 ─────────────────────────────
+    { "id": "openspeedy", "name": "OpenSpeedy", "summary": "游戏 / 程序变速工具（官网手动下载）", "icon": "assets/icons/openspeedy.svg",
+      "category": "games", "default": false,
+      "homepage": "https://github.com/game1024/OpenSpeedy/releases",
+      "install": { "method": "manual" },
+      "detect": { "arp": "OpenSpeedy" } },
+
+    { "id": "creaminstaller", "name": "CreamInstaller", "summary": "Steam/Epic DLC 解锁工具（官网手动下载）", "icon": "assets/icons/creaminstaller.svg",
+      "category": "games", "default": false,
+      "homepage": "https://github.com/FroggMaster/CreamInstaller/releases",
+      "install": { "method": "manual" },
+      "detect": { "arp": "CreamInstaller" } }
   ]
 }

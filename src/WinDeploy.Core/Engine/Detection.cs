@@ -33,11 +33,11 @@ public static class Detection
             case "winget-bundle" when item.Install.Ids is { Count: > 0 } ids:
                 if (await AllWingetHaveAsync(ids)) return true;
                 break;
-            case "portable" when item.Install.ExtractTo != null:
-                if (Directory.Exists(pr.Resolve(item.Install.ExtractTo))) return true;
+            case "portable" when (item.InstallPathOverride ?? item.Install.ExtractTo) != null:
+                if (Directory.Exists(pr.Resolve(item.InstallPathOverride ?? item.Install.ExtractTo!))) return true;
                 break;
-            case "git" when item.Install.Dest != null:
-                if (Directory.Exists(pr.Resolve(item.Install.Dest))) return true;
+            case "git" when (item.InstallPathOverride ?? item.Install.Dest) != null:
+                if (Directory.Exists(pr.Resolve(item.InstallPathOverride ?? item.Install.Dest!))) return true;
                 break;
         }
         return false;
