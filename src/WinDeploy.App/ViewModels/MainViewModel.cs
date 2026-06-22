@@ -231,7 +231,7 @@ public sealed class MainViewModel : ObservableObject
         // (e.g. cc-switch under D:\Tools): locate the real .exe (ARP / install-spec / Run key / Start menu)
         // and remember its directory so detection, launch, and process status all work afterwards.
         foreach (var vm in items.Where(i => i.Installed != true
-                     && i.Model.Install.Method is "portable" or "git" or "exe" or "manual"))
+                     && i.Model.Install.Method is "portable" or "git" or "exe" or "manual" or "github-release"))
         {
             try
             {
@@ -414,25 +414,27 @@ public sealed class MainViewModel : ObservableObject
 
         var assetLabels = rel.Assets.Select(a => $"{a.Name}   （{Mb(a.Size)}）").ToList();
         var dlgAsset = new Views.ChoiceDialog($"选择文件 · {rel.Tag}",
-            "请选择要下载安装的文件（zip/7z 自动解压到工具目录，exe 直接运行安装）：",
+            "请选择要下载的文件（压缩包自动解压、便携 exe 直接放入安装目录、Setup 安装程序直接运行）：",
             assetLabels, 0) { Owner = Application.Current.MainWindow };
         if (dlgAsset.ShowDialog() != true || dlgAsset.SelectedIndex < 0) return;
         var asset = rel.Assets[dlgAsset.SelectedIndex];
 
         var name = asset.Name.ToLowerInvariant();
-        if (name.EndsWith(".zip") || name.EndsWith(".7z"))
+        var isInstaller = (name.EndsWith(".exe") || name.EndsWith(".msi")) && name.Contains("setup");
+        if (isInstaller)
         {
+            item.Install.Method = "exe";   // a real installer decides its own location
+            item.Install.Url = asset.Url;
+        }
+        else
+        {
+            // archive → extract; standalone portable file → copied in. Both honor InstallPathOverride.
             item.Install.Method = "portable";
             item.Install.Url = asset.Url;
             item.Install.ExtractTo = $"${{ToolsDir}}/{item.Id}";
             item.Install.Strip = 0;
             item.Install.Path = null;
             item.Install.Sha256 = null;
-        }
-        else
-        {
-            item.Install.Method = "exe";
-            item.Install.Url = asset.Url;
         }
         await RunOpAsync(item, "install");
     }

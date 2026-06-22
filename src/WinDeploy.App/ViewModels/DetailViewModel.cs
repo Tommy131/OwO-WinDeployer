@@ -80,11 +80,12 @@ public sealed class DetailViewModel : ObservableObject
         Versions.Add(Latest);
         if (_selectedVersion != Latest) Versions.Add(_selectedVersion);
 
-        CanSetPath = ins.Method is "winget" or "portable" or "git";
+        CanSetPath = ins.Method is "winget" or "portable" or "git" or "github-release";
         _defaultPath = ins.Method switch
         {
             "portable" => ins.ExtractTo != null ? resolver.Resolve(ins.ExtractTo) : "",
             "git" => ins.Dest != null ? resolver.Resolve(ins.Dest) : "",
+            "github-release" => resolver.Resolve($"${{ToolsDir}}/{item.Model.Id}"),
             _ => "",
         };
         _installPath = item.Model.InstallPathOverride ?? _defaultPath;

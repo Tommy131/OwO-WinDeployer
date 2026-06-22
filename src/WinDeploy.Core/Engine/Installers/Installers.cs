@@ -117,7 +117,10 @@ public sealed class PortableInstaller : IInstaller
         var dest = ctx.Path.Resolve(item.InstallPathOverride ?? ins.ExtractTo);
         var dlDir = ctx.DownloadDir ?? System.IO.Path.GetTempPath();
         System.IO.Directory.CreateDirectory(dlDir);
-        var ext = ins.Url.EndsWith(".7z", StringComparison.OrdinalIgnoreCase) ? ".7z" : ".zip";
+        var lower = ins.Url.ToLowerInvariant();
+        var isArchive = lower.EndsWith(".7z") || lower.EndsWith(".zip");
+        var ext = lower.EndsWith(".7z") ? ".7z" : lower.EndsWith(".zip") ? ".zip"
+                : System.IO.Path.GetExtension(lower) is { Length: > 0 } e ? e : ".bin";
         var tmpZip = System.IO.Path.Combine(dlDir, $"windeploy_{item.Id}{ext}");
         var tmpEx = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"windeploy_{item.Id}_x");
 
@@ -133,33 +136,44 @@ public sealed class PortableInstaller : IInstaller
         }
         else Log.Warn($"{item.Id}: no sha256 set — skipping integrity check");
 
-        if (Directory.Exists(tmpEx)) Directory.Delete(tmpEx, true);
-        if (ext == ".7z")
+        Directory.CreateDirectory(dest);
+        if (!isArchive)
         {
-            var seven = Find7z();
-            if (seven == null) return StepOutcome.Fail("解压 .7z 需要 7-Zip，请先安装 7-Zip 后重试");
-            ctx.Step("用 7-Zip 解压 …");
-            var ex = await Proc.RunAsync(seven, new[] { "x", "-o" + tmpEx, tmpZip, "-y" }, ct: ctx.Ct);
-            if (!ex.Ok) return StepOutcome.Fail($"7-Zip 解压失败 退出码 {ex.ExitCode}");
+            // A standalone portable file (e.g. a single .exe) — place it directly in the install dir.
+            var fileName = System.IO.Path.GetFileName(new Uri(ins.Url).AbsolutePath);
+            if (string.IsNullOrWhiteSpace(fileName)) fileName = item.Id + ext;
+            ctx.Step($"写入安装目录 {dest} …");
+            File.Copy(tmpZip, System.IO.Path.Combine(dest, fileName), overwrite: true);
         }
         else
         {
-            ctx.Step("解压 …");
-            ZipFile.ExtractToDirectory(tmpZip, tmpEx);
-        }
+            if (Directory.Exists(tmpEx)) Directory.Delete(tmpEx, true);
+            if (ext == ".7z")
+            {
+                var seven = Find7z();
+                if (seven == null) return StepOutcome.Fail("解压 .7z 需要 7-Zip，请先安装 7-Zip 后重试");
+                ctx.Step("用 7-Zip 解压 …");
+                var ex = await Proc.RunAsync(seven, new[] { "x", "-o" + tmpEx, tmpZip, "-y" }, ct: ctx.Ct);
+                if (!ex.Ok) return StepOutcome.Fail($"7-Zip 解压失败 退出码 {ex.ExitCode}");
+            }
+            else
+            {
+                ctx.Step("解压 …");
+                ZipFile.ExtractToDirectory(tmpZip, tmpEx);
+            }
 
-        var srcRoot = tmpEx;
-        for (var i = 0; i < (ins.Strip ?? 0); i++)
-        {
-            var subs = Directory.GetDirectories(srcRoot);
-            var files = Directory.GetFiles(srcRoot);
-            if (subs.Length == 1 && files.Length == 0) srcRoot = subs[0];
-            else break;
-        }
+            var srcRoot = tmpEx;
+            for (var i = 0; i < (ins.Strip ?? 0); i++)
+            {
+                var subs = Directory.GetDirectories(srcRoot);
+                var files = Directory.GetFiles(srcRoot);
+                if (subs.Length == 1 && files.Length == 0) srcRoot = subs[0];
+                else break;
+            }
 
-        ctx.Step($"写入安装目录 {dest} …");
-        Directory.CreateDirectory(dest);
-        CopyDir(srcRoot, dest);
+            ctx.Step($"写入安装目录 {dest} …");
+            CopyDir(srcRoot, dest);
+        }
 
         foreach (var p in ins.Path ?? new List<string>())
             EnvPath.AddToUserPath(ctx.Path.Resolve(p));

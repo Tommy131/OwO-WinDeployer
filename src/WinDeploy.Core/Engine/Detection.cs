@@ -39,6 +39,9 @@ public static class Detection
             case "git" when (item.InstallPathOverride ?? item.Install.Dest) != null:
                 if (Directory.Exists(pr.Resolve(item.InstallPathOverride ?? item.Install.Dest!))) return true;
                 break;
+            case "github-release" when item.InstallPathOverride != null:
+                if (Directory.Exists(pr.Resolve(item.InstallPathOverride))) return true;
+                break;
         }
         return false;
     }
