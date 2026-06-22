@@ -33,6 +33,8 @@ $Exe = Join-Path $Root 'WinDeploy.exe'
 try {
     Write-Host '下载最新 WinDeploy.exe ...' -ForegroundColor Cyan
     Invoke-WebRequest -Uri $ExeUrl -OutFile $Exe -UseBasicParsing
+    # 去除“来自 Internet”标记（Mark-of-the-Web），避免 SmartScreen「未知发布者」拦截
+    Unblock-File -Path $Exe -ErrorAction SilentlyContinue
     Start-Process $Exe -WorkingDirectory $Root
     Write-Host '已启动 OwO! Win Deployer。' -ForegroundColor Green
 } catch {
