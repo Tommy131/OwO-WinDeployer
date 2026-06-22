@@ -81,30 +81,20 @@ public sealed class MainViewModel : ObservableObject
     {
         try
         {
-            var rel = await GitHub.LatestReleaseAsync(WinDeploy.App.AppInfo.Repo);
-            if (rel == null) return;
-            var latest = rel.Tag.TrimStart('v', 'V');
-            if (UpdateChecker.CompareSemver(latest, WinDeploy.App.AppInfo.Version) <= 0) return;
-
+            var r = await SelfUpdate.CheckAsync();
+            if (!r.Available) return;   // up-to-date / offline / no release → stay quiet at startup
             await Application.Current.Dispatcher.InvokeAsync(() =>
             {
-                var msg = $"发现新版本 {WinDeploy.App.AppInfo.Name} v{latest}（当前 v{WinDeploy.App.AppInfo.Version}）。\n\n" +
-                          (string.IsNullOrWhiteSpace(rel.Name) ? "" : $"{rel.Name}\n\n") +
-                          "是否前往发布页下载更新？";
+                var msg = $"发现新版本 {WinDeploy.App.AppInfo.Name} v{r.Latest}（当前 v{r.Current}）。\n\n是否前往发布页下载更新？";
                 if (MessageBox.Show(msg, "检查更新", MessageBoxButton.YesNo, MessageBoxImage.Information) == MessageBoxResult.Yes)
                 {
-                    AuditLog.Action($"自更新：用户前往下载 v{latest}");
-                    try
-                    {
-                        var url = string.IsNullOrWhiteSpace(rel.HtmlUrl)
-                            ? $"https://github.com/{WinDeploy.App.AppInfo.Repo}/releases/latest" : rel.HtmlUrl;
-                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true });
-                    }
+                    AuditLog.Action($"自更新：用户前往下载 v{r.Latest}");
+                    try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(r.HtmlUrl) { UseShellExecute = true }); }
                     catch { /* ignore */ }
                 }
             });
         }
-        catch { /* offline / rate-limited / no releases — stay quiet */ }
+        catch { /* stay quiet */ }
     }
 
     private NavItemViewModel? _selectedNav;

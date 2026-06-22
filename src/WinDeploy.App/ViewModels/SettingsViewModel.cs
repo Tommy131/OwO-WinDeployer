@@ -1,3 +1,5 @@
+using System.Windows;
+using System.Windows.Media;
 using WinDeploy.App.Services;
 
 namespace WinDeploy.App.ViewModels;
@@ -19,6 +21,43 @@ public sealed class SettingsViewModel : ObservableObject
         SettingsPath = SettingsStore.FilePath;
         SaveCommand = new RelayCommand(_ => Save());
         OpenFolderCommand = new RelayCommand(_ => OpenFolder());
+        CheckUpdateCommand = new RelayCommand(_ => _ = CheckUpdateAsync());
+        OpenLinkCommand = new RelayCommand(p => OpenUrl(p as string));
+    }
+
+    // ── About / developer ───────────────────────────────────────────────
+    public string AppTitle => WinDeploy.App.AppInfo.TitleWithVersion;
+    public string AppCopyright => WinDeploy.App.AppInfo.Copyright;
+    public string AuthorName => WinDeploy.App.AppInfo.Author;
+    public ImageSource? AuthorAvatar => IconResolver.FromCatalogId("author");
+
+    public RelayCommand CheckUpdateCommand { get; }
+    public RelayCommand OpenLinkCommand { get; }
+
+    private string _updateNote = "";
+    public string UpdateNote { get => _updateNote; set => Set(ref _updateNote, value); }
+
+    private async Task CheckUpdateAsync()
+    {
+        UpdateNote = "正在检查更新 …";
+        var r = await SelfUpdate.CheckAsync(force: true);
+        if (r.Error != null) { UpdateNote = r.Error; return; }
+        if (r.Available)
+        {
+            UpdateNote = $"发现新版本 v{r.Latest}";
+            AuditLog.Action($"检查更新：发现新版本 v{r.Latest}（当前 v{r.Current}）");
+            if (MessageBox.Show($"发现新版本 v{r.Latest}（当前 v{r.Current}）。\n\n是否前往发布页下载？",
+                    "检查更新", MessageBoxButton.YesNo, MessageBoxImage.Information) == MessageBoxResult.Yes)
+                OpenUrl(r.HtmlUrl);
+        }
+        else UpdateNote = $"当前已是最新版本 v{r.Current}";
+    }
+
+    private static void OpenUrl(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return;
+        try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true }); }
+        catch { /* ignore */ }
     }
 
     private string _devRoot;

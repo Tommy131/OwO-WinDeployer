@@ -23,12 +23,13 @@ public static class GitHub
         return rel?.Assets.Select(a => (a.Name, a.Url)).ToList() ?? new();
     }
 
-    /// <summary>The repo's latest (non-prerelease) release, or null. Cached 30 min.</summary>
-    public static async Task<GhRelease?> LatestReleaseAsync(string repo)
+    /// <summary>The repo's latest (non-prerelease) release, or null. Cached 30 min unless <paramref name="force"/>.</summary>
+    public static async Task<GhRelease?> LatestReleaseAsync(string repo, bool force = false)
     {
-        lock (Gate)
-            if (LatestCache.TryGetValue(repo, out var c) && DateTime.Now - c.At < Ttl)
-                return c.Release;
+        if (!force)
+            lock (Gate)
+                if (LatestCache.TryGetValue(repo, out var c) && DateTime.Now - c.At < Ttl)
+                    return c.Release;
 
         GhRelease? rel = null;
         try
