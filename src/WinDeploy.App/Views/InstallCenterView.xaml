@@ -108,7 +108,7 @@
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                   <DataTemplate>
-                    <Border Style="{StaticResource Card}" Width="158" MinHeight="150" Margin="0,0,10,10" Padding="12"
+                    <Border Style="{StaticResource Card}" Width="188" MinHeight="150" Margin="0,0,10,10" Padding="12"
                             Cursor="Hand"
                             Visibility="{Binding IsVisible, Converter={StaticResource BoolToVis}}">
                       <Border.InputBindings>
@@ -151,19 +151,19 @@
                                    TextTrimming="CharacterEllipsis" />
                         <TextBlock Text="{Binding Summary}" FontSize="12" Foreground="{DynamicResource TextSecondary}"
                                    TextWrapping="Wrap" Height="32" Margin="0,2,0,0" />
-                        <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                          <Border Background="{DynamicResource PageBg}" CornerRadius="6" Padding="6,2">
+                        <WrapPanel Margin="0,8,0,0">
+                          <Border Background="{DynamicResource PageBg}" CornerRadius="6" Padding="6,2" Margin="0,0,5,4">
                             <TextBlock Text="{Binding Method}" FontSize="11" Foreground="{DynamicResource TextSecondary}" />
                           </Border>
-                          <Border CornerRadius="6" Padding="6,2" Margin="5,0,0,0" Background="{DynamicResource OkBg}"
+                          <Border CornerRadius="6" Padding="6,2" Margin="0,0,5,4" Background="{DynamicResource OkBg}"
                                   Visibility="{Binding IsInstalled, Converter={StaticResource BoolToVis}}">
                             <TextBlock Text="{Binding StatusText}" FontSize="11" Foreground="{DynamicResource OkFg}" />
                           </Border>
-                          <Border CornerRadius="6" Padding="6,2" Margin="5,0,0,0" Background="{DynamicResource AccentBg}"
+                          <Border CornerRadius="6" Padding="6,2" Margin="0,0,5,4" Background="{DynamicResource AccentBg}"
                                   Visibility="{Binding ShowStop, Converter={StaticResource BoolToVis}}">
                             <TextBlock Text="运行中" FontSize="11" Foreground="{DynamicResource Accent}" />
                           </Border>
-                        </StackPanel>
+                        </WrapPanel>
                       </StackPanel>
                     </Border>
                   </DataTemplate>
