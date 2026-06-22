@@ -142,7 +142,8 @@ public sealed class InstallCenterViewModel : ObservableObject
     private string _pathNote = "";
     public string PathNote { get => _pathNote; set => Set(ref _pathNote, value); }
 
-    /// <summary>Set an install root for every selected item (winget → --location; portable/git → base/&lt;id&gt;).</summary>
+    /// <summary>Set an install root for every selected item: base dir + the app's own folder name, so each
+    /// app installs into a distinct directory (D:\Tools\System\GPU-Z, …\CPU-Z) instead of sharing the root.</summary>
     public void SetPathForSelected(string baseDir)
     {
         var n = 0;
@@ -150,12 +151,36 @@ public sealed class InstallCenterViewModel : ObservableObject
             foreach (var i in g.Items)
                 if (i.IsSelected)
                 {
-                    var m = i.Model;
-                    m.InstallPathOverride = m.Install.Method == "winget" ? baseDir : System.IO.Path.Combine(baseDir, m.Id);
+                    i.Model.InstallPathOverride = ComposeInstallPath(baseDir, i.Model.Name);
                     n++;
                 }
-        PathNote = n > 0 ? $"已为 {n} 个选中项设置安装路径：{baseDir}" : "未选中任何软件";
-        if (n > 0) AuditLog.Action($"设置安装路径：{baseDir}（{n} 项）");
+        PathNote = n > 0 ? $"已为 {n} 个选中项设置安装路径（以 {baseDir} 为根目录，按软件名分目录）" : "未选中任何软件";
+        if (n > 0) AuditLog.Action($"设置安装路径：{baseDir}（{n} 项，按软件名分目录）");
+    }
+
+    /// <summary>base + app folder. If the chosen path's leaf already (fuzzily) matches the app name, it's
+    /// used as-is to avoid a duplicated segment (…\GPU-Z\GPU-Z).</summary>
+    private static string ComposeInstallPath(string baseDir, string appName)
+    {
+        var b = baseDir.TrimEnd('\\', '/');
+        var leaf = Norm(System.IO.Path.GetFileName(b));
+        var nn = Norm(appName);
+        var already = nn.Length >= 3 ? leaf.Contains(nn) : leaf == nn;
+        return already ? b : System.IO.Path.Combine(b, SanitizeFolder(appName));
+    }
+
+    private static string Norm(string s)
+    {
+        var sb = new System.Text.StringBuilder(s.Length);
+        foreach (var c in s) if (char.IsLetterOrDigit(c)) sb.Append(char.ToLowerInvariant(c));
+        return sb.ToString();
+    }
+
+    private static string SanitizeFolder(string name)
+    {
+        var invalid = System.IO.Path.GetInvalidFileNameChars();
+        var cleaned = new string(name.Select(c => invalid.Contains(c) ? '_' : c).ToArray()).Trim();
+        return cleaned.Length == 0 ? "app" : cleaned;
     }
     public string Subtitle => $"勾选要部署到本机的软件 · 已选 {SelectedCount} 项";
 

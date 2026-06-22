@@ -115,8 +115,10 @@ public static class Launcher
 
         // No ARP (MSIX / Store apps like Claude run from WindowsApps): match by process base-name.
         // A portable app's process name is usually its package id (e.g. cc-switch → "cc-switch.exe").
+        // Prefer the catalog id (e.g. "cc-switch") over the winget id's last segment, which can be a bare
+        // version like "2" (Geeks3D.FurMark.2) and match unrelated processes.
         var proc = item.Detect?.Proc;
-        if (string.IsNullOrWhiteSpace(proc)) proc = SingleAsciiToken(item.Name) ?? IdLastSegment(item.Install.Id) ?? ProcTokenFromId(item.Id);
+        if (string.IsNullOrWhiteSpace(proc)) proc = SingleAsciiToken(item.Name) ?? ProcTokenFromId(item.Id) ?? IdLastSegment(item.Install.Id);
         if (!string.IsNullOrWhiteSpace(proc)) return (proc!, null);
 
         return null;
@@ -130,11 +132,12 @@ public static class Launcher
         return id.All(c => c < 128 && (char.IsLetterOrDigit(c) || c is '-' or '_')) ? id : null;
     }
 
-    /// <summary>The name if it's a single ASCII alphanumeric token (e.g. "Claude", "Discord"); else null.</summary>
+    /// <summary>The name if it's a single ASCII alphanumeric token with at least one letter (e.g. "Claude",
+    /// "Discord"); rejects spaces and pure-numeric tokens like "2".</summary>
     private static string? SingleAsciiToken(string? s)
     {
         if (string.IsNullOrWhiteSpace(s)) return null;
-        return s.All(c => c < 128 && char.IsLetterOrDigit(c)) ? s : null;
+        return s.All(c => c < 128 && char.IsLetterOrDigit(c)) && s.Any(char.IsLetter) ? s : null;
     }
 
     private static string? IdLastSegment(string? id)

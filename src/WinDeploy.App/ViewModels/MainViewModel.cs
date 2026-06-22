@@ -174,10 +174,20 @@ public sealed class MainViewModel : ObservableObject
 
         // Restore custom install locations so portable/git apps installed outside their default folder
         // are still detected, launchable, and process-matched after a restart.
-        if (settings.InstallPaths is { Count: > 0 })
+        if (settings.InstallPaths is { Count: > 0 } paths)
+        {
+            // Migrate away mis-set shared base dirs: a path used by 2+ items isn't a real per-app location
+            // (e.g. several winget apps all pointed at D:\Tools\System). Such a broad dir makes process
+            // matching catch unrelated neighbours, so drop those entries (revert to default detection).
+            var shared = paths.GroupBy(kv => (kv.Value ?? "").TrimEnd('\\', '/'), StringComparer.OrdinalIgnoreCase)
+                              .Where(grp => grp.Key.Length > 0 && grp.Count() > 1)
+                              .SelectMany(grp => grp.Select(kv => kv.Key)).ToList();
+            foreach (var badId in shared) { paths.Remove(badId); SettingsStore.SetInstallPath(badId, null); }
+
             foreach (var item in _catalog.Items)
-                if (settings.InstallPaths.TryGetValue(item.Id, out var p) && !string.IsNullOrWhiteSpace(p))
+                if (paths.TryGetValue(item.Id, out var p) && !string.IsNullOrWhiteSpace(p))
                     item.InstallPathOverride = p;
+        }
 
         IconResolver.Init(_catalog, _repoRoot);
         Install.Initialize(_catalog, dir);

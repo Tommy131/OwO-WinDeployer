@@ -151,6 +151,17 @@
       "install": { "method": "winget", "id": "ElementLabs.LMStudio" },
       "config": { "source": "configs/lmstudio", "target": "%USERPROFILE%/.lmstudio", "applyWhen": "ask" } },
 
+    { "id": "ollama", "name": "Ollama", "summary": "本地大模型运行（含 GUI）", "icon": "assets/icons/ollama.svg",
+      "category": "ai", "default": false,
+      "homepage": "https://ollama.com",
+      "install": { "method": "winget", "id": "Ollama.Ollama" },
+      "detect": { "cmd": "ollama" } },
+
+    { "id": "llama-cpp", "name": "llama.cpp", "summary": "C++ 大模型推理引擎（llama-cli / llama-server）", "icon": "assets/icons/llama-cpp.svg",
+      "category": "ai", "default": false,
+      "homepage": "https://github.com/ggml-org/llama.cpp",
+      "install": { "method": "winget", "id": "ggml.llamacpp" } },
+
     { "id": "claude", "name": "Claude", "summary": "AI 助手桌面端", "icon": "assets/icons/claude.svg",
       "category": "ai", "default": false,
       "install": { "method": "winget", "id": "Anthropic.Claude" },
@@ -367,6 +378,18 @@
       "homepage": "https://github.com/jmclaren7/ntpwedit/releases",
       "install": { "method": "github-release" },
       "detect": { "path": "${ToolsDir}/ntpwedit", "arp": "NTPWEdit" } },
+
+    { "id": "rtss", "name": "RivaTuner Statistics Server", "summary": "帧率显示 / 帧数限制 / 屏幕叠加 (RTSS)", "icon": "assets/icons/rtss.svg",
+      "category": "system", "default": false,
+      "homepage": "https://www.guru3d.com/download/rtss-rivatuner-statistics-server-download/",
+      "install": { "method": "winget", "id": "Guru3D.RTSS" },
+      "detect": { "arp": "RivaTuner Statistics Server" } },
+
+    { "id": "ryzen-dram-calc", "name": "Ryzen DRAM Calculator", "summary": "锐龙内存超频时序计算器（官网手动下载）", "icon": "assets/icons/ryzen-dram-calc.svg",
+      "category": "system", "default": false,
+      "homepage": "https://www.guru3d.com/download/download-ryzen-dram-calculator/",
+      "install": { "method": "manual" },
+      "detect": { "arp": "DRAM Calculator" } },
 
     // ── 游戏辅助 ─────────────────────────────
     { "id": "openspeedy", "name": "OpenSpeedy", "summary": "游戏 / 程序变速工具（选择 GitHub 发布版下载）", "icon": "assets/icons/openspeedy.svg",
