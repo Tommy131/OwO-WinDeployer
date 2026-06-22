@@ -55,10 +55,15 @@
     <Border Grid.Row="2" Style="{StaticResource Card}" Padding="14" Margin="0,12,0,0"
             BorderBrush="{DynamicResource Accent}"
             Visibility="{Binding IsRunning, Converter={StaticResource BoolToVis}}">
-      <StackPanel>
-        <TextBlock Text="{Binding CurrentLabel}" FontSize="12" Foreground="{DynamicResource TextSecondary}" />
-        <TextBlock Text="{Binding Current}" FontSize="15" FontWeight="SemiBold" Margin="0,2,0,0" />
-      </StackPanel>
+      <Grid>
+        <StackPanel VerticalAlignment="Center">
+          <TextBlock Text="{Binding CurrentLabel}" FontSize="12" Foreground="{DynamicResource TextSecondary}" />
+          <TextBlock Text="{Binding Current}" FontSize="15" FontWeight="SemiBold" Margin="0,2,0,0" />
+        </StackPanel>
+        <Button Content="取消" Style="{StaticResource MiniButton}" Command="{Binding CancelCommand}"
+                HorizontalAlignment="Right" VerticalAlignment="Center"
+                ToolTip="取消当前操作（安装会清理已下载/解压的残留）" />
+      </Grid>
     </Border>
 
     <!-- Task list -->

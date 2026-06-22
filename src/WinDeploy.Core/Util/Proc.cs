@@ -56,7 +56,15 @@ public static class Proc
         p.Start();
         p.BeginOutputReadLine();
         p.BeginErrorReadLine();
-        await p.WaitForExitAsync(ct);
+        try
+        {
+            await p.WaitForExitAsync(ct);
+        }
+        catch (OperationCanceledException)
+        {
+            try { p.Kill(entireProcessTree: true); } catch { /* already gone */ }
+            throw;
+        }
         return new ProcResult(p.ExitCode, so.ToString(), se.ToString());
     }
 }

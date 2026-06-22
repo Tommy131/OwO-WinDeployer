@@ -10,6 +10,9 @@ public static class Detection
 {
     private static string? _wingetList;
 
+    /// <summary>Drop the cached `winget list` so detection re-reads after an install/uninstall.</summary>
+    public static void ResetCache() => _wingetList = null;
+
     public static async Task<bool> IsInstalledAsync(CatalogItem item, PathResolver pr)
     {
         var d = item.Detect;

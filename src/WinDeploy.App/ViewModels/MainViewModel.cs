@@ -16,6 +16,7 @@ public sealed class MainViewModel : ObservableObject
     private PathResolver _resolver = new(new Dictionary<string, string>());
     private string _repoRoot = "";
     private Catalog? _catalog;
+    private CancellationTokenSource? _cts;
 
     public ObservableCollection<NavItemViewModel> NavItems { get; } = new();
     public InstallCenterViewModel Install { get; } = new();
@@ -34,7 +35,9 @@ public sealed class MainViewModel : ObservableObject
         Install.UpdateRequested += OnUpdateRequested;
         Install.DetailRequested += OnDetailRequested;
         Install.LaunchRequested += item => _ = RunOpAsync(item.Model, "launch");
-        Processes.OperationRequested += (item, op) => _ = RunOpAsync(item, op);
+        Install.RefreshRequested += () => _ = DetectAllAsync();
+        Processes.OperationRequested += (item, op) => _ = ConfirmRiskAndRun(item, op);
+        Progress.CancelRequested += () => _cts?.Cancel();
         Settings.Saved += () => Secrets.ExtraKeywords = SettingsViewModel.ParseKeywords(Settings.RedactKeywords);
         Load();
 
@@ -86,9 +89,15 @@ public sealed class MainViewModel : ObservableObject
         _ = DetectAllAsync();
     }
 
-    /// <summary>Detect every item (throttled-parallel) BEFORE revealing the list, then prefetch detail.</summary>
+    /// <summary>Detect every item (throttled-parallel) and check update availability BEFORE revealing
+    /// the list (the blue loading state), then prefetch detail. Re-runnable from the 刷新 button.</summary>
     private async Task DetectAllAsync()
     {
+        Install.IsLoading = true;
+        Detection.ResetCache();
+        Arp.Refresh();
+        UpdateChecker.Reset();
+
         var items = Install.Groups.SelectMany(g => g.Items).ToList();
         using var gate = new SemaphoreSlim(8);
         var tasks = items.Select(async vm =>
@@ -99,8 +108,21 @@ public sealed class MainViewModel : ObservableObject
             finally { gate.Release(); }
         });
         await Task.WhenAll(tasks);
+
+        await RunUpdateCheckAsync(items);   // badge installed apps that have an upgrade
+
         Install.IsLoading = false;
         _ = PrefetchDetailsAsync(items);
+    }
+
+    /// <summary>One `winget upgrade` pass → flag installed items that have an available upgrade.</summary>
+    private async Task RunUpdateCheckAsync(IReadOnlyList<AppItemViewModel>? items = null)
+    {
+        items ??= Install.Groups.SelectMany(g => g.Items).ToList();
+        var output = await UpdateChecker.WingetUpgradeOutputAsync(force: true);
+        foreach (var vm in items)
+            vm.HasUpdate = vm.IsInstalled && UpdateChecker.HasUpgrade(vm.Model, output);
+        Install.RefreshUpdateState();
     }
 
     /// <summary>Prefetch and cache detail metadata for every item so card clicks are instant.</summary>
@@ -135,9 +157,18 @@ public sealed class MainViewModel : ObservableObject
         vm.UpdateRequested += m => _ = ConfirmUpdateAndRun(m);
         vm.UninstallRequested += (m, purge) => _ = RunOpAsync(m, "uninstall", purge);
         vm.LaunchRequested += m => _ = RunOpAsync(m, "launch");
-        vm.StopRequested += m => _ = RunOpAsync(m, "stop");
-        vm.RestartRequested += m => _ = RunOpAsync(m, "restart");
+        vm.StopRequested += m => _ = ConfirmRiskAndRun(m, "stop");
+        vm.RestartRequested += m => _ = ConfirmRiskAndRun(m, "restart");
         Current = vm;
+    }
+
+    private async Task ConfirmRiskAndRun(CatalogItem item, string op)
+    {
+        var verb = Verb(op);
+        var detail = op == "stop" ? "将结束该软件的所有进程。" : op == "restart" ? "将结束并重新启动该软件。" : "";
+        if (MessageBox.Show($"确定要{verb} {item.Name}？\n\n{detail}".TrimEnd(),
+                verb, MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        await RunOpAsync(item, op);
     }
 
     private async Task ConfirmUpdateAndRun(CatalogItem item)
@@ -158,32 +189,42 @@ public sealed class MainViewModel : ObservableObject
         "launch" => "启动", "stop" => "结束", "restart" => "重启", _ => "操作",
     };
 
-    /// <summary>Run ONE operation, mirrored on the 运行进度 page (auto-navigated to).</summary>
+    /// <summary>Run ONE operation, mirrored on the 运行进度 page (auto-navigated to). Cancellable;
+    /// a cancelled install cleans its residue, and a successful uninstall offers leftover cleanup.</summary>
     private async Task RunOpAsync(CatalogItem item, string op, bool purge = false)
     {
         SelectedNav = NavItems.First(n => ReferenceEquals(n.Page, Progress));
-        var dispatcher = Application.Current.Dispatcher;
         var verb = Verb(op);
         var pi = new PlanItem { Item = item, Status = PlanStatus.ToInstall };
         Progress.Begin(new[] { pi }, verb);
         Progress.OnStart(pi);
 
-        var ctx = new EngineContext { Path = _resolver, RepoRoot = _repoRoot, Ct = CancellationToken.None };
+        var ctx = NewCtx(out var ct);
+        var preCandidates = op == "uninstall" ? LeftoverScanner.Candidates(item, _resolver) : null;
+
         StepOutcome outcome;
+        var cancelled = false;
         try
         {
             outcome = op switch
             {
                 "install" => await _engine.RunOneAsync(item, ctx),
                 "update" => await Updater.UpdateAsync(item, ctx),
-                "uninstall" => await Uninstaller.UninstallAsync(item, _resolver, purge),
+                "uninstall" => await Uninstaller.UninstallAsync(item, _resolver, purge, ct),
                 "launch" => await Task.Run(() => LaunchOp(item)),
                 "stop" => await Task.Run(() => StopOp(item)),
                 "restart" => await RestartOp(item),
                 _ => StepOutcome.Fail("未知操作"),
             };
         }
+        catch (OperationCanceledException) { cancelled = true; outcome = StepOutcome.Fail("已取消"); }
         catch (Exception ex) { outcome = StepOutcome.Fail(ex.Message); }
+
+        if (cancelled && op == "install")
+        {
+            var freed = Cleanup.RemoveInstallResidue(item, _resolver);
+            outcome = StepOutcome.Fail(freed > 0 ? $"已取消，已清理残留 {Mb(freed)}" : "已取消（无残留）");
+        }
 
         var res = new RunResult { Item = item, Status = outcome.Status, Message = outcome.Message };
         AuditLog.Action($"{verb} {item.Name}：{Zh(res.Status)} {res.Message}".TrimEnd());
@@ -192,11 +233,44 @@ public sealed class MainViewModel : ObservableObject
 
         if (op is "install" or "update" or "uninstall")
         {
+            Detection.ResetCache();
             Arp.Refresh();
             DetailService.Invalidate(item.Id);
+            UpdateChecker.Reset();
             await RefreshInstalledFlag(item);
+            await RunUpdateCheckAsync();
         }
+
+        if (op == "uninstall" && !cancelled && outcome.Status == StepStatus.Ok && preCandidates != null)
+            PromptLeftoverCleanup(item, preCandidates);
     }
+
+    private EngineContext NewCtx(out CancellationToken ct)
+    {
+        _cts?.Dispose();
+        _cts = new CancellationTokenSource();
+        ct = _cts.Token;
+        return new EngineContext { Path = _resolver, RepoRoot = _repoRoot, Ct = ct };
+    }
+
+    private void PromptLeftoverCleanup(CatalogItem item, List<string> candidates)
+    {
+        var junk = LeftoverScanner.Scan(candidates);
+        if (junk.Count == 0) return;
+        var total = junk.Sum(j => j.Bytes);
+        var lines = string.Join("\n", junk.Select(j => $"· {j.Path}  （{j.SizeText}）"));
+        var msg = $"{item.Name} 卸载后仍有 {junk.Count} 处残留，约 {Mb(total)} 可释放：\n\n{lines}\n\n是否立即清理？";
+        if (MessageBox.Show(msg, "清理残留", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+            return;
+        var (count, freed) = LeftoverScanner.Delete(junk);
+        AuditLog.Action($"清理残留 {item.Name}：删除 {count} 处，释放 {Mb(freed)}");
+        MessageBox.Show($"已清理 {count} 处，释放 {Mb(freed)}。", "清理残留",
+            MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
+    private static string Mb(long bytes) => bytes >= 1024L * 1024 * 1024
+        ? $"{bytes / 1024.0 / 1024 / 1024:0.0} GB"
+        : $"{bytes / 1024.0 / 1024:0.0} MB";
 
     private StepOutcome LaunchOp(CatalogItem item)
     {
@@ -236,12 +310,13 @@ public sealed class MainViewModel : ObservableObject
     {
         var dispatcher = Application.Current.Dispatcher;
         AuditLog.Action($"开始安装 {selected.Count} 项：{string.Join(", ", selected.Select(s => s.Id))}");
+        var ctx = NewCtx(out var ct);
         var plan = await _engine.BuildPlanAsync(selected, _resolver);
         Progress.Begin(plan);
 
-        var ctx = new EngineContext { Path = _resolver, RepoRoot = _repoRoot, Ct = CancellationToken.None };
+        CatalogItem? current = null;
         var summary = await _engine.ApplyAsync(plan, ctx, dryRun: false,
-            onStart: pi => dispatcher.Invoke(() => Progress.OnStart(pi)),
+            onStart: pi => { current = pi.Item; dispatcher.Invoke(() => Progress.OnStart(pi)); },
             onDone: r =>
             {
                 if (r.Message != "already installed")
@@ -249,8 +324,20 @@ public sealed class MainViewModel : ObservableObject
                 dispatcher.Invoke(() => Progress.OnDone(r));
             });
 
+        if (ct.IsCancellationRequested && current != null)
+        {
+            var freed = Cleanup.RemoveInstallResidue(current, _resolver);
+            AuditLog.Action($"已取消安装 {current.Name}" + (freed > 0 ? $"，清理残留 {Mb(freed)}" : ""));
+        }
+
         AuditLog.Action($"安装结束 · 成功 {summary.Ok} · 失败 {summary.Failed} · 跳过 {summary.Skipped}");
         dispatcher.Invoke(() => Progress.Complete());
+
+        Detection.ResetCache();
+        Arp.Refresh();
+        UpdateChecker.Reset();
+        foreach (var it in selected) await RefreshInstalledFlag(it);
+        await RunUpdateCheckAsync();
     }
 
     private void OnUpdateRequested()
@@ -274,16 +361,21 @@ public sealed class MainViewModel : ObservableObject
         var plan = items.Select(i => new PlanItem { Item = i, Status = PlanStatus.ToInstall }).ToList();
         Progress.Begin(plan, verb: "更新");
 
-        var ctx = new EngineContext { Path = _resolver, RepoRoot = _repoRoot, Ct = CancellationToken.None };
+        var ctx = NewCtx(out var ct);
         var ok = 0; var failed = 0;
         foreach (var pi in plan)
         {
+            if (ct.IsCancellationRequested) break;
             dispatcher.Invoke(() => Progress.OnStart(pi));
             RunResult res;
             try
             {
                 var outcome = await Updater.UpdateAsync(pi.Item, ctx);
                 res = new RunResult { Item = pi.Item, Status = outcome.Status, Message = outcome.Message };
+            }
+            catch (OperationCanceledException)
+            {
+                res = new RunResult { Item = pi.Item, Status = StepStatus.Failed, Message = "已取消" };
             }
             catch (Exception ex)
             {
@@ -294,10 +386,14 @@ public sealed class MainViewModel : ObservableObject
             dispatcher.Invoke(() => Progress.OnDone(res));
         }
 
-        // Reflect new versions on the detail pages next time they open.
+        Detection.ResetCache();
         Arp.Refresh();
         foreach (var i in items) DetailService.Invalidate(i.Id);
+        UpdateChecker.Reset();
         AuditLog.Action($"更新结束 · 成功 {ok} · 失败 {failed}");
         dispatcher.Invoke(() => Progress.Complete());
+
+        foreach (var i in items) await RefreshInstalledFlag(i);
+        await RunUpdateCheckAsync();
     }
 }

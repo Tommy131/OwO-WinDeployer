@@ -34,6 +34,11 @@ public sealed class ProgressViewModel : ObservableObject
     private bool _isRunning;
     public bool IsRunning { get => _isRunning; set => Set(ref _isRunning, value); }
 
+    /// <summary>Raised when the user clicks 取消 while an operation is running.</summary>
+    public event Action? CancelRequested;
+    public RelayCommand CancelCommand => _cancelCommand ??= new RelayCommand(_ => CancelRequested?.Invoke(), _ => IsRunning);
+    private RelayCommand? _cancelCommand;
+
     public int OkCount => Items.Count(i => i.Kind == "ok");
     public int FailedCount => Items.Count(i => i.Kind == "failed");
     public int RunningCount => Items.Count(i => i.Kind == "running");

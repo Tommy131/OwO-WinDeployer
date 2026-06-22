@@ -13,7 +13,10 @@
         <TextBlock Text="软件安装中心" FontSize="20" FontWeight="SemiBold" />
         <TextBlock Text="{Binding Subtitle}" FontSize="13" Foreground="{DynamicResource TextSecondary}" Margin="0,3,0,0" />
         <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-          <Button Content="全选" Style="{StaticResource MiniButton}" Command="{Binding SelectAllCommand}" />
+          <Button Content="↻ 刷新" Style="{StaticResource MiniButton}" Command="{Binding RefreshCommand}"
+                  ToolTip="重新检测本机软件安装状态与可用更新" />
+          <Border Width="1" Background="{DynamicResource BorderSoft}" Margin="10,2,0,2" />
+          <Button Content="全选" Style="{StaticResource MiniButton}" Command="{Binding SelectAllCommand}" Margin="10,0,0,0" />
           <Button Content="反选" Style="{StaticResource MiniButton}" Command="{Binding InvertCommand}" Margin="8,0,0,0" />
           <Button Content="恢复" Style="{StaticResource MiniButton}" Command="{Binding RestoreCommand}" Margin="8,0,0,0"
                   ToolTip="恢复到上一次「全选 / 反选 / 切换预设」之前的勾选状态" />
@@ -22,6 +25,9 @@
           <Border Width="1" Background="{DynamicResource BorderSoft}" Margin="10,2,0,2" />
           <Button Content="{Binding UpdateLabel}" Style="{StaticResource MiniButton}" Command="{Binding UpdateSelectedCommand}" Margin="10,0,0,0"
                   ToolTip="更新选中且已安装的软件（winget upgrade / git pull / 便携包重拉），跳转到运行进度页" />
+          <Button Content="{Binding UpdateToggleLabel}" Style="{StaticResource MiniButton}" Command="{Binding ToggleUpdatesCommand}" Margin="8,0,0,0"
+                  Visibility="{Binding HasUpdates, Converter={StaticResource BoolToVis}}"
+                  ToolTip="忽略 / 显示「可更新」徽章" />
         </StackPanel>
         <TextBlock Text="{Binding PathNote}" FontSize="12" Foreground="{DynamicResource TextSecondary}" Margin="0,6,0,0" />
       </StackPanel>
@@ -124,6 +130,12 @@
                                    RenderOptions.BitmapScalingMode="HighQuality" />
                           </Grid>
                           <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
+                            <Border CornerRadius="8" Padding="6,1" Margin="0,0,6,0" VerticalAlignment="Center"
+                                    Background="{DynamicResource AccentBg}"
+                                    Visibility="{Binding ShowUpdateBadge, Converter={StaticResource BoolToVis}}"
+                                    ToolTip="有可用更新">
+                              <TextBlock Text="可更新" FontSize="10" Foreground="{DynamicResource Accent}" />
+                            </Border>
                             <Button Style="{StaticResource CardIconButton}" Content="▶" Margin="0,0,6,0"
                                     Visibility="{Binding IsInstalled, Converter={StaticResource BoolToVis}}"
                                     Command="{Binding DataContext.LaunchCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"

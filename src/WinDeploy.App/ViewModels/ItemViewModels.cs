@@ -119,6 +119,24 @@ public sealed class AppItemViewModel : ObservableObject
     public bool IsInstalled => _installed == true;
     public string StatusText => _installed switch { null => "检测中…", true => "已装", _ => "未装" };
 
+    private bool _hasUpdate;
+    /// <summary>An upgrade is available (set during the startup update check).</summary>
+    public bool HasUpdate
+    {
+        get => _hasUpdate;
+        set { if (Set(ref _hasUpdate, value)) OnPropertyChanged(nameof(ShowUpdateBadge)); }
+    }
+
+    private bool _badgeHidden;
+    /// <summary>User toggled "忽略可更新" — hides the badge without clearing HasUpdate.</summary>
+    public bool BadgeHidden
+    {
+        get => _badgeHidden;
+        set { if (Set(ref _badgeHidden, value)) OnPropertyChanged(nameof(ShowUpdateBadge)); }
+    }
+
+    public bool ShowUpdateBadge => _hasUpdate && !_badgeHidden;
+
     public event Action? SelectionChanged;
 }
 

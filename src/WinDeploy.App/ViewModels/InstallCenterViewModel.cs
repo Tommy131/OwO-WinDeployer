@@ -30,7 +30,12 @@ public sealed class InstallCenterViewModel : ObservableObject
     public RelayCommand SelectAllCommand { get; }
     public RelayCommand InvertCommand { get; }
     public RelayCommand RestoreCommand { get; }
+    public RelayCommand RefreshCommand { get; }
+    public RelayCommand ToggleUpdatesCommand { get; }
     private Dictionary<string, bool>? _snapshot;
+
+    /// <summary>Raised when the user clicks 刷新 (re-detect installed status + update availability).</summary>
+    public event Action? RefreshRequested;
 
     /// <summary>Raised when the user clicks 开始安装.</summary>
     public event Action? StartRequested;
@@ -53,6 +58,31 @@ public sealed class InstallCenterViewModel : ObservableObject
         SelectAllCommand = new RelayCommand(_ => SetAll(true));
         InvertCommand = new RelayCommand(_ => Invert());
         RestoreCommand = new RelayCommand(_ => Restore(), _ => _snapshot != null);
+        RefreshCommand = new RelayCommand(_ => RefreshRequested?.Invoke(), _ => !IsLoading);
+        ToggleUpdatesCommand = new RelayCommand(_ => ToggleUpdates());
+    }
+
+    private bool _hideUpdates;
+    public int UpdatableCount => Groups.Sum(g => g.Items.Count(i => i.HasUpdate));
+    public bool HasUpdates => UpdatableCount > 0;
+    public string UpdateToggleLabel => _hideUpdates ? $"显示可更新 ({UpdatableCount})" : $"忽略可更新 ({UpdatableCount})";
+
+    private void ToggleUpdates()
+    {
+        _hideUpdates = !_hideUpdates;
+        foreach (var g in Groups)
+            foreach (var i in g.Items) i.BadgeHidden = _hideUpdates;
+        OnPropertyChanged(nameof(UpdateToggleLabel));
+    }
+
+    /// <summary>Recompute the updatable count / toggle after the startup update check set HasUpdate.</summary>
+    public void RefreshUpdateState()
+    {
+        foreach (var g in Groups)
+            foreach (var i in g.Items) i.BadgeHidden = _hideUpdates;
+        OnPropertyChanged(nameof(UpdatableCount));
+        OnPropertyChanged(nameof(HasUpdates));
+        OnPropertyChanged(nameof(UpdateToggleLabel));
     }
 
     /// <summary>Selected items that are installed and support updating — gates 更新选中.</summary>

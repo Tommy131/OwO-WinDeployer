@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Windows;
 using WinDeploy.App.Services;
 using WinDeploy.Core;
 using WinDeploy.Core.Models;
@@ -111,6 +112,8 @@ public sealed class ProcessManagerViewModel : ObservableObject
 
     private void EndOne(ProcRowViewModel r)
     {
+        if (MessageBox.Show($"确定结束进程 {r.Name}（PID {r.Pid}）？", "结束进程",
+                MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
         var ok = ProcessControl.Kill(r.Pid);
         AuditLog.Action($"结束进程 {r.Name} (PID {r.Pid})：{(ok ? "成功" : "失败")}");
         _ = RefreshAsync();

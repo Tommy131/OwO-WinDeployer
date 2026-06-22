@@ -50,6 +50,7 @@ public sealed class InstallEngine
         void Record(RunResult r) { summary.Results.Add(r); onDone?.Invoke(r); }
         foreach (var pi in plan)
         {
+            if (ctx.Ct.IsCancellationRequested) break;   // stop the batch on cancel
             var res = new RunResult { Item = pi.Item };
 
             if (pi.Status == PlanStatus.Installed)
