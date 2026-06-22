@@ -88,7 +88,9 @@ public static class Updater
         string? last = null;
         return Proc.RunStreamingAsync("winget", new[]
         {
-            "upgrade", "--id", id, "-e",
+            // --include-unknown: upgrade packages whose installed version winget can't determine
+            // (e.g. Sublime Merge), which winget otherwise refuses to touch.
+            "upgrade", "--id", id, "-e", "--include-unknown",
             "--accept-source-agreements", "--accept-package-agreements", "--disable-interactivity",
         }, tok => last = WingetProgress.Handle(tok, ctx, sw, last), ct: ctx.Ct);
     }
@@ -104,6 +106,14 @@ public static class Updater
             || r.StdOut.Contains("已是最新", StringComparison.OrdinalIgnoreCase)
             || r.StdOut.Contains("没有可用", StringComparison.OrdinalIgnoreCase)
             || r.StdOut.Contains("没有适用", StringComparison.OrdinalIgnoreCase);
-        return noUpgrade ? StepOutcome.Done(UpToDate) : StepOutcome.Fail($"winget upgrade 退出码 {r.ExitCode}");
+        if (noUpgrade) return StepOutcome.Done(UpToDate);
+
+        // Stale upstream manifest (e.g. Unity Hub's non-versioned download URL) → winget rejects the
+        // download. There is no supported param to bypass the hash; surface it as a source issue.
+        var hashMismatch = r.StdOut.Contains("哈希", StringComparison.OrdinalIgnoreCase)
+            || (r.StdOut.Contains("hash", StringComparison.OrdinalIgnoreCase) && r.StdOut.Contains("match", StringComparison.OrdinalIgnoreCase));
+        if (hashMismatch) return StepOutcome.Fail("winget 源安装包哈希不匹配（上游清单过期），请前往官网手动更新");
+
+        return StepOutcome.Fail($"winget upgrade 退出码 {r.ExitCode}");
     }
 }

@@ -393,14 +393,13 @@
         <Setter Property="Background" Value="{DynamicResource CardBg}" />
         <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BorderStrong}" />
+        <Setter Property="HasDropShadow" Value="False" />
         <Setter Property="Template">
           <Setter.Value>
             <ControlTemplate TargetType="ContextMenu">
+              <!-- No DropShadowEffect: on a non-transparent popup it renders as a black halo in light mode. -->
               <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
                       BorderThickness="1" CornerRadius="8" Padding="4">
-                <Border.Effect>
-                  <DropShadowEffect Color="#33000000" BlurRadius="12" ShadowDepth="2" Direction="270" />
-                </Border.Effect>
                 <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Cycle" />
               </Border>
             </ControlTemplate>
