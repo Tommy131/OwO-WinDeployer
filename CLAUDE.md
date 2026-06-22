@@ -1,4 +1,4 @@
-# win-provision (WinDeploy)
+# owo-win-deployer (OwO! Win Deployer)
 
 Windows 环境复刻器：一键在新设备安装软件/工具链/环境并同步个人配置。**完整设计见 `docs/DESIGN.md`（权威来源）。**
 

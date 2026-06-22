@@ -64,6 +64,10 @@ public sealed class InstallSpec
     // exe (download an installer and run it); Args = optional silent flags
     public string? Args { get; set; }
 
+    // local (install from a repo-bundled package if present, else fall back to manual download).
+    // Repo-relative path/glob, e.g. "assets/packages/VMware-workstation-full-*.7z".
+    public string? LocalPackage { get; set; }
+
     // conda
     public string? EnvFile { get; set; }
     public string? EnvName { get; set; }

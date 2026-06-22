@@ -1,8 +1,8 @@
-# WinDeploy（win-provision）设计文档
+# OwO! Win Deployer（owo-win-deployer）设计文档
 
 > 一键在任意 Windows 设备上复刻你的开发环境、应用与个人配置。
 >
-> 版本：Draft v0.3 · 日期：2026-06-20 · 仓库：`Tommy131/win-provision`
+> 版本：Draft v0.3 · 日期：2026-06-20 · 仓库：`Tommy131/owo-win-deployer`
 > 实现状态：M1 引擎 / M2 配置同步 / M3 GUI / M4 发布·多机同步 **均已实现**（见 git 历史与 README）。
 
 ---
@@ -375,7 +375,7 @@ winget 等来源无统一图标 API，方案：
 ## 10. 安全考量
 
 - **SSH 私钥**：每台新生成、永不入库（已定）。
-- **仓库私有**：`Tommy131/win-provision` 设为 GitHub 私有库。
+- **仓库私有**：`Tommy131/owo-win-deployer` 设为 GitHub 私有库。
 - **配置内敏感信息**：应用配置（如 LM Studio、Git credential、各类 token/API key）导出时按「脱敏/排除清单」过滤，默认**不入库**；确需同步的密钥走独立安全通道（Bitwarden/U 盘）。**（开放问题 §14）**
 - **便携包完整性**：`sha256` 校验，防下载污染。
 - **提权范围**：仅在确需时提权，操作集中可审计。
@@ -387,7 +387,7 @@ winget 等来源无统一图标 API，方案：
 ### 10.1 bootstrap.ps1（`irm｜iex` 一行上机）
 
 ```
-irm https://raw.githubusercontent.com/Tommy131/win-provision/main/bootstrap/bootstrap.ps1 | iex
+irm https://raw.githubusercontent.com/Tommy131/owo-win-deployer/main/bootstrap/bootstrap.ps1 | iex
 ```
 
 流程：确保 winget(App Installer) → `winget install Git.Git`（若缺）→ 从 GitHub Release 下自包含 `WinDeploy.exe`（或 `git clone` 仓库取数据）→ 启动 GUI。

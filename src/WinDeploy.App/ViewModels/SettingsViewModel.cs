@@ -12,7 +12,7 @@ public sealed class SettingsViewModel : ObservableObject
         _devRoot = _s.DevRoot ?? "%USERPROFILE%/dev";
         _toolsDir = _s.ToolsDir ?? "%LOCALAPPDATA%/tools";
         _downloadDir = _s.DownloadDir ?? "%USERPROFILE%/Downloads/WinDeploy";
-        _repoUrl = _s.RepoUrl ?? "https://github.com/Tommy131/win-provision.git";
+        _repoUrl = _s.RepoUrl ?? "https://github.com/Tommy131/owo-win-deployer.git";
         _mirror = _s.Mirror ?? "";
         _redactKeywords = _s.RedactKeywords ?? "";
         _theme = _s.Theme ?? "system";

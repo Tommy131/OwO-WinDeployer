@@ -66,6 +66,8 @@ public sealed class DetailViewModel : ObservableObject
             "portable" => "便携包（zip）",
             "git" => "Git 仓库",
             "exe" => "官方安装包",
+            "local" => "本地安装包",
+            "github-release" => "GitHub 发布版",
             "conda" => "conda 环境",
             "vscode-ext" => "VS Code 扩展",
             "script" => "脚本",

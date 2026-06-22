@@ -168,7 +168,7 @@ public sealed class PortableInstaller : IInstaller
         return StepOutcome.Done();
     }
 
-    private static string? Find7z()
+    internal static string? Find7z()
     {
         var onPath = CommandFinder.Find("7z");
         if (onPath != null) return onPath;
@@ -247,6 +247,84 @@ public sealed class ExeInstaller : IInstaller
     }
 }
 
+/// <summary>Installs from a repo-bundled package (e.g. a large .7z dropped into assets/packages/) when
+/// present: extract if archived, then run the contained installer (UAC-aware). If the package isn't
+/// present, falls back to a manual download (reported as a skip) so a bare repo still works.</summary>
+public sealed class LocalInstaller : IInstaller
+{
+    public string Method => "local";
+
+    public async Task<StepOutcome> RunAsync(CatalogItem item, EngineContext ctx)
+    {
+        var ins = item.Install;
+        if (string.IsNullOrWhiteSpace(ins.LocalPackage))
+            return StepOutcome.Skip("未配置本地安装包，请前往官网手动下载");
+
+        var pkg = FindPackage(ctx, ins.LocalPackage);
+        if (pkg == null)
+        {
+            ctx.Step("未发现本地安装包，请前往官网手动下载");
+            return StepOutcome.Skip("未发现本地安装包，请前往官网手动下载");
+        }
+        ctx.Step($"发现本地安装包：{System.IO.Path.GetFileName(pkg)}");
+
+        var installer = pkg;
+        var lower = pkg.ToLowerInvariant();
+        if (lower.EndsWith(".7z") || lower.EndsWith(".zip"))
+        {
+            var tmpEx = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"windeploy_{item.Id}_pkg");
+            if (Directory.Exists(tmpEx)) Directory.Delete(tmpEx, true);
+            if (lower.EndsWith(".7z"))
+            {
+                var seven = PortableInstaller.Find7z();
+                if (seven == null) return StepOutcome.Fail("解压 .7z 需要 7-Zip，请先安装 7-Zip 后重试");
+                ctx.Step("用 7-Zip 解压安装包 …");
+                var ex = await Proc.RunAsync(seven, new[] { "x", "-o" + tmpEx, pkg, "-y" }, ct: ctx.Ct);
+                if (!ex.Ok) return StepOutcome.Fail($"7-Zip 解压失败 退出码 {ex.ExitCode}");
+            }
+            else
+            {
+                ctx.Step("解压安装包 …");
+                ZipFile.ExtractToDirectory(pkg, tmpEx);
+            }
+            installer = FindInstallerExe(tmpEx) ?? "";
+            if (installer.Length == 0) return StepOutcome.Fail("解压后未找到安装程序 .exe");
+            ctx.Step($"安装程序：{System.IO.Path.GetFileName(installer)}");
+        }
+        else if (!lower.EndsWith(".exe") && !lower.EndsWith(".msi"))
+        {
+            return StepOutcome.Fail($"不支持的本地安装包类型：{System.IO.Path.GetExtension(pkg)}");
+        }
+
+        ctx.Step("运行安装程序（如出现 UAC 提示请允许）…");
+        try
+        {
+            var psi = new ProcessStartInfo(installer) { UseShellExecute = true };   // honor installer's UAC manifest
+            if (!string.IsNullOrWhiteSpace(ins.Args)) psi.Arguments = ins.Args;
+            var p = Process.Start(psi);
+            if (p == null) return StepOutcome.Fail("无法启动安装程序");
+            await p.WaitForExitAsync(ctx.Ct);
+            return p.ExitCode == 0 ? StepOutcome.Done("已运行本地安装包") : StepOutcome.Fail($"安装程序退出码 {p.ExitCode}");
+        }
+        catch (Exception ex) { return StepOutcome.Fail("运行安装程序失败：" + ex.Message); }
+    }
+
+    /// <summary>Resolve a repo-relative glob ("assets/packages/VMware-*.7z") to the newest matching file.</summary>
+    private static string? FindPackage(EngineContext ctx, string globRel)
+    {
+        var rel = globRel.Replace('/', System.IO.Path.DirectorySeparatorChar);
+        var dir = ctx.ResolveRepo(System.IO.Path.GetDirectoryName(rel) ?? "");
+        var pattern = System.IO.Path.GetFileName(rel);
+        if (!Directory.Exists(dir)) return null;
+        return Directory.GetFiles(dir, pattern).OrderByDescending(f => f, StringComparer.OrdinalIgnoreCase).FirstOrDefault();
+    }
+
+    private static string? FindInstallerExe(string root)
+        => Directory.EnumerateFiles(root, "*.exe", SearchOption.AllDirectories)
+            .OrderByDescending(f => { try { return new FileInfo(f).Length; } catch { return 0L; } })
+            .FirstOrDefault();
+}
+
 /// <summary>For software that can't be auto-installed (no winget / unstable URL): the user downloads it
 /// from the homepage themselves. Reported as a skip so batch installs don't fail.</summary>
 public sealed class ManualInstaller : IInstaller
@@ -257,6 +335,19 @@ public sealed class ManualInstaller : IInstaller
     {
         ctx.Step("需从官网手动下载安装");
         return Task.FromResult(StepOutcome.Skip("请前往官网手动下载"));
+    }
+}
+
+/// <summary>Apps installed by picking a specific GitHub release tag + asset interactively (handled in the
+/// GUI). In a non-interactive batch run there's nothing to pick, so it's reported as a skip.</summary>
+public sealed class GithubReleaseInstaller : IInstaller
+{
+    public string Method => "github-release";
+
+    public Task<StepOutcome> RunAsync(CatalogItem item, EngineContext ctx)
+    {
+        ctx.Step("请在软件详情页选择发布版本与文件后安装");
+        return Task.FromResult(StepOutcome.Skip("请在详情页选择版本下载安装"));
     }
 }
 

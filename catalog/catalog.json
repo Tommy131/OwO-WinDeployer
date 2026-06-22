@@ -246,10 +246,10 @@
       "install": { "method": "winget", "id": "WinSCP.WinSCP" } },
 
     // ── 虚拟化 ─────────────────────────────
-    { "id": "vmware", "name": "VMware Workstation", "summary": "虚拟化（官网手动下载）", "icon": "assets/icons/vmware.svg",
+    { "id": "vmware", "name": "VMware Workstation", "summary": "虚拟化（有本地安装包则自动解压安装，否则官网手动下载）", "icon": "assets/icons/vmware.svg",
       "category": "vm", "default": false,
       "homepage": "https://www.vmware.com/products/workstation-pro.html",
-      "install": { "method": "manual" },
+      "install": { "method": "local", "localPackage": "assets/packages/VMware-workstation-full-*.7z" },
       "detect": { "arp": "VMware Workstation" } },
 
     // ── 游戏平台（仅客户端本体，不含游戏） ─────────────────────────────
@@ -362,23 +362,23 @@
       "install": { "method": "winget", "id": "Guru3D.Afterburner" },
       "detect": { "arp": "MSI Afterburner" } },
 
-    { "id": "ntpwedit", "name": "NTPWEdit", "summary": "Windows 本地账户密码重置（官网手动下载）", "icon": "assets/icons/ntpwedit.svg",
+    { "id": "ntpwedit", "name": "NTPWEdit", "summary": "Windows 本地账户密码重置（选择 GitHub 发布版下载）", "icon": "assets/icons/ntpwedit.svg",
       "category": "system", "default": false,
       "homepage": "https://github.com/jmclaren7/ntpwedit/releases",
-      "install": { "method": "manual" },
-      "detect": { "arp": "NTPWEdit" } },
+      "install": { "method": "github-release" },
+      "detect": { "path": "${ToolsDir}/ntpwedit", "arp": "NTPWEdit" } },
 
     // ── 游戏辅助 ─────────────────────────────
-    { "id": "openspeedy", "name": "OpenSpeedy", "summary": "游戏 / 程序变速工具（官网手动下载）", "icon": "assets/icons/openspeedy.svg",
+    { "id": "openspeedy", "name": "OpenSpeedy", "summary": "游戏 / 程序变速工具（选择 GitHub 发布版下载）", "icon": "assets/icons/openspeedy.svg",
       "category": "games", "default": false,
       "homepage": "https://github.com/game1024/OpenSpeedy/releases",
-      "install": { "method": "manual" },
-      "detect": { "arp": "OpenSpeedy" } },
+      "install": { "method": "github-release" },
+      "detect": { "path": "${ToolsDir}/openspeedy", "arp": "OpenSpeedy" } },
 
-    { "id": "creaminstaller", "name": "CreamInstaller", "summary": "Steam/Epic DLC 解锁工具（官网手动下载）", "icon": "assets/icons/creaminstaller.svg",
+    { "id": "creaminstaller", "name": "CreamInstaller", "summary": "Steam/Epic DLC 解锁工具（选择 GitHub 发布版下载）", "icon": "assets/icons/creaminstaller.svg",
       "category": "games", "default": false,
       "homepage": "https://github.com/FroggMaster/CreamInstaller/releases",
-      "install": { "method": "manual" },
-      "detect": { "arp": "CreamInstaller" } }
+      "install": { "method": "github-release" },
+      "detect": { "path": "${ToolsDir}/creaminstaller", "arp": "CreamInstaller" } }
   ]
 }

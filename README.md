@@ -1,4 +1,4 @@
-# win-provision (WinDeploy)
+# OwO! Win Deployer (owo-win-deployer)
 
 一键在任意 Windows 设备上复刻开发环境、应用与个人配置。完整设计见 [`docs/DESIGN.md`](docs/DESIGN.md)。
 
@@ -49,7 +49,7 @@ pwsh -File scripts/publish.ps1   # 产出 artifacts/app/WinDeploy.exe 与 artifa
 ## 裸机引导
 
 ```powershell
-irm https://raw.githubusercontent.com/Tommy131/win-provision/main/bootstrap/bootstrap.ps1 | iex
+irm https://raw.githubusercontent.com/Tommy131/owo-win-deployer/main/bootstrap/bootstrap.ps1 | iex
 ```
 
 ## 结构

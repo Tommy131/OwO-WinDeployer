@@ -34,6 +34,9 @@ public sealed class MainViewModel : ObservableObject
     public LogViewModel Logs { get; } = new();
     public SettingsViewModel Settings { get; } = new();
 
+    public string AppName => WinDeploy.App.AppInfo.Name;
+    public string WindowTitle => $"{WinDeploy.App.AppInfo.TitleWithVersion} · 软件安装中心";
+
     public MainViewModel()
     {
         Install.StartRequested += OnStartRequested;
@@ -58,6 +61,40 @@ public sealed class MainViewModel : ObservableObject
         NavItems.Add(new NavItemViewModel("", "日志", Logs));
         NavItems.Add(new NavItemViewModel("", "设置", Settings));
         SelectedNav = NavItems[0];
+
+        _ = CheckSelfUpdateAsync();
+    }
+
+    /// <summary>Check GitHub for a newer release of the app itself; if found, ask the user to update.
+    /// Best-effort and silent on failure (offline / no releases / rate-limited).</summary>
+    private async Task CheckSelfUpdateAsync()
+    {
+        try
+        {
+            var rel = await GitHub.LatestReleaseAsync(WinDeploy.App.AppInfo.Repo);
+            if (rel == null) return;
+            var latest = rel.Tag.TrimStart('v', 'V');
+            if (UpdateChecker.CompareSemver(latest, WinDeploy.App.AppInfo.Version) <= 0) return;
+
+            await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                var msg = $"发现新版本 {WinDeploy.App.AppInfo.Name} v{latest}（当前 v{WinDeploy.App.AppInfo.Version}）。\n\n" +
+                          (string.IsNullOrWhiteSpace(rel.Name) ? "" : $"{rel.Name}\n\n") +
+                          "是否前往发布页下载更新？";
+                if (MessageBox.Show(msg, "检查更新", MessageBoxButton.YesNo, MessageBoxImage.Information) == MessageBoxResult.Yes)
+                {
+                    AuditLog.Action($"自更新：用户前往下载 v{latest}");
+                    try
+                    {
+                        var url = string.IsNullOrWhiteSpace(rel.HtmlUrl)
+                            ? $"https://github.com/{WinDeploy.App.AppInfo.Repo}/releases/latest" : rel.HtmlUrl;
+                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true });
+                    }
+                    catch { /* ignore */ }
+                }
+            });
+        }
+        catch { /* offline / rate-limited / no releases — stay quiet */ }
     }
 
     private NavItemViewModel? _selectedNav;
@@ -142,6 +179,7 @@ public sealed class MainViewModel : ObservableObject
                 if (settings.InstallPaths.TryGetValue(item.Id, out var p) && !string.IsNullOrWhiteSpace(p))
                     item.InstallPathOverride = p;
 
+        IconResolver.Init(_catalog, _repoRoot);
         Install.Initialize(_catalog, dir);
         ConfigSync.Initialize(_catalog, _resolver, _repoRoot);
         Export.Initialize(_catalog, _resolver, _repoRoot);
@@ -257,6 +295,7 @@ public sealed class MainViewModel : ObservableObject
         {
             "mingw" => InstallMinGwAsync(m),
             "mingw-builds" => InstallMingwBuildsAsync(m),
+            "ntpwedit" or "openspeedy" or "creaminstaller" => InstallFromGitHubReleaseAsync(m),
             _ => RunOpAsync(m, "install"),
         };
         vm.UpdateRequested += m => _ = ConfirmUpdateAndRun(m);
@@ -322,6 +361,81 @@ public sealed class MainViewModel : ObservableObject
         await RunOpAsync(item, "install");
     }
 
+    /// <summary>Pick a GitHub release tag (all tags, cached), then an asset, then download + install it:
+    /// zip/7z → portable-extract to ${ToolsDir}/&lt;id&gt;; otherwise run the downloaded installer.</summary>
+    private async Task InstallFromGitHubReleaseAsync(CatalogItem item)
+    {
+        var repo = GitHubRepoFromUrl(item.Homepage);
+        if (repo == null)
+        {
+            MessageBox.Show($"无法从主页地址识别 GitHub 仓库：\n{item.Homepage}", item.Name,
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        List<GhRelease> releases;
+        try { releases = await GitHub.ReleasesAsync(repo); }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"获取 {item.Name} 发布列表失败：{ex.Message}\n\n可前往项目发布页手动下载。",
+                item.Name, MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        if (releases.Count == 0)
+        {
+            MessageBox.Show($"{item.Name} 仓库 {repo} 暂无发布版。", item.Name, MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        var tagLabels = releases.Select(r =>
+            r.Tag + (r.Prerelease ? "  · 预发布" : "") +
+            (string.IsNullOrWhiteSpace(r.Name) || r.Name == r.Tag ? "" : "  · " + r.Name)).ToList();
+        var dlgTag = new Views.ChoiceDialog($"选择 {item.Name} 版本",
+            $"仓库 {repo} 共 {releases.Count} 个发布版（已缓存，避免频繁请求）。请选择版本：",
+            tagLabels, 0) { Owner = Application.Current.MainWindow };
+        if (dlgTag.ShowDialog() != true || dlgTag.SelectedIndex < 0) return;
+        var rel = releases[dlgTag.SelectedIndex];
+
+        if (rel.Assets.Count == 0)
+        {
+            MessageBox.Show($"{rel.Tag} 没有可下载的文件（仅源码）。", item.Name, MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        var assetLabels = rel.Assets.Select(a => $"{a.Name}   （{Mb(a.Size)}）").ToList();
+        var dlgAsset = new Views.ChoiceDialog($"选择文件 · {rel.Tag}",
+            "请选择要下载安装的文件（zip/7z 自动解压到工具目录，exe 直接运行安装）：",
+            assetLabels, 0) { Owner = Application.Current.MainWindow };
+        if (dlgAsset.ShowDialog() != true || dlgAsset.SelectedIndex < 0) return;
+        var asset = rel.Assets[dlgAsset.SelectedIndex];
+
+        var name = asset.Name.ToLowerInvariant();
+        if (name.EndsWith(".zip") || name.EndsWith(".7z"))
+        {
+            item.Install.Method = "portable";
+            item.Install.Url = asset.Url;
+            item.Install.ExtractTo = $"${{ToolsDir}}/{item.Id}";
+            item.Install.Strip = 0;
+            item.Install.Path = null;
+            item.Install.Sha256 = null;
+        }
+        else
+        {
+            item.Install.Method = "exe";
+            item.Install.Url = asset.Url;
+        }
+        await RunOpAsync(item, "install");
+    }
+
+    /// <summary>"https://github.com/owner/repo/releases" → "owner/repo", or null.</summary>
+    private static string? GitHubRepoFromUrl(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return null;
+        var m = System.Text.RegularExpressions.Regex.Match(url, @"github\.com/([^/]+)/([^/#?]+)",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        return m.Success ? $"{m.Groups[1].Value}/{m.Groups[2].Value}" : null;
+    }
+
     private async Task ConfirmDowngradeAndRun(CatalogItem item)
     {
         if (MessageBox.Show($"确定将 {item.Name} 降级到 {item.Version}？\n\n降级可能导致配置不兼容。",
@@ -379,6 +493,9 @@ public sealed class MainViewModel : ObservableObject
                 ctx.Step(msg);
                 outcome = StepOutcome.Fail(msg);
             }
+
+            if (op == "install" && outcome.Status == StepStatus.Ok)
+                ApplyToolEnv(item, ctx);
 
             AuditLog.Action($"{verb} {item.Name}：{Zh(outcome.Status)} {outcome.Message}".TrimEnd());
             Progress.Done(row, outcome.Status, outcome.Message);
@@ -526,6 +643,89 @@ public sealed class MainViewModel : ObservableObject
             : StepOutcome.Fail("重启失败：" + detail);
     }
 
+    // Runtime/toolchain items whose home directory should become an env var on first install.
+    private static readonly Dictionary<string, string> ToolHomeVars = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["mingw"] = "GCC_HOME", ["mingw-builds"] = "GCC_HOME", ["go"] = "GOROOT", ["jdk17"] = "JAVA_HOME",
+    };
+
+    /// <summary>On first install of mingw / go / java, set its home env var (GCC_HOME / GOROOT / JAVA_HOME)
+    /// to the install root and add its bin to PATH. Skips if the var is already set (respects the user).</summary>
+    private void ApplyToolEnv(CatalogItem item, EngineContext? ctx = null)
+    {
+        if (!ToolHomeVars.TryGetValue(item.Id, out var varName)) return;
+        if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable(varName, EnvironmentVariableTarget.User)))
+            return;   // 首次安装才设置；已存在则尊重用户现有配置
+
+        var home = ResolveToolHome(item);
+        if (home == null) { ctx?.Step($"未能确定 {varName} 安装路径，跳过环境变量设置"); return; }
+
+        WinDeploy.Core.Util.EnvPath.SetUserVar(varName, home);
+        Environment.SetEnvironmentVariable(varName, home);   // reflect into this process
+        var bin = Path.Combine(home, "bin");
+        var addedPath = Directory.Exists(bin) && WinDeploy.Core.Util.EnvPath.AddToUserPath(bin);
+        AuditLog.Action($"环境变量：{varName}={home}" + (addedPath ? $"；已加入 PATH：{bin}" : ""));
+        ctx?.Step($"已设置环境变量 {varName}={home}" + (addedPath ? "（并加入 PATH）" : ""));
+    }
+
+    /// <summary>The install root for a toolchain: the portable extract dir, else the folder above the
+    /// tool's bin (found on the registry PATH or common roots after a winget install).</summary>
+    private string? ResolveToolHome(CatalogItem item)
+    {
+        try
+        {
+            if (item.Install.Method == "portable" && item.Install.ExtractTo != null)
+            {
+                var d = _resolver.Resolve(item.InstallPathOverride ?? item.Install.ExtractTo);
+                if (Directory.Exists(d)) return d.TrimEnd('\\', '/');
+            }
+
+            var cmd = item.Detect?.Cmd;
+            if (string.IsNullOrWhiteSpace(cmd)) return null;
+            var exe = FindToolExe(cmd!, item.Id);
+            if (exe == null) return null;
+            var dir = Path.GetDirectoryName(exe);
+            if (dir == null) return null;
+            return string.Equals(Path.GetFileName(dir), "bin", StringComparison.OrdinalIgnoreCase)
+                ? Path.GetDirectoryName(dir) : dir;
+        }
+        catch { return null; }
+    }
+
+    /// <summary>Find a tool's exe right after a winget install: registry PATH (Machine+User, where winget
+    /// writes — the current process env is stale), then common install roots for go / java.</summary>
+    private static string? FindToolExe(string cmd, string id)
+    {
+        foreach (var target in new[] { EnvironmentVariableTarget.Machine, EnvironmentVariableTarget.User, EnvironmentVariableTarget.Process })
+        {
+            var path = Environment.GetEnvironmentVariable("PATH", target) ?? "";
+            foreach (var dir in path.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                try { var p = Path.Combine(Environment.ExpandEnvironmentVariables(dir), cmd + ".exe"); if (File.Exists(p)) return p; }
+                catch { /* bad path entry */ }
+            }
+        }
+
+        var roots = id == "go"
+            ? new[] { @"C:\Program Files\Go" }
+            : new[] { @"C:\Program Files\Java", @"C:\Program Files\Eclipse Adoptium", @"C:\Program Files\Microsoft" };
+        foreach (var root in roots)
+        {
+            try
+            {
+                if (File.Exists(Path.Combine(root, "bin", cmd + ".exe"))) return Path.Combine(root, "bin", cmd + ".exe");
+                if (!Directory.Exists(root)) continue;
+                foreach (var sub in Directory.GetDirectories(root))
+                {
+                    var p = Path.Combine(sub, "bin", cmd + ".exe");
+                    if (File.Exists(p)) return p;
+                }
+            }
+            catch { /* skip */ }
+        }
+        return null;
+    }
+
     /// <summary>Persist (or clear) an item's custom install location after a successful install/update so
     /// it survives a restart. Only methods that have a meaningful install folder are remembered.</summary>
     private static void PersistInstallPath(CatalogItem item)
@@ -587,7 +787,7 @@ public sealed class MainViewModel : ObservableObject
                 {
                     if (r.Message != "already installed")
                         AuditLog.Action($"安装 {r.Item.Name}：{Zh(r.Status)} {r.Message}".TrimEnd());
-                    if (r.Status == StepStatus.Ok) PersistInstallPath(r.Item);
+                    if (r.Status == StepStatus.Ok) { PersistInstallPath(r.Item); ApplyToolEnv(r.Item); }
                     dispatcher.Invoke(() => { if (rows.TryGetValue(r.Item.Id, out var row)) Progress.Done(row, r.Status, r.Message); });
                 });
 

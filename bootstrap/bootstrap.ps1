@@ -1,11 +1,11 @@
 #requires -version 5
 # WinDeploy 引导 —— 在全新设备上一行启动：
-#   irm https://raw.githubusercontent.com/Tommy131/win-provision/main/bootstrap/bootstrap.ps1 | iex
+#   irm https://raw.githubusercontent.com/Tommy131/owo-win-deployer/main/bootstrap/bootstrap.ps1 | iex
 $ErrorActionPreference = 'Stop'
 
-$Root = Join-Path $env:USERPROFILE '.win-provision'
-$Repo = 'https://github.com/Tommy131/win-provision.git'
-$ExeUrl = 'https://github.com/Tommy131/win-provision/releases/latest/download/WinDeploy.exe'
+$Root = Join-Path $env:USERPROFILE '.owo-win-deployer'
+$Repo = 'https://github.com/Tommy131/owo-win-deployer.git'
+$ExeUrl = 'https://github.com/Tommy131/owo-win-deployer/releases/latest/download/WinDeploy.exe'
 
 function Have($c) { [bool](Get-Command $c -ErrorAction SilentlyContinue) }
 

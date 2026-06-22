@@ -68,20 +68,18 @@ public sealed class AppProcGroupViewModel : ObservableObject
     public bool ShowLetter => IconImage == null;
     public string Badge => Model.Name.Length > 0 ? Model.Name[..1].ToUpperInvariant() : "?";
 
-    private void LoadIcon(string repoRoot)
+    private void LoadIcon(string repoRoot) => IconImage = IconResolver.FromCatalogId(Model.Id);
+
+    /// <summary>If no bundled icon was found, extract the running app's real icon from its .exe.</summary>
+    public void EnsureIconFromExe(string? exePath)
     {
+        if (IconImage != null || string.IsNullOrWhiteSpace(exePath)) return;
         try
         {
-            var path = Path.Combine(repoRoot, "assets", "icons", Model.Id + ".png");
-            if (!File.Exists(path)) return;
-            var bmp = new BitmapImage();
-            bmp.BeginInit();
-            bmp.CacheOption = BitmapCacheOption.OnLoad;
-            bmp.CreateOptions = BitmapCreateOptions.IgnoreColorProfile;
-            bmp.UriSource = new Uri(path);
-            bmp.EndInit();
-            bmp.Freeze();
-            IconImage = bmp;
+            IconImage = IconExtractor.FromExe(exePath);
+            OnPropertyChanged(nameof(IconImage));
+            OnPropertyChanged(nameof(HasIcon));
+            OnPropertyChanged(nameof(ShowLetter));
         }
         catch { /* letter fallback */ }
     }
@@ -200,6 +198,7 @@ public sealed class ProcessManagerViewModel : ObservableObject
             if (!_groups.TryGetValue(id, out var g))
             {
                 g = new AppProcGroupViewModel(item, _repoRoot);
+                g.EnsureIconFromExe(procs.FirstOrDefault()?.Path);   // exe fallback when no bundled icon
                 _groups[id] = g;
                 Groups.Add(g);
             }

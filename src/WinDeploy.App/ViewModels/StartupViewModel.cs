@@ -15,7 +15,8 @@ public sealed class StartupRowViewModel : ObservableObject
     {
         Entry = e;
         Badge = e.Name.Length > 0 ? e.Name[..1].ToUpperInvariant() : "?";
-        try { var exe = e.ExePath; if (!string.IsNullOrWhiteSpace(exe)) IconImage = IconExtractor.FromExe(exe); }
+        // Prefer the bundled icon cache (matched by name/exe to a catalog item); else the exe's real icon.
+        try { IconImage = IconResolver.Resolve(e.Name, e.ExePath); }
         catch { /* letter fallback */ }
     }
 

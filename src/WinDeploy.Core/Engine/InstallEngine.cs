@@ -14,8 +14,8 @@ public sealed class InstallEngine
         _installers = new IInstaller[]
         {
             new WingetInstaller(), new WingetBundleInstaller(), new PortableInstaller(),
-            new GitInstaller(), new ExeInstaller(), new ManualInstaller(),
-            new CondaInstaller(), new VscodeExtInstaller(), new ScriptInstaller(),
+            new GitInstaller(), new ExeInstaller(), new LocalInstaller(), new ManualInstaller(),
+            new GithubReleaseInstaller(), new CondaInstaller(), new VscodeExtInstaller(), new ScriptInstaller(),
         }.ToDictionary(i => i.Method, StringComparer.OrdinalIgnoreCase);
     }
 
