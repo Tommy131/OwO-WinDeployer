@@ -17,34 +17,34 @@
       <StackPanel>
         <Grid>
           <TextBlock Text="{Binding Overall}" FontSize="14" FontWeight="SemiBold" />
-          <TextBlock Text="{Binding Eta}" FontSize="13" Foreground="{StaticResource TextSecondary}"
+          <TextBlock Text="{Binding Eta}" FontSize="13" Foreground="{DynamicResource TextSecondary}"
                      HorizontalAlignment="Right" />
         </Grid>
         <ProgressBar Height="8" Margin="0,10,0,0" Minimum="0" Maximum="100" Value="{Binding Percent}"
-                     Foreground="{StaticResource Accent}" Background="{StaticResource PageBg}" BorderThickness="0" />
+                     Foreground="{DynamicResource Accent}" Background="{DynamicResource PageBg}" BorderThickness="0" />
         <UniformGrid Columns="4" Margin="0,12,0,0">
-          <Border Background="{StaticResource PageBg}" CornerRadius="8" Margin="0,0,6,0" Padding="8">
+          <Border Background="{DynamicResource PageBg}" CornerRadius="8" Margin="0,0,6,0" Padding="8">
             <StackPanel>
               <TextBlock Text="{Binding OkCount}" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center" />
-              <TextBlock Text="成功" FontSize="11" Foreground="{StaticResource TextSecondary}" HorizontalAlignment="Center" />
+              <TextBlock Text="成功" FontSize="11" Foreground="{DynamicResource TextSecondary}" HorizontalAlignment="Center" />
             </StackPanel>
           </Border>
-          <Border Background="{StaticResource PageBg}" CornerRadius="8" Margin="3,0" Padding="8">
+          <Border Background="{DynamicResource PageBg}" CornerRadius="8" Margin="3,0" Padding="8">
             <StackPanel>
               <TextBlock Text="{Binding RunningCount}" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center" />
-              <TextBlock Text="进行中" FontSize="11" Foreground="{StaticResource TextSecondary}" HorizontalAlignment="Center" />
+              <TextBlock Text="进行中" FontSize="11" Foreground="{DynamicResource TextSecondary}" HorizontalAlignment="Center" />
             </StackPanel>
           </Border>
-          <Border Background="{StaticResource PageBg}" CornerRadius="8" Margin="3,0" Padding="8">
+          <Border Background="{DynamicResource PageBg}" CornerRadius="8" Margin="3,0" Padding="8">
             <StackPanel>
               <TextBlock Text="{Binding QueuedCount}" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center" />
-              <TextBlock Text="排队" FontSize="11" Foreground="{StaticResource TextSecondary}" HorizontalAlignment="Center" />
+              <TextBlock Text="排队" FontSize="11" Foreground="{DynamicResource TextSecondary}" HorizontalAlignment="Center" />
             </StackPanel>
           </Border>
-          <Border Background="{StaticResource PageBg}" CornerRadius="8" Margin="6,0,0,0" Padding="8">
+          <Border Background="{DynamicResource PageBg}" CornerRadius="8" Margin="6,0,0,0" Padding="8">
             <StackPanel>
               <TextBlock Text="{Binding FailedCount}" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center" />
-              <TextBlock Text="失败" FontSize="11" Foreground="{StaticResource TextSecondary}" HorizontalAlignment="Center" />
+              <TextBlock Text="失败" FontSize="11" Foreground="{DynamicResource TextSecondary}" HorizontalAlignment="Center" />
             </StackPanel>
           </Border>
         </UniformGrid>
@@ -53,10 +53,10 @@
 
     <!-- Current task -->
     <Border Grid.Row="2" Style="{StaticResource Card}" Padding="14" Margin="0,12,0,0"
-            BorderBrush="{StaticResource Accent}"
+            BorderBrush="{DynamicResource Accent}"
             Visibility="{Binding IsRunning, Converter={StaticResource BoolToVis}}">
       <StackPanel>
-        <TextBlock Text="正在安装" FontSize="12" Foreground="{StaticResource TextSecondary}" />
+        <TextBlock Text="{Binding CurrentLabel}" FontSize="12" Foreground="{DynamicResource TextSecondary}" />
         <TextBlock Text="{Binding Current}" FontSize="15" FontWeight="SemiBold" Margin="0,2,0,0" />
       </StackPanel>
     </Border>
@@ -67,32 +67,32 @@
         <ItemsControl ItemsSource="{Binding Items}">
           <ItemsControl.ItemTemplate>
             <DataTemplate>
-              <Border BorderBrush="{StaticResource BorderSoft}" BorderThickness="0,0,0,1" Padding="2,9">
+              <Border BorderBrush="{DynamicResource BorderSoft}" BorderThickness="0,0,0,1" Padding="2,9">
                 <Grid>
                   <StackPanel Orientation="Horizontal">
                     <TextBlock Text="{Binding Name}" FontSize="13" />
-                    <TextBlock Text="{Binding Method}" FontSize="11" Foreground="{StaticResource TextTertiary}"
+                    <TextBlock Text="{Binding Method}" FontSize="11" Foreground="{DynamicResource TextTertiary}"
                                Margin="8,0,0,0" VerticalAlignment="Center" />
                   </StackPanel>
                   <Border x:Name="Pill" HorizontalAlignment="Right" CornerRadius="10" Padding="9,2"
-                          Background="{StaticResource PageBg}">
+                          Background="{DynamicResource PageBg}">
                     <TextBlock x:Name="PillText" Text="{Binding Status}" FontSize="11"
-                               Foreground="{StaticResource TextSecondary}" />
+                               Foreground="{DynamicResource TextSecondary}" />
                   </Border>
                 </Grid>
               </Border>
               <DataTemplate.Triggers>
                 <DataTrigger Binding="{Binding Kind}" Value="ok">
-                  <Setter TargetName="Pill" Property="Background" Value="{StaticResource OkBg}" />
-                  <Setter TargetName="PillText" Property="Foreground" Value="{StaticResource OkFg}" />
+                  <Setter TargetName="Pill" Property="Background" Value="{DynamicResource OkBg}" />
+                  <Setter TargetName="PillText" Property="Foreground" Value="{DynamicResource OkFg}" />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding Kind}" Value="running">
-                  <Setter TargetName="Pill" Property="Background" Value="{StaticResource AccentBg}" />
-                  <Setter TargetName="PillText" Property="Foreground" Value="{StaticResource Accent}" />
+                  <Setter TargetName="Pill" Property="Background" Value="{DynamicResource AccentBg}" />
+                  <Setter TargetName="PillText" Property="Foreground" Value="{DynamicResource Accent}" />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding Kind}" Value="failed">
-                  <Setter TargetName="Pill" Property="Background" Value="{StaticResource FailBg}" />
-                  <Setter TargetName="PillText" Property="Foreground" Value="{StaticResource FailFg}" />
+                  <Setter TargetName="Pill" Property="Background" Value="{DynamicResource FailBg}" />
+                  <Setter TargetName="PillText" Property="Foreground" Value="{DynamicResource FailFg}" />
                 </DataTrigger>
               </DataTemplate.Triggers>
             </DataTemplate>
@@ -102,10 +102,10 @@
     </Border>
 
     <!-- Log -->
-    <Border Grid.Row="4" Background="{StaticResource PageBg}" CornerRadius="8" Padding="12" Margin="0,12,0,0" MaxHeight="120">
+    <Border Grid.Row="4" Background="{DynamicResource PageBg}" CornerRadius="8" Padding="12" Margin="0,12,0,0" MaxHeight="120">
       <ScrollViewer VerticalScrollBarVisibility="Auto">
         <TextBlock Text="{Binding Log}" FontFamily="Consolas" FontSize="12"
-                   Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap" />
+                   Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" />
       </ScrollViewer>
     </Border>
   </Grid>

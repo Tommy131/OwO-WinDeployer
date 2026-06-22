@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="WinDeploy · 软件安装中心" Height="700" Width="1000"
         MinHeight="560" MinWidth="820"
-        Background="{StaticResource PageBg}"
+        Background="{DynamicResource PageBg}"
         WindowStartupLocation="CenterScreen">
 
   <Grid>
@@ -13,11 +13,11 @@
     </Grid.ColumnDefinitions>
 
     <!-- Left nav rail -->
-    <Border Grid.Column="0" Background="#FBFBF9" BorderBrush="{StaticResource BorderSoft}" BorderThickness="0,0,1,0">
+    <Border Grid.Column="0" Background="{DynamicResource NavBg}" BorderBrush="{DynamicResource BorderSoft}" BorderThickness="0,0,1,0">
       <DockPanel Margin="10,16,10,10">
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="6,0,0,18">
           <TextBlock Text="&#xE950;" FontFamily="Segoe MDL2 Assets" FontSize="18"
-                     Foreground="{StaticResource Accent}" VerticalAlignment="Center" />
+                     Foreground="{DynamicResource Accent}" VerticalAlignment="Center" />
           <TextBlock Text="WinDeploy" FontSize="15" FontWeight="SemiBold" Margin="8,0,0,0" VerticalAlignment="Center" />
         </StackPanel>
 
@@ -33,14 +33,14 @@
                     <Border x:Name="Bd" CornerRadius="8" Padding="11,9" Background="Transparent">
                       <StackPanel Orientation="Horizontal">
                         <TextBlock Text="{Binding Glyph}" FontFamily="Segoe MDL2 Assets" FontSize="16"
-                                   Width="22" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" />
-                        <TextBlock Text="{Binding Label}" FontSize="13" Foreground="{StaticResource TextSecondary}"
+                                   Width="22" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding Label}" FontSize="13" Foreground="{DynamicResource TextSecondary}"
                                    VerticalAlignment="Center" />
                       </StackPanel>
                     </Border>
                     <ControlTemplate.Triggers>
                       <Trigger Property="IsSelected" Value="True">
-                        <Setter TargetName="Bd" Property="Background" Value="{StaticResource AccentBg}" />
+                        <Setter TargetName="Bd" Property="Background" Value="{DynamicResource AccentBg}" />
                       </Trigger>
                     </ControlTemplate.Triggers>
                   </ControlTemplate>

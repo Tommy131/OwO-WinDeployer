@@ -20,6 +20,7 @@ public sealed class WingetInstaller : IInstaller
         };
         if (ins.Scope != null) { args.Add("--scope"); args.Add(ins.Scope); }
         if (item.Version != null) { args.Add("--version"); args.Add(item.Version); }
+        if (item.InstallPathOverride != null) { args.Add("--location"); args.Add(ctx.Path.Resolve(item.InstallPathOverride)); }
         var r = await Proc.RunAsync("winget", args, ct: ctx.Ct);
         return r.Ok ? StepOutcome.Done() : StepOutcome.Fail($"winget exit {r.ExitCode}");
     }
@@ -56,7 +57,7 @@ public sealed class PortableInstaller : IInstaller
         var ins = item.Install;
         if (ins.Url is null || ins.ExtractTo is null) return StepOutcome.Fail("portable needs url + extractTo");
 
-        var dest = ctx.Path.Resolve(ins.ExtractTo);
+        var dest = ctx.Path.Resolve(item.InstallPathOverride ?? ins.ExtractTo);
         var tmpZip = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"windeploy_{item.Id}.zip");
         var tmpEx = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"windeploy_{item.Id}_x");
 
@@ -113,7 +114,7 @@ public sealed class GitInstaller : IInstaller
     {
         var ins = item.Install;
         if (ins.Repo is null || ins.Dest is null) return StepOutcome.Fail("git needs repo + dest");
-        var dest = ctx.Path.Resolve(ins.Dest);
+        var dest = ctx.Path.Resolve(item.InstallPathOverride ?? ins.Dest);
 
         ProcResult r;
         if (Directory.Exists(System.IO.Path.Combine(dest, ".git")))

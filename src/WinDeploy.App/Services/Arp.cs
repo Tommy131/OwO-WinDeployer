@@ -22,6 +22,9 @@ public static class Arp
 {
     private static List<ArpEntry>? _cache;
 
+    /// <summary>Drop the cached registry snapshot so the next read reflects installs/updates/uninstalls.</summary>
+    public static void Refresh() => _cache = null;
+
     public static IReadOnlyList<ArpEntry> All()
     {
         if (_cache != null) return _cache;

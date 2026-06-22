@@ -23,6 +23,8 @@ public sealed class ProgressViewModel : ObservableObject
     private string _current = "";
     public string Current { get => _current; set => Set(ref _current, value); }
 
+    public string CurrentLabel => $"正在{_verb}";
+
     private string _eta = "";
     public string Eta { get => _eta; set => Set(ref _eta, value); }
 
@@ -37,8 +39,11 @@ public sealed class ProgressViewModel : ObservableObject
     public int RunningCount => Items.Count(i => i.Kind == "running");
     public int QueuedCount => Items.Count(i => i.Kind == "queued");
 
-    public void Begin(IReadOnlyList<PlanItem> plan)
+    private string _verb = "安装";
+
+    public void Begin(IReadOnlyList<PlanItem> plan, string verb = "安装")
     {
+        _verb = verb;
         Items.Clear();
         _byId.Clear();
         foreach (var pi in plan)
@@ -57,17 +62,18 @@ public sealed class ProgressViewModel : ObservableObject
         IsRunning = true;
         Percent = 0;
         Current = "";
-        Overall = $"待装 {_total} 项";
+        Overall = $"待{_verb} {_total} 项";
         Log = "";
         _sw.Restart();
+        OnPropertyChanged(nameof(CurrentLabel));
         RaiseCounts();
     }
 
     public void OnStart(PlanItem pi)
     {
         Current = pi.Item.Name;
-        if (_byId.TryGetValue(pi.Item.Id, out var vm)) { vm.Status = "安装中"; vm.Kind = "running"; }
-        Append($"→ 安装 {pi.Item.Name} …");
+        if (_byId.TryGetValue(pi.Item.Id, out var vm)) { vm.Status = $"{_verb}中"; vm.Kind = "running"; }
+        Append($"→ {_verb} {pi.Item.Name} …");
         RaiseCounts();
     }
 
@@ -89,7 +95,7 @@ public sealed class ProgressViewModel : ObservableObject
             Percent = _total == 0 ? 100 : Math.Round(_completed * 100.0 / _total);
             Eta = EstimateEta();
             if (r.Status == StepStatus.Failed) Append($"✗ {r.Item.Name}: {r.Message}");
-            else Append($"✓ {r.Item.Name}");
+            else Append(string.IsNullOrEmpty(r.Message) ? $"✓ {r.Item.Name}" : $"✓ {r.Item.Name} — {r.Message}");
         }
         Overall = $"进度 {_completed} / {_total}";
         RaiseCounts();

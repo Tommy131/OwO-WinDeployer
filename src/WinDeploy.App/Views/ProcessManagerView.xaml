@@ -1,0 +1,74 @@
+<UserControl x:Class="WinDeploy.App.Views.ProcessManagerView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Grid Margin="24,18,24,18">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+
+    <StackPanel Grid.Row="0">
+      <TextBlock Text="进程管理" FontSize="20" FontWeight="SemiBold" />
+      <TextBlock Text="仅针对软件中心列表内的软件：查看正在运行的进程，结束单个 / 全部进程或重启。" FontSize="13"
+                 Foreground="{DynamicResource TextSecondary}" Margin="0,3,0,0" />
+    </StackPanel>
+
+    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,0">
+      <Button Content="刷新" Style="{StaticResource MiniButton}" Command="{Binding RefreshCommand}" />
+      <TextBlock Text="{Binding Summary}" FontSize="12" Foreground="{DynamicResource TextTertiary}"
+                 VerticalAlignment="Center" Margin="16,0,0,0" />
+    </StackPanel>
+
+    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Margin="0,12,0,0">
+      <ItemsControl ItemsSource="{Binding Groups}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <Border Style="{StaticResource Card}" Padding="14" Margin="0,0,0,10">
+              <StackPanel>
+                <Grid Margin="0,0,0,8">
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding CountText}" FontSize="12" Foreground="{DynamicResource TextTertiary}"
+                               Margin="10,0,0,0" VerticalAlignment="Center" />
+                  </StackPanel>
+                  <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="↻ 重启" Style="{StaticResource MiniButton}"
+                            Command="{Binding DataContext.RestartCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            CommandParameter="{Binding}" />
+                    <Button Content="■ 结束全部" Style="{StaticResource MiniButton}" Margin="8,0,0,0"
+                            Command="{Binding DataContext.EndAllCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            CommandParameter="{Binding}" />
+                  </StackPanel>
+                </Grid>
+
+                <ItemsControl ItemsSource="{Binding Processes}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <Grid Margin="0,3">
+                        <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="*" />
+                          <ColumnDefinition Width="92" />
+                          <ColumnDefinition Width="92" />
+                          <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="{Binding Name}" FontFamily="Consolas" FontSize="12.5" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1" Text="{Binding Pid, StringFormat=PID {0}}" FontSize="12"
+                                   Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="2" Text="{Binding MemText}" FontSize="12"
+                                   Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" />
+                        <Button Grid.Column="3" Content="结束" Style="{StaticResource MiniButton}"
+                                Command="{Binding DataContext.EndProcessCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                CommandParameter="{Binding}" />
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

@@ -20,6 +20,14 @@ public sealed class InstallEngine
 
     public IReadOnlyCollection<string> Methods => _installers.Keys;
 
+    /// <summary>Run a single item's installer directly (used for one-off install / update reruns).</summary>
+    public async Task<StepOutcome> RunOneAsync(CatalogItem item, EngineContext ctx)
+    {
+        if (!_installers.TryGetValue(item.Install.Method, out var inst))
+            return StepOutcome.Fail($"unknown method '{item.Install.Method}'");
+        return await inst.RunAsync(item, ctx);
+    }
+
     public async Task<List<PlanItem>> BuildPlanAsync(IEnumerable<CatalogItem> selection, PathResolver pr)
     {
         var plan = new List<PlanItem>();

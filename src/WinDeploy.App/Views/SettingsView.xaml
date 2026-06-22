@@ -10,7 +10,7 @@
     <StackPanel Grid.Row="0">
       <TextBlock Text="设置" FontSize="20" FontWeight="SemiBold" />
       <TextBlock Text="路径变量让清单跨设备通用；脱敏关键词在导出时生效。" FontSize="13"
-                 Foreground="{StaticResource TextSecondary}" Margin="0,3,0,0" />
+                 Foreground="{DynamicResource TextSecondary}" Margin="0,3,0,0" />
     </StackPanel>
 
     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="0,12,0,0">
@@ -18,12 +18,23 @@
 
         <Border Style="{StaticResource Card}" Padding="16">
           <StackPanel>
+            <TextBlock Text="外观 · 主题" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,10" />
+            <StackPanel Orientation="Horizontal">
+              <RadioButton Content="跟随系统" IsChecked="{Binding IsThemeSystem}" GroupName="theme" />
+              <RadioButton Content="浅色" IsChecked="{Binding IsThemeLight}" GroupName="theme" Margin="20,0,0,0" />
+              <RadioButton Content="深色" IsChecked="{Binding IsThemeDark}" GroupName="theme" Margin="20,0,0,0" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <Border Style="{StaticResource Card}" Padding="16" Margin="0,12,0,0">
+          <StackPanel>
             <TextBlock Text="路径变量" FontSize="14" FontWeight="SemiBold" />
             <TextBlock Text="便携工具的安装根目录，支持 %ENV% 变量。改后下次启动生效。" FontSize="12"
-                       Foreground="{StaticResource TextSecondary}" Margin="0,2,0,10" />
-            <TextBlock Text="DevRoot（git/Flutter 等）" FontSize="12" Foreground="{StaticResource TextSecondary}" />
+                       Foreground="{DynamicResource TextSecondary}" Margin="0,2,0,10" />
+            <TextBlock Text="DevRoot（git/Flutter 等）" FontSize="12" Foreground="{DynamicResource TextSecondary}" />
             <TextBox Text="{Binding DevRoot, UpdateSourceTrigger=PropertyChanged}" Height="34" VerticalContentAlignment="Center" Padding="8,0" Margin="0,3,0,10" />
-            <TextBlock Text="ToolsDir（Node/MinGW/ffmpeg 等便携包）" FontSize="12" Foreground="{StaticResource TextSecondary}" />
+            <TextBlock Text="ToolsDir（Node/MinGW/ffmpeg 等便携包）" FontSize="12" Foreground="{DynamicResource TextSecondary}" />
             <TextBox Text="{Binding ToolsDir, UpdateSourceTrigger=PropertyChanged}" Height="34" VerticalContentAlignment="Center" Padding="8,0" Margin="0,3,0,0" />
           </StackPanel>
         </Border>
@@ -31,9 +42,9 @@
         <Border Style="{StaticResource Card}" Padding="16" Margin="0,12,0,0">
           <StackPanel>
             <TextBlock Text="仓库与下载" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,10" />
-            <TextBlock Text="仓库地址（sync/save 与引导使用）" FontSize="12" Foreground="{StaticResource TextSecondary}" />
+            <TextBlock Text="仓库地址（sync/save 与引导使用）" FontSize="12" Foreground="{DynamicResource TextSecondary}" />
             <TextBox Text="{Binding RepoUrl, UpdateSourceTrigger=PropertyChanged}" Height="34" VerticalContentAlignment="Center" Padding="8,0" Margin="0,3,0,10" />
-            <TextBlock Text="下载镜像（可选，便携包/winget 加速；留空用官方源）" FontSize="12" Foreground="{StaticResource TextSecondary}" />
+            <TextBlock Text="下载镜像（可选，便携包/winget 加速；留空用官方源）" FontSize="12" Foreground="{DynamicResource TextSecondary}" />
             <TextBox Text="{Binding Mirror, UpdateSourceTrigger=PropertyChanged}" Height="34" VerticalContentAlignment="Center" Padding="8,0" Margin="0,3,0,0" />
           </StackPanel>
         </Border>
@@ -42,7 +53,7 @@
           <StackPanel>
             <TextBlock Text="安全 · 脱敏关键词" FontSize="14" FontWeight="SemiBold" />
             <TextBlock Text="导出配置时，键名包含这些词的值会被替换为 ***REDACTED***（内置 token/密码已自动处理）。逗号或空格分隔。" FontSize="12"
-                       Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap" Margin="0,2,0,10" />
+                       Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Margin="0,2,0,10" />
             <TextBox Text="{Binding RedactKeywords, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap"
                      Height="68" VerticalContentAlignment="Top" Padding="8,6" />
           </StackPanel>
@@ -50,16 +61,16 @@
 
         <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
           <Button Content="保存设置" Style="{StaticResource PrimaryButton}" Command="{Binding SaveCommand}" />
-          <TextBlock Text="{Binding Note}" Foreground="{StaticResource OkFg}" VerticalAlignment="Center" Margin="14,0,0,0" />
+          <TextBlock Text="{Binding Note}" Foreground="{DynamicResource OkFg}" VerticalAlignment="Center" Margin="14,0,0,0" />
         </StackPanel>
 
-        <Border Background="{StaticResource PageBg}" CornerRadius="8" Padding="12" Margin="0,14,0,0">
+        <Border Background="{DynamicResource PageBg}" CornerRadius="8" Padding="12" Margin="0,14,0,0">
           <StackPanel>
             <TextBlock Text="关于" FontSize="13" FontWeight="SemiBold" Margin="0,0,0,6" />
-            <TextBlock FontSize="12" Foreground="{StaticResource TextSecondary}">
+            <TextBlock FontSize="12" Foreground="{DynamicResource TextSecondary}">
               <Run Text="WinDeploy · Windows 环境复刻器" />
             </TextBlock>
-            <TextBlock FontSize="12" Foreground="{StaticResource TextTertiary}" Margin="0,3,0,0">
+            <TextBlock FontSize="12" Foreground="{DynamicResource TextTertiary}" Margin="0,3,0,0">
               <Run Text="设置文件：" /><Run Text="{Binding SettingsPath, Mode=OneWay}" />
             </TextBlock>
           </StackPanel>

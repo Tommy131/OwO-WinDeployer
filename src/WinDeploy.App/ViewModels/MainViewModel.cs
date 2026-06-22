@@ -22,20 +22,31 @@ public sealed class MainViewModel : ObservableObject
     public ProgressViewModel Progress { get; } = new();
     public ConfigSyncViewModel ConfigSync { get; } = new();
     public ExportViewModel Export { get; } = new();
+    public EnvVarsViewModel EnvVars { get; } = new();
+    public TerminalViewModel Terminal { get; } = new();
+    public ProcessManagerViewModel Processes { get; } = new();
+    public LogViewModel Logs { get; } = new();
     public SettingsViewModel Settings { get; } = new();
 
     public MainViewModel()
     {
         Install.StartRequested += OnStartRequested;
+        Install.UpdateRequested += OnUpdateRequested;
         Install.DetailRequested += OnDetailRequested;
+        Install.LaunchRequested += item => _ = RunOpAsync(item.Model, "launch");
+        Processes.OperationRequested += (item, op) => _ = RunOpAsync(item, op);
         Settings.Saved += () => Secrets.ExtraKeywords = SettingsViewModel.ParseKeywords(Settings.RedactKeywords);
         Load();
 
-        NavItems.Add(new NavItemViewModel("", "软件安装中心", Install));
-        NavItems.Add(new NavItemViewModel("", "配置同步", ConfigSync));
-        NavItems.Add(new NavItemViewModel("", "运行进度", Progress));
-        NavItems.Add(new NavItemViewModel("", "导出", Export));
-        NavItems.Add(new NavItemViewModel("", "设置", Settings));
+        NavItems.Add(new NavItemViewModel("", "软件安装中心", Install));
+        NavItems.Add(new NavItemViewModel("", "配置同步", ConfigSync));
+        NavItems.Add(new NavItemViewModel("", "运行进度", Progress));
+        NavItems.Add(new NavItemViewModel("", "进程管理", Processes));
+        NavItems.Add(new NavItemViewModel("", "导出", Export));
+        NavItems.Add(new NavItemViewModel("", "环境变量", EnvVars));
+        NavItems.Add(new NavItemViewModel("", "终端", Terminal));
+        NavItems.Add(new NavItemViewModel("", "日志", Logs));
+        NavItems.Add(new NavItemViewModel("", "设置", Settings));
         SelectedNav = NavItems[0];
     }
 
@@ -57,6 +68,7 @@ public sealed class MainViewModel : ObservableObject
 
         var path = Path.Combine(dir, "catalog.json");
         _repoRoot = Path.GetDirectoryName(dir)!;
+        Terminal.WorkingDir = _repoRoot;
         try { _catalog = CatalogLoader.Load(path); }
         catch (Exception ex) { Install.LoadError = ex.Message; Install.IsLoading = false; return; }
 
@@ -70,10 +82,11 @@ public sealed class MainViewModel : ObservableObject
         Install.Initialize(_catalog, dir);
         ConfigSync.Initialize(_catalog, _resolver, _repoRoot);
         Export.Initialize(_catalog, _resolver, _repoRoot);
+        Processes.Initialize(_catalog, _resolver);
         _ = DetectAllAsync();
     }
 
-    /// <summary>Detect every item (throttled-parallel) BEFORE revealing the list.</summary>
+    /// <summary>Detect every item (throttled-parallel) BEFORE revealing the list, then prefetch detail.</summary>
     private async Task DetectAllAsync()
     {
         var items = Install.Groups.SelectMany(g => g.Items).ToList();
@@ -116,19 +129,175 @@ public sealed class MainViewModel : ObservableObject
     }
 
     private void OnDetailRequested(AppItemViewModel item)
-        => Current = new DetailViewModel(item, back: () => Current = Install);
+    {
+        var vm = new DetailViewModel(item, _resolver, back: () => Current = Install);
+        vm.InstallRequested += m => _ = RunOpAsync(m, "install");
+        vm.UpdateRequested += m => _ = ConfirmUpdateAndRun(m);
+        vm.UninstallRequested += (m, purge) => _ = RunOpAsync(m, "uninstall", purge);
+        vm.LaunchRequested += m => _ = RunOpAsync(m, "launch");
+        vm.StopRequested += m => _ = RunOpAsync(m, "stop");
+        vm.RestartRequested += m => _ = RunOpAsync(m, "restart");
+        Current = vm;
+    }
+
+    private async Task ConfirmUpdateAndRun(CatalogItem item)
+    {
+        if (MessageBox.Show($"是否检查并更新 {item.Name}？\n\n（若已是最新版本会提示「已是最新」）",
+                "更新", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+        await RunOpAsync(item, "update");
+    }
+
+    private static string Zh(StepStatus s) => s switch
+    {
+        StepStatus.Ok => "成功", StepStatus.Failed => "失败", _ => "跳过",
+    };
+
+    private static string Verb(string op) => op switch
+    {
+        "install" => "安装", "update" => "更新", "uninstall" => "卸载",
+        "launch" => "启动", "stop" => "结束", "restart" => "重启", _ => "操作",
+    };
+
+    /// <summary>Run ONE operation, mirrored on the 运行进度 page (auto-navigated to).</summary>
+    private async Task RunOpAsync(CatalogItem item, string op, bool purge = false)
+    {
+        SelectedNav = NavItems.First(n => ReferenceEquals(n.Page, Progress));
+        var dispatcher = Application.Current.Dispatcher;
+        var verb = Verb(op);
+        var pi = new PlanItem { Item = item, Status = PlanStatus.ToInstall };
+        Progress.Begin(new[] { pi }, verb);
+        Progress.OnStart(pi);
+
+        var ctx = new EngineContext { Path = _resolver, RepoRoot = _repoRoot, Ct = CancellationToken.None };
+        StepOutcome outcome;
+        try
+        {
+            outcome = op switch
+            {
+                "install" => await _engine.RunOneAsync(item, ctx),
+                "update" => await Updater.UpdateAsync(item, ctx),
+                "uninstall" => await Uninstaller.UninstallAsync(item, _resolver, purge),
+                "launch" => await Task.Run(() => LaunchOp(item)),
+                "stop" => await Task.Run(() => StopOp(item)),
+                "restart" => await RestartOp(item),
+                _ => StepOutcome.Fail("未知操作"),
+            };
+        }
+        catch (Exception ex) { outcome = StepOutcome.Fail(ex.Message); }
+
+        var res = new RunResult { Item = item, Status = outcome.Status, Message = outcome.Message };
+        AuditLog.Action($"{verb} {item.Name}：{Zh(res.Status)} {res.Message}".TrimEnd());
+        Progress.OnDone(res);
+        Progress.Complete();
+
+        if (op is "install" or "update" or "uninstall")
+        {
+            Arp.Refresh();
+            DetailService.Invalidate(item.Id);
+            await RefreshInstalledFlag(item);
+        }
+    }
+
+    private StepOutcome LaunchOp(CatalogItem item)
+    {
+        var ok = Launcher.TryLaunch(item, _resolver, out var detail);
+        return ok ? StepOutcome.Done("已启动 " + detail) : StepOutcome.Fail(detail);
+    }
+
+    private StepOutcome StopOp(CatalogItem item)
+    {
+        var n = ProcessControl.KillAll(item, _resolver);
+        return StepOutcome.Done(n > 0 ? $"已结束 {n} 个进程" : "没有正在运行的进程");
+    }
+
+    private async Task<StepOutcome> RestartOp(CatalogItem item)
+    {
+        var n = await Task.Run(() => ProcessControl.KillAll(item, _resolver));
+        await Task.Delay(600);
+        var (ok, detail) = await Task.Run(() =>
+        {
+            var r = Launcher.TryLaunch(item, _resolver, out var d);
+            return (r, d);
+        });
+        return ok
+            ? StepOutcome.Done($"已重启（结束 {n} 个进程后启动）")
+            : StepOutcome.Fail("重启失败：" + detail);
+    }
+
+    private async Task RefreshInstalledFlag(CatalogItem item)
+    {
+        var vm = Install.Groups.SelectMany(g => g.Items).FirstOrDefault(i => i.Id == item.Id);
+        if (vm == null) return;
+        try { vm.Installed = await Detection.IsInstalledAsync(item, _resolver); }
+        catch { /* leave as-is */ }
+    }
 
     private async Task RunAsync(List<CatalogItem> selected)
     {
         var dispatcher = Application.Current.Dispatcher;
+        AuditLog.Action($"开始安装 {selected.Count} 项：{string.Join(", ", selected.Select(s => s.Id))}");
         var plan = await _engine.BuildPlanAsync(selected, _resolver);
         Progress.Begin(plan);
 
         var ctx = new EngineContext { Path = _resolver, RepoRoot = _repoRoot, Ct = CancellationToken.None };
-        await _engine.ApplyAsync(plan, ctx, dryRun: false,
+        var summary = await _engine.ApplyAsync(plan, ctx, dryRun: false,
             onStart: pi => dispatcher.Invoke(() => Progress.OnStart(pi)),
-            onDone: r => dispatcher.Invoke(() => Progress.OnDone(r)));
+            onDone: r =>
+            {
+                if (r.Message != "already installed")
+                    AuditLog.Action($"安装 {r.Item.Name}：{Zh(r.Status)} {r.Message}".TrimEnd());
+                dispatcher.Invoke(() => Progress.OnDone(r));
+            });
 
+        AuditLog.Action($"安装结束 · 成功 {summary.Ok} · 失败 {summary.Failed} · 跳过 {summary.Skipped}");
+        dispatcher.Invoke(() => Progress.Complete());
+    }
+
+    private void OnUpdateRequested()
+    {
+        if (_catalog == null) return;
+        var items = Install.Groups.SelectMany(g => g.Items)
+            .Where(i => i.IsSelected && i.IsInstalled && Updater.CanUpdate(i.Model))
+            .Select(i => i.Model).ToList();
+        if (items.Count == 0) return;
+        if (MessageBox.Show($"是否更新选中的 {items.Count} 个软件？", "更新",
+                MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+
+        SelectedNav = NavItems.First(n => ReferenceEquals(n.Page, Progress));
+        _ = RunUpdatesAsync(items);
+    }
+
+    private async Task RunUpdatesAsync(List<CatalogItem> items)
+    {
+        var dispatcher = Application.Current.Dispatcher;
+        AuditLog.Action($"开始更新 {items.Count} 项：{string.Join(", ", items.Select(i => i.Id))}");
+        var plan = items.Select(i => new PlanItem { Item = i, Status = PlanStatus.ToInstall }).ToList();
+        Progress.Begin(plan, verb: "更新");
+
+        var ctx = new EngineContext { Path = _resolver, RepoRoot = _repoRoot, Ct = CancellationToken.None };
+        var ok = 0; var failed = 0;
+        foreach (var pi in plan)
+        {
+            dispatcher.Invoke(() => Progress.OnStart(pi));
+            RunResult res;
+            try
+            {
+                var outcome = await Updater.UpdateAsync(pi.Item, ctx);
+                res = new RunResult { Item = pi.Item, Status = outcome.Status, Message = outcome.Message };
+            }
+            catch (Exception ex)
+            {
+                res = new RunResult { Item = pi.Item, Status = StepStatus.Failed, Message = ex.Message };
+            }
+            if (res.Status == StepStatus.Failed) failed++; else ok++;
+            AuditLog.Action($"更新 {pi.Item.Name}：{Zh(res.Status)} {res.Message}".TrimEnd());
+            dispatcher.Invoke(() => Progress.OnDone(res));
+        }
+
+        // Reflect new versions on the detail pages next time they open.
+        Arp.Refresh();
+        foreach (var i in items) DetailService.Invalidate(i.Id);
+        AuditLog.Action($"更新结束 · 成功 {ok} · 失败 {failed}");
         dispatcher.Invoke(() => Progress.Complete());
     }
 }

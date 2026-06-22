@@ -30,6 +30,9 @@ public sealed class CatalogItem
     public InstallSpec Install { get; set; } = new();
     public DetectSpec? Detect { get; set; }
     public ConfigSpec? Config { get; set; }
+
+    /// <summary>User-chosen install path for this run (winget --location / portable extractTo / git dest). Not persisted.</summary>
+    public string? InstallPathOverride { get; set; }
 }
 
 /// <summary>How to install an item. Fields used depend on <see cref="Method"/>.</summary>

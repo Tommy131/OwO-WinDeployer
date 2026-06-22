@@ -35,4 +35,11 @@ public partial class InstallCenterView : UserControl
         if (!_restored || _unloading) return;
         if (DataContext is InstallCenterViewModel vm) vm.ScrollOffset = e.VerticalOffset;
     }
+
+    private void SetPath_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not InstallCenterViewModel vm) return;
+        var dlg = new Microsoft.Win32.OpenFolderDialog { Title = "选择安装根目录" };
+        if (dlg.ShowDialog() == true) vm.SetPathForSelected(dlg.FolderName);
+    }
 }

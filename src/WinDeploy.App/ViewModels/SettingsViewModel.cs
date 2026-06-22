@@ -14,6 +14,7 @@ public sealed class SettingsViewModel : ObservableObject
         _repoUrl = _s.RepoUrl ?? "https://github.com/Tommy131/win-provision.git";
         _mirror = _s.Mirror ?? "";
         _redactKeywords = _s.RedactKeywords ?? "";
+        _theme = _s.Theme ?? "system";
         SettingsPath = SettingsStore.FilePath;
         SaveCommand = new RelayCommand(_ => Save());
     }
@@ -33,6 +34,23 @@ public sealed class SettingsViewModel : ObservableObject
     private string _redactKeywords;
     public string RedactKeywords { get => _redactKeywords; set { if (Set(ref _redactKeywords, value)) Note = ""; } }
 
+    private string _theme;
+    public bool IsThemeSystem { get => _theme == "system"; set { if (value) SetTheme("system"); } }
+    public bool IsThemeLight { get => _theme == "light"; set { if (value) SetTheme("light"); } }
+    public bool IsThemeDark { get => _theme == "dark"; set { if (value) SetTheme("dark"); } }
+
+    private void SetTheme(string t)
+    {
+        _theme = t;
+        OnPropertyChanged(nameof(IsThemeSystem));
+        OnPropertyChanged(nameof(IsThemeLight));
+        OnPropertyChanged(nameof(IsThemeDark));
+        ThemeManager.Apply(ThemeManager.Parse(t));
+        _s.Theme = t;
+        SettingsStore.Save(_s);
+        AuditLog.Action($"切换主题：{t}");
+    }
+
     public string SettingsPath { get; }
 
     private string _note = "";
@@ -49,6 +67,8 @@ public sealed class SettingsViewModel : ObservableObject
         _s.Mirror = Mirror.Trim();
         _s.RedactKeywords = RedactKeywords.Trim();
         SettingsStore.Save(_s);
+        AuditLog.Action($"更新设置 · DevRoot={_s.DevRoot} · ToolsDir={_s.ToolsDir} · Repo={_s.RepoUrl} · " +
+                        $"镜像={(string.IsNullOrEmpty(_s.Mirror) ? "(无)" : _s.Mirror)} · 脱敏关键词 {ParseKeywords(_s.RedactKeywords).Length} 项");
         Note = "已保存。脱敏关键词即时生效；路径变量在下次启动生效。";
         Saved?.Invoke();
     }

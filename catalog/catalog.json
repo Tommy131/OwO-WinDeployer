@@ -151,6 +151,12 @@
       "category": "ai", "default": false,
       "install": { "method": "winget", "id": "Codeium.Windsurf" } },
 
+    { "id": "hermes-agent", "name": "Hermes Agent", "summary": "Nous Research 自进化 AI 智能体（CLI / 多平台）", "icon": "assets/icons/hermes-agent.svg",
+      "category": "ai", "default": false,
+      "homepage": "https://github.com/NousResearch/hermes-agent",
+      "install": { "method": "git", "repo": "https://github.com/NousResearch/hermes-agent.git", "dest": "${DevRoot}/hermes-agent" },
+      "detect": { "path": "${DevRoot}/hermes-agent/.git" } },
+
     // ── 办公 / 通讯 ─────────────────────────────
     { "id": "wechat", "name": "微信", "summary": "即时通讯", "icon": "assets/icons/wechat.svg",
       "category": "office", "default": false,

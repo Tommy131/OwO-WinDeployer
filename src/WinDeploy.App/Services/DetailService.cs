@@ -33,6 +33,44 @@ public static class DetailService
         lock (Gate) return Cache.TryGetValue(id, out var v) ? v : null;
     }
 
+    /// <summary>Drop cached detail/versions for an id so the next fetch recomputes (after update/uninstall).</summary>
+    public static void Invalidate(string id)
+    {
+        lock (Gate) { Cache.Remove(id); VersionCache.Remove(id); }
+    }
+
+    private static readonly Dictionary<string, IReadOnlyList<string>> VersionCache = new();
+
+    /// <summary>Available versions from winget (network), newest first. Cached per id.</summary>
+    public static async Task<IReadOnlyList<string>> GetVersionsAsync(string id)
+    {
+        lock (Gate)
+            if (VersionCache.TryGetValue(id, out var cached)) return cached;
+
+        var list = new List<string>();
+        try
+        {
+            var r = await Proc.RunAsync("winget", new[] { "show", "--versions", "--id", id, "-e", "--disable-interactivity", "--accept-source-agreements" });
+            if (r.Ok)
+            {
+                var started = false;
+                foreach (var raw in r.StdOut.Split('\n'))
+                {
+                    var line = raw.Trim();
+                    if (line.Length == 0) continue;
+                    if (!started) { if (line.Length >= 3 && line.All(c => c == '-')) started = true; continue; }
+                    list.Add(line);
+                    if (list.Count >= 30) break;
+                }
+            }
+        }
+        catch { /* ignore */ }
+
+        IReadOnlyList<string> result = list;
+        lock (Gate) VersionCache[id] = result;
+        return result;
+    }
+
     public static async Task<DetailInfo> FetchAsync(CatalogItem item)
     {
         lock (Gate)
@@ -63,6 +101,7 @@ public static class DetailService
         if (info.Version == "—" && item.Version != null) info.Version = item.Version;
         if (info.Homepage == "—" && !string.IsNullOrWhiteSpace(item.Homepage)) info.Homepage = item.Homepage!;
         if (info.Homepage == "—" && Homepages.TryGetValue(item.Id, out var hp)) info.Homepage = hp;
+        if (info.Publisher == "—" && Publishers.TryGetValue(item.Id, out var pub)) info.Publisher = pub;
         return info;
     }
 
@@ -201,6 +240,7 @@ public static class DetailService
         ["lmstudio"] = "https://lmstudio.ai",
         ["claude"] = "https://claude.ai",
         ["windsurf"] = "https://windsurf.com",
+        ["hermes-agent"] = "https://github.com/NousResearch/hermes-agent",
         ["wechat"] = "https://weixin.qq.com",
         ["wecom"] = "https://work.weixin.qq.com",
         ["feishu"] = "https://www.feishu.cn",
@@ -215,5 +255,52 @@ public static class DetailService
         ["vmware"] = "https://www.vmware.com/products/workstation-pro.html",
         ["steam"] = "https://store.steampowered.com/about/",
         ["epic"] = "https://store.epicgames.com",
+    };
+
+    /// <summary>Publisher per item — app-local, so it shows even on a bare machine (overridden by ARP when installed).</summary>
+    private static readonly Dictionary<string, string> Publishers = new()
+    {
+        ["git"] = "The Git Development Community",
+        ["gh"] = "GitHub, Inc.",
+        ["nodejs"] = "Node.js Foundation",
+        ["python"] = "Python Software Foundation",
+        ["miniconda"] = "Anaconda, Inc.",
+        ["jdk17"] = "Oracle Corporation",
+        ["go"] = "Google / The Go Authors",
+        ["dotnet-sdk"] = "Microsoft Corporation",
+        ["cmake"] = "Kitware, Inc.",
+        ["ffmpeg"] = "FFmpeg",
+        ["pandoc"] = "John MacFarlane",
+        ["mingw"] = "WinLibs (Brecht Sanders)",
+        ["flutter"] = "Google LLC",
+        ["vcredist"] = "Microsoft Corporation",
+        ["windows-terminal"] = "Microsoft Corporation",
+        ["huorong"] = "北京火绒网络科技有限公司",
+        ["vscode"] = "Microsoft Corporation",
+        ["vscode-ext"] = "Microsoft Corporation",
+        ["vs2026"] = "Microsoft Corporation",
+        ["android-studio"] = "Google LLC",
+        ["arduino"] = "Arduino SA",
+        ["unity-hub"] = "Unity Technologies",
+        ["sublime-merge"] = "Sublime HQ Pty Ltd",
+        ["comfyui"] = "Comfy Org",
+        ["lmstudio"] = "Element Labs (LM Studio)",
+        ["claude"] = "Anthropic",
+        ["windsurf"] = "Codeium",
+        ["hermes-agent"] = "Nous Research",
+        ["wechat"] = "腾讯科技(深圳)有限公司",
+        ["wecom"] = "腾讯科技(深圳)有限公司",
+        ["feishu"] = "Beijing Feishu Technology Co., Ltd.",
+        ["tencent-meeting"] = "腾讯科技(深圳)有限公司",
+        ["obs"] = "OBS Project",
+        ["vlc"] = "VideoLAN",
+        ["irfanview"] = "Irfan Skiljan",
+        ["netease-music"] = "网易公司",
+        ["dbgate"] = "Jan Prochazka",
+        ["apifox"] = "Apifox Team",
+        ["winscp"] = "Martin Prikryl",
+        ["vmware"] = "Broadcom (VMware)",
+        ["steam"] = "Valve Corporation",
+        ["epic"] = "Epic Games, Inc.",
     };
 }

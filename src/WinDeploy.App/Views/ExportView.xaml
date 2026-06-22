@@ -12,12 +12,12 @@
     <StackPanel Grid.Row="0">
       <TextBlock Text="导出" FontSize="20" FontWeight="SemiBold" />
       <TextBlock Text="扫描本机、把已装软件的配置采集回仓库（敏感信息自动脱敏）。点每项可展开看文件路径 / 大小 / 概览。"
-                 FontSize="13" Foreground="{StaticResource TextSecondary}" Margin="0,3,0,0" TextWrapping="Wrap" />
+                 FontSize="13" Foreground="{DynamicResource TextSecondary}" Margin="0,3,0,0" TextWrapping="Wrap" />
     </StackPanel>
 
     <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,14,0,0">
       <Button Content="采集本机配置" Style="{StaticResource PrimaryButton}" Command="{Binding ExportCommand}" />
-      <TextBlock Text="处理中 …" Foreground="{StaticResource Accent}" Margin="14,0,0,0" VerticalAlignment="Center"
+      <TextBlock Text="处理中 …" Foreground="{DynamicResource Accent}" Margin="14,0,0,0" VerticalAlignment="Center"
                  Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}" />
     </StackPanel>
 
@@ -30,10 +30,10 @@
                 <Expander.Header>
                   <StackPanel Orientation="Horizontal">
                     <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" />
-                    <Border x:Name="Pill" CornerRadius="10" Padding="8,1" Margin="10,0,0,0" Background="{StaticResource OkBg}" VerticalAlignment="Center">
-                      <TextBlock x:Name="PillText" Text="成功" FontSize="11" Foreground="{StaticResource OkFg}" />
+                    <Border x:Name="Pill" CornerRadius="10" Padding="8,1" Margin="10,0,0,0" Background="{DynamicResource OkBg}" VerticalAlignment="Center">
+                      <TextBlock x:Name="PillText" Text="成功" FontSize="11" Foreground="{DynamicResource OkFg}" />
                     </Border>
-                    <TextBlock Text="{Binding Message}" FontSize="12" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center" Margin="10,0,0,0" />
+                    <TextBlock Text="{Binding Message}" FontSize="12" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" Margin="10,0,0,0" />
                   </StackPanel>
                 </Expander.Header>
                 <ItemsControl ItemsSource="{Binding Files}" Margin="26,4,0,8">
@@ -42,12 +42,12 @@
                       <StackPanel Margin="0,0,0,10">
                         <StackPanel Orientation="Horizontal">
                           <TextBlock Text="{Binding Path}" FontFamily="Consolas" FontSize="12" />
-                          <TextBlock Text="{Binding SizeText}" FontSize="11" Foreground="{StaticResource TextTertiary}" Margin="10,0,0,0" VerticalAlignment="Center" />
+                          <TextBlock Text="{Binding SizeText}" FontSize="11" Foreground="{DynamicResource TextTertiary}" Margin="10,0,0,0" VerticalAlignment="Center" />
                         </StackPanel>
-                        <Border Background="{StaticResource PageBg}" CornerRadius="6" Padding="10,8" Margin="0,5,0,0" MaxHeight="150">
+                        <Border Background="{DynamicResource PageBg}" CornerRadius="6" Padding="10,8" Margin="0,5,0,0" MaxHeight="150">
                           <ScrollViewer VerticalScrollBarVisibility="Auto">
                             <TextBlock Text="{Binding Preview}" FontFamily="Consolas" FontSize="11"
-                                       Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap" />
+                                       Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" />
                           </ScrollViewer>
                         </Border>
                       </StackPanel>
@@ -57,13 +57,13 @@
               </Expander>
               <DataTemplate.Triggers>
                 <DataTrigger Binding="{Binding Kind}" Value="failed">
-                  <Setter TargetName="Pill" Property="Background" Value="{StaticResource FailBg}" />
-                  <Setter TargetName="PillText" Property="Foreground" Value="{StaticResource FailFg}" />
+                  <Setter TargetName="Pill" Property="Background" Value="{DynamicResource FailBg}" />
+                  <Setter TargetName="PillText" Property="Foreground" Value="{DynamicResource FailFg}" />
                   <Setter TargetName="PillText" Property="Text" Value="失败" />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding Kind}" Value="skip">
-                  <Setter TargetName="Pill" Property="Background" Value="{StaticResource PageBg}" />
-                  <Setter TargetName="PillText" Property="Foreground" Value="{StaticResource TextSecondary}" />
+                  <Setter TargetName="Pill" Property="Background" Value="{DynamicResource PageBg}" />
+                  <Setter TargetName="PillText" Property="Foreground" Value="{DynamicResource TextSecondary}" />
                   <Setter TargetName="PillText" Property="Text" Value="跳过" />
                 </DataTrigger>
               </DataTemplate.Triggers>
@@ -73,9 +73,9 @@
       </ScrollViewer>
     </Border>
 
-    <Border Grid.Row="3" Background="{StaticResource OkBg}" CornerRadius="8" Padding="12" Margin="0,12,0,0"
+    <Border Grid.Row="3" Background="{DynamicResource OkBg}" CornerRadius="8" Padding="12" Margin="0,12,0,0"
             Visibility="{Binding Done, Converter={StaticResource BoolToVis}}">
-      <TextBlock Text="已写回 configs/，记得在仓库里 git commit。" Foreground="{StaticResource OkFg}" />
+      <TextBlock Text="已写回 configs/，记得在仓库里 git commit。" Foreground="{DynamicResource OkFg}" />
     </Border>
   </Grid>
 </UserControl>

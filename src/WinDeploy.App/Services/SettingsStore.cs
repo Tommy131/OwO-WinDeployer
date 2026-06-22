@@ -10,6 +10,7 @@ public sealed class AppSettings
     public string? RepoUrl { get; set; }
     public string? Mirror { get; set; }
     public string? RedactKeywords { get; set; }
+    public string? Theme { get; set; }   // system | light | dark
 }
 
 /// <summary>Persists GUI settings to %LOCALAPPDATA%/WinDeploy/settings.json.</summary>

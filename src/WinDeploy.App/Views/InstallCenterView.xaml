@@ -11,13 +11,19 @@
     <Grid Grid.Row="0" Margin="24,18,24,8">
       <StackPanel>
         <TextBlock Text="软件安装中心" FontSize="20" FontWeight="SemiBold" />
-        <TextBlock Text="{Binding Subtitle}" FontSize="13" Foreground="{StaticResource TextSecondary}" Margin="0,3,0,0" />
+        <TextBlock Text="{Binding Subtitle}" FontSize="13" Foreground="{DynamicResource TextSecondary}" Margin="0,3,0,0" />
         <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
           <Button Content="全选" Style="{StaticResource MiniButton}" Command="{Binding SelectAllCommand}" />
           <Button Content="反选" Style="{StaticResource MiniButton}" Command="{Binding InvertCommand}" Margin="8,0,0,0" />
           <Button Content="恢复" Style="{StaticResource MiniButton}" Command="{Binding RestoreCommand}" Margin="8,0,0,0"
                   ToolTip="恢复到上一次「全选 / 反选 / 切换预设」之前的勾选状态" />
+          <Button Content="设置安装路径" Style="{StaticResource MiniButton}" Click="SetPath_Click" Margin="8,0,0,0"
+                  ToolTip="为选中软件统一设置安装根目录（便携/git 在其下建 id 子目录；winget 用 --location）" />
+          <Border Width="1" Background="{DynamicResource BorderSoft}" Margin="10,2,0,2" />
+          <Button Content="{Binding UpdateLabel}" Style="{StaticResource MiniButton}" Command="{Binding UpdateSelectedCommand}" Margin="10,0,0,0"
+                  ToolTip="更新选中且已安装的软件（winget upgrade / git pull / 便携包重拉），跳转到运行进度页" />
         </StackPanel>
+        <TextBlock Text="{Binding PathNote}" FontSize="12" Foreground="{DynamicResource TextSecondary}" Margin="0,6,0,0" />
       </StackPanel>
 
       <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
@@ -25,7 +31,7 @@
         <Grid Width="150" Height="32" ToolTip="搜索：按名称 / 简介 / id 过滤软件列表">
           <TextBox VerticalContentAlignment="Center" Padding="8,0"
                    Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
-          <TextBlock Text="搜索软件…" Foreground="{StaticResource TextTertiary}" Margin="10,0,0,0"
+          <TextBlock Text="搜索软件…" Foreground="{DynamicResource TextTertiary}" Margin="10,0,0,0"
                      VerticalAlignment="Center" IsHitTestVisible="False">
             <TextBlock.Style>
               <Style TargetType="TextBlock">
@@ -41,7 +47,7 @@
         <!-- 预设下拉（带水印 + 说明） -->
         <Grid Width="120" Height="32" Margin="8,0,0,0" ToolTip="预设：选 dev / full / ai-station 一键套用对应勾选">
           <ComboBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}" />
-          <TextBlock Text="选择预设…" Foreground="{StaticResource TextTertiary}" Margin="9,0,0,0"
+          <TextBlock Text="选择预设…" Foreground="{DynamicResource TextTertiary}" Margin="9,0,0,0"
                      VerticalAlignment="Center" IsHitTestVisible="False">
             <TextBlock.Style>
               <Style TargetType="TextBlock">
@@ -61,17 +67,17 @@
 
     <!-- Error banner -->
     <Border Grid.Row="1" Margin="24,8" VerticalAlignment="Top" Padding="14,10" CornerRadius="8"
-            Background="{StaticResource FailBg}"
+            Background="{DynamicResource FailBg}"
             Visibility="{Binding HasError, Converter={StaticResource BoolToVis}}">
-      <TextBlock Text="{Binding LoadError}" Foreground="{StaticResource FailFg}" TextWrapping="Wrap" />
+      <TextBlock Text="{Binding LoadError}" Foreground="{DynamicResource FailFg}" TextWrapping="Wrap" />
     </Border>
 
     <!-- Loading（先检测完已安装状态，再显示列表） -->
     <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center"
                 Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}">
       <ProgressBar IsIndeterminate="True" Width="220" Height="4"
-                   Foreground="{StaticResource Accent}" Background="{StaticResource PageBg}" BorderThickness="0" />
-      <TextBlock Text="正在检测已安装软件 …" FontSize="13" Foreground="{StaticResource TextSecondary}"
+                   Foreground="{DynamicResource Accent}" Background="{DynamicResource PageBg}" BorderThickness="0" />
+      <TextBlock Text="正在检测已安装软件 …" FontSize="13" Foreground="{DynamicResource TextSecondary}"
                  HorizontalAlignment="Center" Margin="0,12,0,0" />
     </StackPanel>
 
@@ -86,7 +92,7 @@
                         Visibility="{Binding IsVisible, Converter={StaticResource BoolToVis}}">
               <StackPanel Orientation="Horizontal" Margin="0,12,0,8">
                 <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="SemiBold" />
-                <TextBlock Text="{Binding CountText}" FontSize="12" Foreground="{StaticResource TextTertiary}"
+                <TextBlock Text="{Binding CountText}" FontSize="12" Foreground="{DynamicResource TextTertiary}"
                            Margin="10,0,0,0" VerticalAlignment="Center" />
               </StackPanel>
 
@@ -117,19 +123,25 @@
                                    Visibility="{Binding HasIcon, Converter={StaticResource BoolToVis}}"
                                    RenderOptions.BitmapScalingMode="HighQuality" />
                           </Grid>
-                          <CheckBox IsChecked="{Binding IsSelected}" HorizontalAlignment="Right" VerticalAlignment="Top" />
+                          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
+                            <Button Style="{StaticResource CardIconButton}" Content="▶" Margin="0,0,6,0"
+                                    Visibility="{Binding IsInstalled, Converter={StaticResource BoolToVis}}"
+                                    Command="{Binding DataContext.LaunchCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    CommandParameter="{Binding}" ToolTip="启动" />
+                            <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Center" />
+                          </StackPanel>
                         </Grid>
                         <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="SemiBold" Margin="0,9,0,0"
                                    TextTrimming="CharacterEllipsis" />
-                        <TextBlock Text="{Binding Summary}" FontSize="12" Foreground="{StaticResource TextSecondary}"
+                        <TextBlock Text="{Binding Summary}" FontSize="12" Foreground="{DynamicResource TextSecondary}"
                                    TextWrapping="Wrap" Height="32" Margin="0,2,0,0" />
                         <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                          <Border Background="{StaticResource PageBg}" CornerRadius="6" Padding="6,2">
-                            <TextBlock Text="{Binding Method}" FontSize="11" Foreground="{StaticResource TextSecondary}" />
+                          <Border Background="{DynamicResource PageBg}" CornerRadius="6" Padding="6,2">
+                            <TextBlock Text="{Binding Method}" FontSize="11" Foreground="{DynamicResource TextSecondary}" />
                           </Border>
-                          <Border CornerRadius="6" Padding="6,2" Margin="5,0,0,0" Background="{StaticResource OkBg}"
+                          <Border CornerRadius="6" Padding="6,2" Margin="5,0,0,0" Background="{DynamicResource OkBg}"
                                   Visibility="{Binding IsInstalled, Converter={StaticResource BoolToVis}}">
-                            <TextBlock Text="{Binding StatusText}" FontSize="11" Foreground="{StaticResource OkFg}" />
+                            <TextBlock Text="{Binding StatusText}" FontSize="11" Foreground="{DynamicResource OkFg}" />
                           </Border>
                         </StackPanel>
                       </StackPanel>

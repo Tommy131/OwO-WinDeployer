@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows.Input;
+using WinDeploy.App.Services;
 using WinDeploy.Core;
 using WinDeploy.Core.Engine;
 using WinDeploy.Core.Models;
@@ -23,7 +24,9 @@ public sealed class InstallCenterViewModel : ObservableObject
     public ObservableCollection<CategoryGroupViewModel> Groups { get; } = new();
     public ObservableCollection<string> Profiles { get; } = new();
     public RelayCommand StartCommand { get; }
+    public RelayCommand UpdateSelectedCommand { get; }
     public RelayCommand OpenDetailCommand { get; }
+    public RelayCommand LaunchCommand { get; }
     public RelayCommand SelectAllCommand { get; }
     public RelayCommand InvertCommand { get; }
     public RelayCommand RestoreCommand { get; }
@@ -32,17 +35,29 @@ public sealed class InstallCenterViewModel : ObservableObject
     /// <summary>Raised when the user clicks 开始安装.</summary>
     public event Action? StartRequested;
 
+    /// <summary>Raised when the user clicks 更新选中.</summary>
+    public event Action? UpdateRequested;
+
     /// <summary>Raised when the user clicks a software card.</summary>
     public event Action<AppItemViewModel>? DetailRequested;
+
+    /// <summary>Raised when the user clicks a card's ▶ quick-launch button.</summary>
+    public event Action<AppItemViewModel>? LaunchRequested;
 
     public InstallCenterViewModel()
     {
         StartCommand = new RelayCommand(_ => StartRequested?.Invoke(), _ => SelectedCount > 0);
+        UpdateSelectedCommand = new RelayCommand(_ => UpdateRequested?.Invoke(), _ => UpdatableSelectedCount > 0);
         OpenDetailCommand = new RelayCommand(p => { if (p is AppItemViewModel vm) DetailRequested?.Invoke(vm); });
+        LaunchCommand = new RelayCommand(p => { if (p is AppItemViewModel vm) LaunchRequested?.Invoke(vm); });
         SelectAllCommand = new RelayCommand(_ => SetAll(true));
         InvertCommand = new RelayCommand(_ => Invert());
         RestoreCommand = new RelayCommand(_ => Restore(), _ => _snapshot != null);
     }
+
+    /// <summary>Selected items that are installed and support updating — gates 更新选中.</summary>
+    public int UpdatableSelectedCount => Groups.Sum(g => g.Items.Count(
+        i => i.IsSelected && i.IsInstalled && WinDeploy.Core.Engine.Updater.CanUpdate(i.Model)));
 
     private bool _isLoading = true;
     public bool IsLoading
@@ -86,6 +101,26 @@ public sealed class InstallCenterViewModel : ObservableObject
 
     public int SelectedCount => Groups.Sum(g => g.Items.Count(i => i.IsSelected));
     public string StartLabel => $"开始安装 ({SelectedCount})";
+    public string UpdateLabel => $"更新选中 ({UpdatableSelectedCount})";
+
+    private string _pathNote = "";
+    public string PathNote { get => _pathNote; set => Set(ref _pathNote, value); }
+
+    /// <summary>Set an install root for every selected item (winget → --location; portable/git → base/&lt;id&gt;).</summary>
+    public void SetPathForSelected(string baseDir)
+    {
+        var n = 0;
+        foreach (var g in Groups)
+            foreach (var i in g.Items)
+                if (i.IsSelected)
+                {
+                    var m = i.Model;
+                    m.InstallPathOverride = m.Install.Method == "winget" ? baseDir : System.IO.Path.Combine(baseDir, m.Id);
+                    n++;
+                }
+        PathNote = n > 0 ? $"已为 {n} 个选中项设置安装路径：{baseDir}" : "未选中任何软件";
+        if (n > 0) AuditLog.Action($"设置安装路径：{baseDir}（{n} 项）");
+    }
     public string Subtitle => $"勾选要部署到本机的软件 · 已选 {SelectedCount} 项";
 
     private string? _loadError;
@@ -120,6 +155,8 @@ public sealed class InstallCenterViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(SelectedCount));
         OnPropertyChanged(nameof(StartLabel));
+        OnPropertyChanged(nameof(UpdatableSelectedCount));
+        OnPropertyChanged(nameof(UpdateLabel));
         OnPropertyChanged(nameof(Subtitle));
     }
 
