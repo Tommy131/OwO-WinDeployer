@@ -1,5 +1,7 @@
 name: release
 
+# 推送 v* tag 自动触发：构建自包含单文件 → 打包完整发行包 → 创建 GitHub Release 并上传。
+# 也可在 Actions 页手动触发（仅产出构建工件，不发布 Release）。
 on:
   push:
     tags: ['v*']
@@ -23,17 +25,57 @@ jobs:
           dotnet publish src/WinDeploy.App/WinDeploy.App.csproj
           -c Release -r win-x64 --self-contained true
           -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
-          -o dist/app
+          --nologo -o dist/app
 
       - name: Publish CLI (self-contained single file)
         run: >
           dotnet publish src/WinDeploy.Cli/WinDeploy.Cli.csproj
           -c Release -r win-x64 --self-contained true
-          -p:PublishSingleFile=true -o dist/cli
+          -p:PublishSingleFile=true --nologo -o dist/cli
 
-      - name: Create / update GitHub Release
+      - name: Assemble release package
+        id: pkg
+        shell: pwsh
+        run: |
+          $tag  = '${{ github.ref_name }}'
+          $name = "OwO-Win-Deployer-$tag-win-x64"
+          $stage = "dist/$name"
+          New-Item -ItemType Directory -Force -Path "$stage/assets" | Out-Null
+          # GUI + CLI（CLI 改名，避免 Windows 大小写不敏感与 WinDeploy.exe 同名冲突）
+          Copy-Item dist/app/WinDeploy.exe "$stage/WinDeploy.exe"      -Force
+          Copy-Item dist/cli/windeploy.exe "$stage/windeploy-cli.exe" -Force
+          # 运行所需数据放在 exe 同级（程序向上查找 catalog/，再据此定位 repoRoot/assets）
+          Copy-Item catalog      "$stage/catalog"      -Recurse -Force
+          Copy-Item assets/icons "$stage/assets/icons" -Recurse -Force
+          Copy-Item configs      "$stage/configs"      -Recurse -Force
+          Copy-Item LICENSE      "$stage/LICENSE"      -Force
+          Copy-Item README.md    "$stage/README.md"    -Force
+          Compress-Archive -Path "$stage/*" -DestinationPath "dist/$name.zip" -Force
+          "zip=dist/$name.zip" >> $env:GITHUB_OUTPUT
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OwO-Win-Deployer-win-x64
+          path: ${{ steps.pkg.outputs.zip }}
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
+          name: OwO! Win Deployer ${{ github.ref_name }}
+          generate_release_notes: true
           files: |
+            ${{ steps.pkg.outputs.zip }}
             dist/app/WinDeploy.exe
-            dist/cli/windeploy.exe
+          body: |
+            ## OwO! Win Deployer ${{ github.ref_name }}
+
+            一键在任意 Windows 设备上复刻开发环境、应用与个人配置。
+
+            **下载**
+            - `OwO-Win-Deployer-${{ github.ref_name }}-win-x64.zip` —— 完整发行包，解压即用（含软件清单 catalog、图标缓存与配置模板）。
+            - `WinDeploy.exe` —— 单文件 GUI，裸机引导 `bootstrap.ps1` 直链下载使用。
+
+            > 自包含单文件，目标机免装 .NET 运行时。
+            > 许可证：CC BY-NC-SA 4.0（署名 / 非商业 / 相同方式共享；作者保留商业权利）。
