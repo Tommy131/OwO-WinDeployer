@@ -15,10 +15,8 @@
       <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
         <Button Content="总日志" Style="{StaticResource MiniButton}" Command="{Binding OpenTotalLogCommand}"
                 ToolTip="打开独立总日志文件 progress.jsonl（每个任务一条 JSON）" />
-        <Button Content="清空总日志" Style="{StaticResource DangerButton}" Command="{Binding ClearTotalLogCommand}" Margin="8,0,0,0"
-                ToolTip="清空 progress.jsonl（需确认）" />
-        <Button Content="清空历史" Style="{StaticResource MiniButton}" Command="{Binding ClearHistoryCommand}" Margin="8,0,0,0"
-                ToolTip="清空屏幕上的运行进度历史（需确认）" />
+        <Button Content="清空记录" Style="{StaticResource DangerButton}" Command="{Binding ClearRecordsCommand}" Margin="8,0,0,0"
+                ToolTip="清空屏幕记录并删除 progress.jsonl（需确认，不可恢复）" />
       </StackPanel>
     </Grid>
 

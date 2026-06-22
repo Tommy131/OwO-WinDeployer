@@ -67,11 +67,17 @@
       "install": { "method": "winget", "id": "JohnMacFarlane.Pandoc" },
       "detect": { "cmd": "pandoc" } },
 
-    { "id": "mingw", "name": "MinGW-w64 (WinLibs)", "summary": "GCC/G++ 工具链（官网手动下载）", "icon": "assets/icons/gcc.svg",
+    { "id": "mingw", "name": "MinGW-w64 (WinLibs)", "summary": "GCC/G++ 工具链（选择编译版自动下载）", "icon": "assets/icons/gcc.svg",
       "category": "dev", "default": false,
       "homepage": "https://winlibs.com/",
-      "install": { "method": "manual" },
+      "install": { "method": "portable", "url": "…", "extractTo": "${ToolsDir}/mingw64", "strip": 1, "path": ["${ToolsDir}/mingw64/bin"] },
       "detect": { "path": "${ToolsDir}/mingw64/bin/gcc.exe" } },
+
+    { "id": "mingw-builds", "name": "MinGW-builds (niXman)", "summary": "GCC/G++ 工具链 niXman 构建（选择编译版自动下载，需 7-Zip）", "icon": "assets/icons/gcc.svg",
+      "category": "dev", "default": false,
+      "homepage": "https://github.com/niXman/mingw-builds-binaries",
+      "install": { "method": "portable", "url": "…", "extractTo": "${ToolsDir}/mingw-builds", "strip": 1, "path": ["${ToolsDir}/mingw-builds/bin"] },
+      "detect": { "path": "${ToolsDir}/mingw-builds/bin/gcc.exe" } },
 
     { "id": "flutter", "name": "Flutter + Dart", "summary": "跨平台 UI SDK（移动开发）", "icon": "assets/icons/flutter.svg",
       "category": "dev", "default": false,
@@ -310,6 +316,13 @@
       "category": "tools", "default": false,
       "homepage": "https://albar965.github.io/littlenavmap.html",
       "install": { "method": "manual" },
-      "detect": { "arp": "Little Navmap" } }
+      "detect": { "arp": "Little Navmap" } },
+
+    { "id": "m365-e5-renew", "name": "Microsoft365 E5 Renew Plus", "summary": "M365 E5 开发者订阅自动续订（便携，官网手动下载）", "icon": "assets/icons/m365-e5-renew.svg",
+      "category": "tools", "default": false,
+      "homepage": "https://e5renew.com/#download",
+      "install": { "method": "manual" },
+      "detect": { "path": "${ToolsDir}/Microsoft365 E5 Renew Plus/Microsoft365 E5 Renew Plus.exe" },
+      "config": { "source": "configs/m365-e5-renew", "target": "${ToolsDir}/Microsoft365 E5 Renew Plus", "files": ["Config.cfg"], "applyWhen": "ifInstalled" } }
   ]
 }

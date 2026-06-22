@@ -115,7 +115,10 @@ public sealed class PortableInstaller : IInstaller
         if (ins.Url is null || ins.ExtractTo is null) return StepOutcome.Fail("portable needs url + extractTo");
 
         var dest = ctx.Path.Resolve(item.InstallPathOverride ?? ins.ExtractTo);
-        var tmpZip = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"windeploy_{item.Id}.zip");
+        var dlDir = ctx.DownloadDir ?? System.IO.Path.GetTempPath();
+        System.IO.Directory.CreateDirectory(dlDir);
+        var ext = ins.Url.EndsWith(".7z", StringComparison.OrdinalIgnoreCase) ? ".7z" : ".zip";
+        var tmpZip = System.IO.Path.Combine(dlDir, $"windeploy_{item.Id}{ext}");
         var tmpEx = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"windeploy_{item.Id}_x");
 
         ctx.Step($"开始下载 {ins.Url} …");
@@ -130,9 +133,20 @@ public sealed class PortableInstaller : IInstaller
         }
         else Log.Warn($"{item.Id}: no sha256 set — skipping integrity check");
 
-        ctx.Step("解压 …");
         if (Directory.Exists(tmpEx)) Directory.Delete(tmpEx, true);
-        ZipFile.ExtractToDirectory(tmpZip, tmpEx);
+        if (ext == ".7z")
+        {
+            var seven = Find7z();
+            if (seven == null) return StepOutcome.Fail("解压 .7z 需要 7-Zip，请先安装 7-Zip 后重试");
+            ctx.Step("用 7-Zip 解压 …");
+            var ex = await Proc.RunAsync(seven, new[] { "x", "-o" + tmpEx, tmpZip, "-y" }, ct: ctx.Ct);
+            if (!ex.Ok) return StepOutcome.Fail($"7-Zip 解压失败 退出码 {ex.ExitCode}");
+        }
+        else
+        {
+            ctx.Step("解压 …");
+            ZipFile.ExtractToDirectory(tmpZip, tmpEx);
+        }
 
         var srcRoot = tmpEx;
         for (var i = 0; i < (ins.Strip ?? 0); i++)
@@ -152,6 +166,15 @@ public sealed class PortableInstaller : IInstaller
 
         try { File.Delete(tmpZip); Directory.Delete(tmpEx, true); } catch { /* best effort */ }
         return StepOutcome.Done();
+    }
+
+    private static string? Find7z()
+    {
+        var onPath = CommandFinder.Find("7z");
+        if (onPath != null) return onPath;
+        foreach (var p in new[] { @"C:\Program Files\7-Zip\7z.exe", @"C:\Program Files (x86)\7-Zip\7z.exe" })
+            if (File.Exists(p)) return p;
+        return null;
     }
 
     private static void CopyDir(string src, string dst)
@@ -206,7 +229,9 @@ public sealed class ExeInstaller : IInstaller
         var ins = item.Install;
         if (ins.Url is null) return StepOutcome.Fail("exe 需要 url");
 
-        var tmp = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"windeploy_{item.Id}_setup.exe");
+        var dlDir = ctx.DownloadDir ?? System.IO.Path.GetTempPath();
+        Directory.CreateDirectory(dlDir);
+        var tmp = System.IO.Path.Combine(dlDir, $"{item.Id}-installer.exe");
         ctx.Step($"下载安装包 {ins.Url} …");
         await Download.ToFileAsync(ins.Url, tmp, ctx, ctx.Ct);
 
@@ -216,7 +241,8 @@ public sealed class ExeInstaller : IInstaller
             : ins.Args.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         var r = await Proc.RunAsync(tmp, args, ct: ctx.Ct);
 
-        try { File.Delete(tmp); } catch { /* best effort */ }
+        // Keep the installer in the configured download dir; only clean the temp copy.
+        if (ctx.DownloadDir == null) try { File.Delete(tmp); } catch { /* best effort */ }
         return r.Ok ? StepOutcome.Done() : StepOutcome.Fail($"安装程序退出码 {r.ExitCode}");
     }
 }

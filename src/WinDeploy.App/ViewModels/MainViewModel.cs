@@ -30,6 +30,7 @@ public sealed class MainViewModel : ObservableObject
     public EnvVarsViewModel EnvVars { get; } = new();
     public TerminalViewModel Terminal { get; } = new();
     public ProcessManagerViewModel Processes { get; } = new();
+    public StartupViewModel Startup { get; } = new();
     public LogViewModel Logs { get; } = new();
     public SettingsViewModel Settings { get; } = new();
 
@@ -38,7 +39,7 @@ public sealed class MainViewModel : ObservableObject
         Install.StartRequested += OnStartRequested;
         Install.UpdateRequested += OnUpdateRequested;
         Install.DetailRequested += OnDetailRequested;
-        Install.LaunchRequested += item => _ = RunOpAsync(item.Model, "launch");
+        Install.LaunchRequested += item => _ = RunQuickOpAsync(item.Model, "launch");
         Install.StopRequested += item => _ = ConfirmRiskAndRun(item.Model, "stop");
         Install.RefreshRequested += () => _ = DetectAllAsync();
         Processes.OperationRequested += (item, op) => _ = ConfirmRiskAndRun(item, op);
@@ -50,6 +51,7 @@ public sealed class MainViewModel : ObservableObject
         NavItems.Add(new NavItemViewModel("", "配置同步", ConfigSync));
         NavItems.Add(new NavItemViewModel("", "运行进度", Progress));
         NavItems.Add(new NavItemViewModel("", "进程管理", Processes));
+        NavItems.Add(new NavItemViewModel("", "启动项", Startup));
         NavItems.Add(new NavItemViewModel("", "导出", Export));
         NavItems.Add(new NavItemViewModel("", "环境变量", EnvVars));
         NavItems.Add(new NavItemViewModel("", "终端", Terminal));
@@ -129,6 +131,7 @@ public sealed class MainViewModel : ObservableObject
         var vars = new Dictionary<string, string>(_catalog.PathVars, StringComparer.OrdinalIgnoreCase);
         if (!string.IsNullOrWhiteSpace(settings.DevRoot)) vars["DevRoot"] = settings.DevRoot!;
         if (!string.IsNullOrWhiteSpace(settings.ToolsDir)) vars["ToolsDir"] = settings.ToolsDir!;
+        vars["DownloadDir"] = string.IsNullOrWhiteSpace(settings.DownloadDir) ? "%USERPROFILE%/Downloads/WinDeploy" : settings.DownloadDir!;
         _resolver = new PathResolver(vars);
         Secrets.ExtraKeywords = SettingsViewModel.ParseKeywords(settings.RedactKeywords);
 
@@ -158,6 +161,16 @@ public sealed class MainViewModel : ObservableObject
             finally { gate.Release(); }
         });
         await Task.WhenAll(tasks);
+
+        // Store / MSIX apps (no ARP / winget id) — detect via Get-StartApps so ▶启动 appears.
+        try
+        {
+            var store = await Task.Run(() => StoreApps.All());
+            if (store.Count > 0)
+                foreach (var vm in items.Where(i => i.Installed != true))
+                    if (StoreApps.HasMsixApp(vm.Model.Name)) vm.Installed = true;
+        }
+        catch { /* StartApps unavailable */ }
 
         await RunUpdateCheckAsync(items);   // badge installed apps that have an upgrade
 
@@ -217,11 +230,16 @@ public sealed class MainViewModel : ObservableObject
     private void OnDetailRequested(AppItemViewModel item)
     {
         var vm = new DetailViewModel(item, _resolver, back: () => Current = Install);
-        vm.InstallRequested += m => _ = RunOpAsync(m, "install");
+        vm.InstallRequested += m => _ = m.Id switch
+        {
+            "mingw" => InstallMinGwAsync(m),
+            "mingw-builds" => InstallMingwBuildsAsync(m),
+            _ => RunOpAsync(m, "install"),
+        };
         vm.UpdateRequested += m => _ = ConfirmUpdateAndRun(m);
         vm.DowngradeRequested += m => _ = ConfirmDowngradeAndRun(m);
         vm.UninstallRequested += (m, purge) => _ = RunOpAsync(m, "uninstall", purge);
-        vm.LaunchRequested += m => _ = RunOpAsync(m, "launch");
+        vm.LaunchRequested += m => _ = RunQuickOpAsync(m, "launch");
         vm.StopRequested += m => _ = ConfirmRiskAndRun(m, "stop");
         vm.RestartRequested += m => _ = ConfirmRiskAndRun(m, "restart");
         vm.EnvVarsRequested += () => SelectedNav = NavItems.First(n => ReferenceEquals(n.Page, EnvVars));
@@ -234,7 +252,7 @@ public sealed class MainViewModel : ObservableObject
         var detail = op == "stop" ? "将结束该软件的所有进程。" : op == "restart" ? "将结束并重新启动该软件。" : "";
         if (MessageBox.Show($"确定要{verb} {item.Name}？\n\n{detail}".TrimEnd(),
                 verb, MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
-        await RunOpAsync(item, op);
+        await RunQuickOpAsync(item, op);
     }
 
     private async Task ConfirmUpdateAndRun(CatalogItem item)
@@ -242,6 +260,43 @@ public sealed class MainViewModel : ObservableObject
         if (MessageBox.Show($"是否检查并更新 {item.Name}？\n\n（若已是最新版本会提示「已是最新」）",
                 "更新", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
         await RunOpAsync(item, "update");
+    }
+
+    private Task InstallMinGwAsync(CatalogItem item)
+        => ChooseToolchainAsync(item, "MinGW-w64 (WinLibs)", WinLibs.GetVariantsAsync);
+
+    private Task InstallMingwBuildsAsync(CatalogItem item)
+        => ChooseToolchainAsync(item, "MinGW-builds (niXman)", WinLibs.GetMingwBuildsAsync);
+
+    /// <summary>Fetch the latest release (cached), filter by arch, let the user pick a compiler build
+    /// (posix recommended), then portable-install the chosen archive. extractTo/strip/path come from the catalog.</summary>
+    private async Task ChooseToolchainAsync(CatalogItem item, string title, Func<bool, Task<List<WinLibsVariant>>> fetch)
+    {
+        List<WinLibsVariant> variants;
+        try { variants = await fetch(Environment.Is64BitOperatingSystem); }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"获取 {title} 版本失败：{ex.Message}\n\n可前往项目发布页手动下载。",
+                title, MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        if (variants.Count == 0)
+        {
+            MessageBox.Show($"未找到匹配当前系统架构的 {title} 压缩包。", title, MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        var labels = variants.Select(v => v.Label + (v.Recommended ? "    ✓ 推荐" : "")).ToList();
+        var rec = variants.FindIndex(v => v.Recommended);
+        var arch = Environment.Is64BitOperatingSystem ? "x86_64（64 位）" : "i686（32 位）";
+        var dlg = new Views.ChoiceDialog($"选择 {title} 编译版",
+            $"已根据系统架构筛选：{arch}\n请选择要下载安装的编译版本（推荐 posix 线程 + UCRT）：",
+            labels, rec) { Owner = Application.Current.MainWindow };
+        if (dlg.ShowDialog() != true || dlg.SelectedIndex < 0) return;
+
+        item.Install.Method = "portable";
+        item.Install.Url = variants[dlg.SelectedIndex].Url;
+        await RunOpAsync(item, "install");
     }
 
     private async Task ConfirmDowngradeAndRun(CatalogItem item)
@@ -288,19 +343,18 @@ public sealed class MainViewModel : ObservableObject
                     "update" => await Updater.UpdateAsync(item, ctx),
                     "downgrade" => await Updater.DowngradeAsync(item, ctx),
                     "uninstall" => await Uninstaller.UninstallAsync(item, _resolver, purge, ct, ctx.Report),
-                    "launch" => await Task.Run(() => LaunchOp(item, ctx)),
-                    "stop" => await Task.Run(() => StopOp(item, ctx)),
-                    "restart" => await RestartOp(item, ctx),
                     _ => StepOutcome.Fail("未知操作"),
                 };
             }
-            catch (OperationCanceledException) { cancelled = true; outcome = StepOutcome.Fail("已取消"); }
-            catch (Exception ex) { outcome = StepOutcome.Fail(ex.Message); }
+            catch (OperationCanceledException) { cancelled = true; ctx.Step("用户已取消"); outcome = StepOutcome.Fail("已取消"); }
+            catch (Exception ex) { ctx.Step("出错：" + ex.Message); outcome = StepOutcome.Fail(ex.Message); }
 
             if (cancelled && op == "install")
             {
                 var freed = Cleanup.RemoveInstallResidue(item, _resolver);
-                outcome = StepOutcome.Fail(freed > 0 ? $"已取消，已清理残留 {Mb(freed)}" : "已取消（无残留）");
+                var msg = freed > 0 ? $"已取消，已清理残留 {Mb(freed)}" : "已取消（无残留）";
+                ctx.Step(msg);
+                outcome = StepOutcome.Fail(msg);
             }
 
             AuditLog.Action($"{verb} {item.Name}：{Zh(outcome.Status)} {outcome.Message}".TrimEnd());
@@ -323,6 +377,45 @@ public sealed class MainViewModel : ObservableObject
         finally { _opGate.Release(); }
     }
 
+    /// <summary>Process-level ops (启动 / 结束 / 重启) run IMMEDIATELY — they don't take the operation
+    /// lock and don't touch the active run, so they never wait behind a long install/update.</summary>
+    private async Task RunQuickOpAsync(CatalogItem item, string op)
+    {
+        SelectedNav = NavItems.First(n => ReferenceEquals(n.Page, Progress));
+        var verb = Verb(op);
+        var row = Progress.AddRunningRow(item.Id, item.Name, item.Install.Method, verb);
+        var ctx = QuickCtx(row);
+
+        StepOutcome outcome;
+        try
+        {
+            outcome = op switch
+            {
+                "launch" => await Task.Run(() => LaunchOp(item, ctx)),
+                "stop" => await Task.Run(() => StopOp(item, ctx)),
+                "restart" => await RestartOp(item, ctx),
+                _ => StepOutcome.Fail("未知操作"),
+            };
+        }
+        catch (Exception ex) { outcome = StepOutcome.Fail(ex.Message); }
+
+        AuditLog.Action($"{verb} {item.Name}：{Zh(outcome.Status)} {outcome.Message}".TrimEnd());
+        Progress.FinishRow(row, outcome.Status, outcome.Message, verb);
+    }
+
+    /// <summary>Context whose step log targets a specific quick-op row (not the active run's row).</summary>
+    private EngineContext QuickCtx(ProgressItemViewModel row)
+    {
+        var disp = Application.Current.Dispatcher;
+        return new EngineContext
+        {
+            Path = _resolver,
+            RepoRoot = _repoRoot,
+            Ct = CancellationToken.None,
+            Report = msg => disp.Invoke(() => row.AddDetail($"{DateTime.Now:HH:mm:ss}  {msg}")),
+        };
+    }
+
     private EngineContext NewCtx(out CancellationToken ct)
     {
         _cts?.Dispose();
@@ -334,9 +427,20 @@ public sealed class MainViewModel : ObservableObject
             Path = _resolver,
             RepoRoot = _repoRoot,
             Ct = ct,
+            DownloadDir = ResolveDownloadDir(),
             Report = msg => disp.Invoke(() => Progress.OnStep(msg)),
             Progress = msg => disp.Invoke(() => Progress.OnLiveProgress(msg)),
         };
+    }
+
+    private string? ResolveDownloadDir()
+    {
+        try
+        {
+            var d = _resolver.Resolve("${DownloadDir}");
+            return string.IsNullOrWhiteSpace(d) || d.Contains("${") ? null : d;
+        }
+        catch { return null; }
     }
 
     private void PromptLeftoverCleanup(CatalogItem item, List<string> candidates)
@@ -398,7 +502,17 @@ public sealed class MainViewModel : ObservableObject
     {
         var vm = Install.Groups.SelectMany(g => g.Items).FirstOrDefault(i => i.Id == item.Id);
         if (vm == null) return;
-        try { vm.Installed = await Detection.IsInstalledAsync(item, _resolver); }
+        try
+        {
+            var installed = await Detection.IsInstalledAsync(item, _resolver);
+            if (!installed) installed = await Task.Run(() => StoreApps.HasMsixApp(item.Name));
+            vm.Installed = installed;
+            if (installed)
+            {
+                var exe = await Task.Run(() => Launcher.ResolveExePath(item, _resolver));
+                if (exe != null) vm.SetIconFromExe(exe);
+            }
+        }
         catch { /* leave as-is */ }
     }
 

@@ -9,6 +9,9 @@ public sealed class EngineContext
     public required string RepoRoot { get; init; }
     public CancellationToken Ct { get; init; }
 
+    /// <summary>Resolved default download directory (settings 「软件默认下载地址」); null = use temp.</summary>
+    public string? DownloadDir { get; init; }
+
     /// <summary>Optional granular step reporter (e.g. "开始下载 …", "解压 …") for the progress page.</summary>
     public Action<string>? Report { get; init; }
 

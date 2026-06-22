@@ -11,6 +11,7 @@ public sealed class SettingsViewModel : ObservableObject
         _s = SettingsStore.Load();
         _devRoot = _s.DevRoot ?? "%USERPROFILE%/dev";
         _toolsDir = _s.ToolsDir ?? "%LOCALAPPDATA%/tools";
+        _downloadDir = _s.DownloadDir ?? "%USERPROFILE%/Downloads/WinDeploy";
         _repoUrl = _s.RepoUrl ?? "https://github.com/Tommy131/win-provision.git";
         _mirror = _s.Mirror ?? "";
         _redactKeywords = _s.RedactKeywords ?? "";
@@ -25,6 +26,9 @@ public sealed class SettingsViewModel : ObservableObject
 
     private string _toolsDir;
     public string ToolsDir { get => _toolsDir; set { if (Set(ref _toolsDir, value)) Note = ""; } }
+
+    private string _downloadDir;
+    public string DownloadDir { get => _downloadDir; set { if (Set(ref _downloadDir, value)) Note = ""; } }
 
     private string _repoUrl;
     public string RepoUrl { get => _repoUrl; set { if (Set(ref _repoUrl, value)) Note = ""; } }
@@ -75,11 +79,12 @@ public sealed class SettingsViewModel : ObservableObject
     {
         _s.DevRoot = DevRoot.Trim();
         _s.ToolsDir = ToolsDir.Trim();
+        _s.DownloadDir = DownloadDir.Trim();
         _s.RepoUrl = RepoUrl.Trim();
         _s.Mirror = Mirror.Trim();
         _s.RedactKeywords = RedactKeywords.Trim();
         SettingsStore.Save(_s);
-        AuditLog.Action($"更新设置 · DevRoot={_s.DevRoot} · ToolsDir={_s.ToolsDir} · Repo={_s.RepoUrl} · " +
+        AuditLog.Action($"更新设置 · DevRoot={_s.DevRoot} · ToolsDir={_s.ToolsDir} · 下载={_s.DownloadDir} · Repo={_s.RepoUrl} · " +
                         $"镜像={(string.IsNullOrEmpty(_s.Mirror) ? "(无)" : _s.Mirror)} · 脱敏关键词 {ParseKeywords(_s.RedactKeywords).Length} 项");
         Note = "已保存。脱敏关键词即时生效；路径变量在下次启动生效。";
         Saved?.Invoke();

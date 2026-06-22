@@ -18,6 +18,24 @@ public sealed class ProgressViewModel : ObservableObject
 
     public ObservableCollection<ProgressItemViewModel> Items { get; } = new();
 
+    public ProgressViewModel() => LoadHistory();
+
+    /// <summary>Populate the list from progress.jsonl so previous results survive a restart.</summary>
+    private void LoadHistory()
+    {
+        var records = RunHistory.ReadAll();
+        foreach (var rec in records.Count > 500 ? records.Skip(records.Count - 500) : records)
+        {
+            var kind = rec.Status switch { "成功" => "ok", "失败" => "failed", _ => "skip" };
+            var vm = new ProgressItemViewModel(rec.Name, rec.Op) { Id = rec.Id, Status = rec.Status, Kind = kind };
+            var time = string.IsNullOrEmpty(rec.StartedAt) ? "" : $"{rec.StartedAt} → {rec.EndedAt}";
+            var dur = rec.DurationMs > 0 ? ProgressItemViewModel.FormatDuration(TimeSpan.FromMilliseconds(rec.DurationMs)) : "";
+            vm.LoadHistorical(time, dur, rec.Steps);
+            Items.Add(vm);
+        }
+        RaiseCounts();
+    }
+
     private double _percent;
     public double Percent { get => _percent; set => Set(ref _percent, value); }
 
@@ -46,12 +64,10 @@ public sealed class ProgressViewModel : ObservableObject
     public RelayCommand CancelCommand => _cancelCommand ??= new RelayCommand(_ => CancelRequested?.Invoke(), _ => IsRunning);
     private RelayCommand? _cancelCommand;
 
-    public RelayCommand ClearHistoryCommand => _clearHistory ??= new RelayCommand(_ => ClearHistory(), _ => Items.Count > 0 && !IsRunning);
-    private RelayCommand? _clearHistory;
     public RelayCommand OpenTotalLogCommand => _openTotal ??= new RelayCommand(_ => RunHistory.Open());
     private RelayCommand? _openTotal;
-    public RelayCommand ClearTotalLogCommand => _clearTotal ??= new RelayCommand(_ => ClearTotalLog());
-    private RelayCommand? _clearTotal;
+    public RelayCommand ClearRecordsCommand => _clearRecords ??= new RelayCommand(_ => ClearRecords(), _ => Items.Count > 0 && !IsRunning);
+    private RelayCommand? _clearRecords;
 
     // Cumulative tiles over the full history (reset only by 清空历史).
     public int OkCount => Items.Count(i => i.Kind == "ok");
@@ -107,7 +123,7 @@ public sealed class ProgressViewModel : ObservableObject
             _ => ("已装（跳过）", "skip"),
         };
         row.MarkEnded();
-        PersistRecord(row, status, message);
+        PersistRecord(row, status, message, _verb);
 
         if (message != "already installed")
         {
@@ -118,6 +134,34 @@ public sealed class ProgressViewModel : ObservableObject
             Eta = EstimateEta();
         }
         Overall = $"进度 {_runDone} / {_runTotal}";
+        RaiseCounts();
+    }
+
+    /// <summary>Add an already-running row for a QUICK (non-queued) op — independent of the active run,
+    /// so process-level start/stop/restart never wait behind a long install/update.</summary>
+    public ProgressItemViewModel AddRunningRow(string id, string name, string method, string verb)
+    {
+        var vm = new ProgressItemViewModel(name, method) { Id = id, Status = $"{verb}中", Kind = "running" };
+        vm.MarkStarted();
+        Items.Add(vm);
+        Append($"→ {verb} {name} …");
+        RaiseCounts();
+        return vm;
+    }
+
+    /// <summary>Finish a quick-op row independently of the active run.</summary>
+    public void FinishRow(ProgressItemViewModel row, StepStatus status, string? message, string verb)
+    {
+        (row.Status, row.Kind) = status switch
+        {
+            StepStatus.Ok => ("成功", "ok"),
+            StepStatus.Failed => ("失败", "failed"),
+            _ => ("跳过", "skip"),
+        };
+        row.MarkEnded();
+        PersistRecord(row, status, message, verb);
+        if (status == StepStatus.Failed) Append($"✗ {row.Name}: {message}");
+        else Append(string.IsNullOrEmpty(message) ? $"✓ {row.Name}" : $"✓ {row.Name} — {message}");
         RaiseCounts();
     }
 
@@ -132,32 +176,26 @@ public sealed class ProgressViewModel : ObservableObject
         RaiseCounts();
     }
 
-    private void ClearHistory()
+    private void ClearRecords()
     {
-        if (MessageBox.Show("确定清空运行进度历史记录？（屏幕显示，不影响独立总日志文件）", "清空历史",
+        if (MessageBox.Show("确定清空全部运行进度记录？将同时清空 progress.jsonl 文件，不可恢复。", "清空记录",
                 MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
         Items.Clear();
         _currentRow = null;
         Log = "";
         Percent = 0; Overall = "准备中"; Current = ""; Eta = "";
+        RunHistory.Clear();
         RaiseCounts();
     }
 
-    private void ClearTotalLog()
-    {
-        if (MessageBox.Show("确定清空运行进度独立总日志（progress.jsonl）？此操作不可恢复。", "清空总日志",
-                MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
-        RunHistory.Clear();
-    }
-
-    private void PersistRecord(ProgressItemViewModel row, StepStatus status, string? message)
+    private void PersistRecord(ProgressItemViewModel row, StepStatus status, string? message, string verb)
     {
         try
         {
             RunHistory.Append(new RunRecord
             {
                 Time = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"),
-                Op = _verb,
+                Op = verb,
                 Id = row.Id,
                 Name = row.Name,
                 Status = status switch { StepStatus.Ok => "成功", StepStatus.Failed => "失败", _ => "跳过" },

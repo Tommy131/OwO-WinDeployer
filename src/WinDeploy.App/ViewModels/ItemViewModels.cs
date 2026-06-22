@@ -222,10 +222,13 @@ public sealed class ProgressItemViewModel : ObservableObject
     public void MarkStarted() { StartTime = DateTime.Now; Raise(); }
     public void MarkEnded() { EndTime = DateTime.Now; Raise(); }
 
+    private string? _timeOverride, _durationOverride;
+
     public string TimeText
     {
         get
         {
+            if (_timeOverride != null) return _timeOverride;
             if (StartTime == null) return "";
             var s = StartTime.Value.ToString("HH:mm:ss");
             return EndTime == null ? $"开始 {s}" : $"{s} → {EndTime.Value:HH:mm:ss}";
@@ -236,10 +239,25 @@ public sealed class ProgressItemViewModel : ObservableObject
     {
         get
         {
+            if (_durationOverride != null) return _durationOverride;
             if (StartTime == null || EndTime == null) return "";
-            var d = EndTime.Value - StartTime.Value;
-            return d.TotalSeconds >= 60 ? $"耗时 {(int)d.TotalMinutes}分{d.Seconds}秒" : $"耗时 {d.TotalSeconds:0.0}秒";
+            return FormatDuration(EndTime.Value - StartTime.Value);
         }
+    }
+
+    public static string FormatDuration(TimeSpan d)
+        => d.TotalSeconds >= 60 ? $"耗时 {(int)d.TotalMinutes}分{d.Seconds}秒" : $"耗时 {d.TotalSeconds:0.0}秒";
+
+    /// <summary>Populate a row from a persisted history record (no live timing).</summary>
+    public void LoadHistorical(string timeText, string durationText, IEnumerable<string> steps)
+    {
+        _timeOverride = timeText;
+        _durationOverride = durationText;
+        foreach (var s in steps) Details.Add(s);
+        OnPropertyChanged(nameof(TimeText));
+        OnPropertyChanged(nameof(DurationText));
+        OnPropertyChanged(nameof(HasDetails));
+        OnPropertyChanged(nameof(ExpandGlyph));
     }
 
     public void AddDetail(string line)

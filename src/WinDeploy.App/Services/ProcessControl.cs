@@ -69,9 +69,10 @@ public static class ProcessControl
             .Where(t => !string.IsNullOrEmpty(t.Dir))
             .Select(t => (t.Id, Dir: t.Dir!.TrimEnd('\\', '/').ToLowerInvariant() + "\\"))
             .ToList();
-        var byName = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var t in targets)
-            if (!byName.ContainsKey(t.Proc)) byName[t.Proc] = t.Id;
+        var nameTargets = targets
+            .Where(t => !string.IsNullOrEmpty(t.Proc))
+            .Select(t => (Proc: t.Proc, t.Id))
+            .ToList();
 
         Process[] all;
         try { all = Process.GetProcesses(); } catch { return result; }
@@ -97,7 +98,15 @@ public static class ProcessControl
                         if (lp.StartsWith(d.Dir, StringComparison.Ordinal) && d.Dir.Length > bestLen)
                         { matchId = d.Id; bestLen = d.Dir.Length; }
                 }
-                if (matchId == null && byName.TryGetValue(p.ProcessName, out var nid)) matchId = nid;
+                if (matchId == null)
+                {
+                    var pn = p.ProcessName;
+                    foreach (var nt in nameTargets)
+                        // exact, or a sub-process like "WhatsApp.Root" / "Claude.Helper"
+                        if (pn.Equals(nt.Proc, StringComparison.OrdinalIgnoreCase) ||
+                            pn.StartsWith(nt.Proc + ".", StringComparison.OrdinalIgnoreCase))
+                        { matchId = nt.Id; break; }
+                }
                 if (matchId == null) continue;
 
                 TimeSpan cpu;

@@ -35,7 +35,9 @@
             <TextBlock Text="DevRoot（git/Flutter 等）" FontSize="12" Foreground="{DynamicResource TextSecondary}" />
             <TextBox Text="{Binding DevRoot, UpdateSourceTrigger=PropertyChanged}" Height="34" VerticalContentAlignment="Center" Padding="8,0" Margin="0,3,0,10" />
             <TextBlock Text="ToolsDir（Node/MinGW/ffmpeg 等便携包）" FontSize="12" Foreground="{DynamicResource TextSecondary}" />
-            <TextBox Text="{Binding ToolsDir, UpdateSourceTrigger=PropertyChanged}" Height="34" VerticalContentAlignment="Center" Padding="8,0" Margin="0,3,0,0" />
+            <TextBox Text="{Binding ToolsDir, UpdateSourceTrigger=PropertyChanged}" Height="34" VerticalContentAlignment="Center" Padding="8,0" Margin="0,3,0,10" />
+            <TextBlock Text="DownloadDir（软件默认下载地址：安装包 / 便携包下载到此，可用 ${DownloadDir}）" FontSize="12" Foreground="{DynamicResource TextSecondary}" />
+            <TextBox Text="{Binding DownloadDir, UpdateSourceTrigger=PropertyChanged}" Height="34" VerticalContentAlignment="Center" Padding="8,0" Margin="0,3,0,0" />
           </StackPanel>
         </Border>
 

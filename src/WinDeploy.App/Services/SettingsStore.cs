@@ -7,6 +7,7 @@ public sealed class AppSettings
 {
     public string? DevRoot { get; set; }
     public string? ToolsDir { get; set; }
+    public string? DownloadDir { get; set; }
     public string? RepoUrl { get; set; }
     public string? Mirror { get; set; }
     public string? RedactKeywords { get; set; }

@@ -19,18 +19,33 @@ public static class Launcher
     public static bool TryLaunch(CatalogItem item, PathResolver pr, out string detail, Action<string>? log = null)
     {
         var target = Resolve(item, pr, log);
-        if (target == null) { detail = "未能定位可执行文件，请从开始菜单启动"; return false; }
-        try
+        if (target != null)
         {
-            var psi = new ProcessStartInfo(target) { UseShellExecute = true };
-            var dir = Path.GetDirectoryName(target);
-            if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir)) psi.WorkingDirectory = dir;
-            Process.Start(psi);
-            log?.Invoke("已启动: " + target);
-            detail = target;
+            try
+            {
+                var psi = new ProcessStartInfo(target) { UseShellExecute = true };
+                var dir = Path.GetDirectoryName(target);
+                if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir)) psi.WorkingDirectory = dir;
+                Process.Start(psi);
+                log?.Invoke("已启动: " + target);
+                detail = target;
+                return true;
+            }
+            catch (Exception ex) { log?.Invoke("Win32 启动失败: " + ex.Message + "，尝试 Store/MSIX …"); }
+        }
+
+        // Start-menu fallback (MSIX apps like WhatsApp, or Win32 apps with empty ARP paths like ScreenToGif).
+        log?.Invoke("尝试开始菜单 / Store 应用 …");
+        var appId = StoreApps.FindAppId(item.Name, log);
+        if (appId != null && StoreApps.Launch(appId, log))
+        {
+            log?.Invoke("已启动: " + appId);
+            detail = appId;
             return true;
         }
-        catch (Exception ex) { log?.Invoke("启动失败: " + ex.Message); detail = ex.Message; return false; }
+
+        detail = "未能定位可执行文件，请从开始菜单启动";
+        return false;
     }
 
     /// <summary>A path/command ShellExecute can launch, or null. Order: valid DisplayIcon exe →
