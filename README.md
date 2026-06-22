@@ -2,6 +2,20 @@
 
 一键在任意 Windows 设备上复刻开发环境、应用与个人配置。完整设计见 [`docs/DESIGN.md`](docs/DESIGN.md)。
 
+## 界面预览 Screenshots
+
+| 软件安装中心（卡片勾选 · 右键菜单） | 运行进度（实时下载 / 安装日志） |
+| :---: | :---: |
+| ![软件安装中心](assets/images/install-center.png) | ![运行进度](assets/images/progress.png) |
+| **进程管理（按软件分组）** | **进程管理（展开进程树 · CPU / 内存）** |
+| ![进程管理](assets/images/process-manager.png) | ![进程管理展开](assets/images/process-manager-expanded.png) |
+| **启动项管理** | **配置导出（自动脱敏）** |
+| ![启动项](assets/images/startup-items.png) | ![配置导出](assets/images/export.png) |
+| **设置 · 主题 / 路径变量 / 仓库** | **关于 / 开发者** |
+| ![设置](assets/images/settings.png) | ![关于开发者](assets/images/about.png) |
+| **运行日志** | |
+| ![运行日志](assets/images/logs.png) | |
+
 ## 进度
 
 | 里程碑 | 内容 | 状态 |
