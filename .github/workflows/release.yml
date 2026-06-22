@@ -13,6 +13,10 @@ permissions:
 jobs:
   build:
     runs-on: windows-latest
+    env:
+      # 可选 Authenticode 代码签名：在仓库 Settings → Secrets 配置后自动启用（彻底解决 SmartScreen/Defender 拦截）。
+      SIGN_PFX_BASE64: ${{ secrets.SIGN_PFX_BASE64 }}
+      SIGN_PFX_PASSWORD: ${{ secrets.SIGN_PFX_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
 
@@ -32,6 +36,19 @@ jobs:
           dotnet publish src/WinDeploy.Cli/WinDeploy.Cli.csproj
           -c Release -r win-x64 --self-contained true
           -p:PublishSingleFile=true --nologo -o dist/cli
+
+      - name: Code sign binaries (only runs if a signing certificate secret is configured)
+        if: ${{ env.SIGN_PFX_BASE64 != '' }}
+        shell: pwsh
+        run: |
+          $pfx = Join-Path $env:RUNNER_TEMP 'sign.pfx'
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:SIGN_PFX_BASE64))
+          $signtool = Get-ChildItem 'C:/Program Files (x86)/Windows Kits/10/bin' -Recurse -Filter signtool.exe -ErrorAction SilentlyContinue |
+                      Where-Object { $_.FullName -like '*x64*' } | Sort-Object FullName | Select-Object -Last 1
+          if (-not $signtool) { throw 'signtool.exe not found on runner' }
+          & $signtool.FullName sign /f $pfx /p $env:SIGN_PFX_PASSWORD /fd SHA256 `
+            /tr http://timestamp.digicert.com /td SHA256 dist/app/WinDeploy.exe dist/cli/windeploy.exe
+          Remove-Item $pfx -Force
 
       - name: Assemble release package
         id: pkg

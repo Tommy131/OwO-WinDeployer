@@ -10,11 +10,18 @@
     <RootNamespace>WinDeploy.App</RootNamespace>
     <AssemblyName>WinDeploy</AssemblyName>
     <Product>OwO! Win Deployer</Product>
-    <Version>1.0.0</Version>
+    <Version>1.0.1</Version>
     <AssemblyTitle>OwO! Win Deployer</AssemblyTitle>
+    <Description>OwO! Win Deployer — 一键复刻 Windows 开发环境、应用与个人配置</Description>
     <Authors>Tommy131</Authors>
     <Company>Tommy131</Company>
     <Copyright>© 2026 Tommy131</Copyright>
+
+    <!-- EXE 文件图标（资源管理器/任务栏/窗口） -->
+    <ApplicationIcon>app.ico</ApplicationIcon>
+
+    <!-- 降低 Windows Defender 误报：不压缩单文件（压缩自解压会被启发式当作“打包壳/释放器”） -->
+    <EnableCompressionInSingleFile>false</EnableCompressionInSingleFile>
   </PropertyGroup>
 
   <ItemGroup>
