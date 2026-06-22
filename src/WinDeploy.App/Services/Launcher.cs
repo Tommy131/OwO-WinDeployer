@@ -159,7 +159,7 @@ public static class Launcher
 
     private static string? ExeFromInstallLocation(ArpEntry? arp, CatalogItem item)
         => arp?.InstallLocation is { Length: > 0 } loc && Directory.Exists(loc)
-            ? PickExe(loc, item.Name, item.Id)
+            ? PickExe(loc, item.Name, item.Id, item.LaunchExe)
             : null;
 
     /// <summary>Pick the real exe from the DisplayIcon's folder — catches Steam (icon=uninstall.exe)
@@ -168,7 +168,7 @@ public static class Launcher
     {
         var p = PathOfDisplayIcon(arp?.DisplayIcon);
         var dir = p != null ? Path.GetDirectoryName(p) : null;
-        return dir != null && Directory.Exists(dir) ? PickExe(dir, item.Name, item.Id) : null;
+        return dir != null && Directory.Exists(dir) ? PickExe(dir, item.Name, item.Id, item.LaunchExe) : null;
     }
 
     /// <summary>Pick the exe from the resolved install location: the user's custom path override first,
@@ -179,7 +179,7 @@ public static class Launcher
         if (string.IsNullOrWhiteSpace(spec)) return null;
         var resolved = pr.Resolve(spec);
         if (File.Exists(resolved) && IsRunnable(resolved)) return resolved;
-        return Directory.Exists(resolved) ? PickExe(resolved, item.Name, item.Id) : null;
+        return Directory.Exists(resolved) ? PickExe(resolved, item.Name, item.Id, item.LaunchExe) : null;
     }
 
     /// <summary>Last resort: the exe registered in a Windows "Run" startup key (a custom-path portable
@@ -195,7 +195,7 @@ public static class Launcher
         {
             var rp = pr.Resolve(p);
             if (File.Exists(rp) && IsRunnable(rp)) return rp;
-            if (Directory.Exists(rp)) { var e = PickExe(rp, item.Name, item.Id); if (e != null) return e; }
+            if (Directory.Exists(rp)) { var e = PickExe(rp, item.Name, item.Id, item.LaunchExe); if (e != null) return e; }
         }
         if (!string.IsNullOrWhiteSpace(item.Detect?.Cmd))
         {
@@ -243,7 +243,7 @@ public static class Launcher
         return name.Contains("unins") || name.Contains("uninstall");
     }
 
-    private static string? PickExe(string dir, string name, string id)
+    private static string? PickExe(string dir, string name, string id, string? prefer = null)
     {
         try
         {
@@ -257,6 +257,14 @@ public static class Launcher
             if (candidates.Count == 0) return null;
 
             string N(string f) => Path.GetFileNameWithoutExtension(f).ToLowerInvariant();
+
+            // 0) explicit launch-exe hint from the catalog (e.g. FurMark → FurMark_GUI.exe)
+            if (!string.IsNullOrWhiteSpace(prefer))
+            {
+                var want = Path.GetFileNameWithoutExtension(prefer).ToLowerInvariant();
+                var hit = candidates.FirstOrDefault(f => N(f) == want);
+                if (hit != null) return hit;
+            }
 
             // 1) exact token match (steam.exe, Apifox.exe)
             var exact = candidates.FirstOrDefault(f => tokens.Contains(N(f)));

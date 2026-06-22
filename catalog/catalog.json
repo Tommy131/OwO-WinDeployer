@@ -365,6 +365,7 @@
       "category": "tools", "default": false,
       "homepage": "https://geeks3d.com/furmark/",
       "install": { "method": "winget", "id": "Geeks3D.FurMark.2" },
+      "launchExe": "FurMark_GUI",
       "detect": { "arp": "FurMark" } },
 
     { "id": "msi-afterburner", "name": "MSI Afterburner", "summary": "显卡超频 / 风扇 / 监控", "icon": "assets/icons/msi-afterburner.svg",

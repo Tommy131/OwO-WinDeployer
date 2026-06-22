@@ -33,6 +33,10 @@ public sealed class CatalogItem
 
     /// <summary>User-chosen install path for this run (winget --location / portable extractTo / git dest). Not persisted.</summary>
     public string? InstallPathOverride { get; set; }
+
+    /// <summary>Preferred executable to launch (basename, e.g. "FurMark_GUI") when the install dir holds
+    /// several exes and the auto-pick would choose the wrong one (a CLI/engine instead of the GUI).</summary>
+    public string? LaunchExe { get; set; }
 }
 
 /// <summary>How to install an item. Fields used depend on <see cref="Method"/>.</summary>
