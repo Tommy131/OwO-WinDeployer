@@ -194,23 +194,125 @@ public static class SystemInfo
         catch { return info; }
         ParseSmart(r.StdOut, info);
         await AugmentNvmeAsync(deviceId, info, ct);
+        await AugmentSmartctlAsync(deviceId, info, ct);
         return info;
     }
 
-    /// <summary>For an NVMe drive, read the NVMe SMART/Health log and fill the counters from it. This is the
-    /// authoritative source for NVMe and is read UNCONDITIONALLY for NVMe drives: the ATA WMI path
-    /// (MSStorageDriver_FailurePredictData) either is denied (non-admin) or — when elevated — returns NVMe
-    /// data in a non-ATA layout that parses to garbage and would wrongly set HasCounters, hiding the real log.</summary>
+    /// <summary>Read the NVMe SMART/Health log via IOCTL for INTERNAL NVMe drives — the authoritative source
+    /// (overrides any garbage the ATA WMI path produced) and needs no admin. External NVMe (USB / etc.) is left
+    /// to smartctl: the native IOCTLs can't tunnel through bridge chips and may even hang the call, so we never
+    /// run them on external buses. Wrapped in a timeout as a belt-and-suspenders against a stuck controller.</summary>
     private static async Task AugmentNvmeAsync(string? deviceId, SmartInfo info, CancellationToken ct)
     {
-        if (!(info.Bus?.Equals("NVMe", StringComparison.OrdinalIgnoreCase) ?? false)) return;
         if (!int.TryParse(deviceId, out var idx)) return;
+        if (!(info.Bus ?? "").Trim().Equals("NVMe", StringComparison.OrdinalIgnoreCase)) return;
         try
         {
-            var nv = await Task.Run(() => NvmeSmart.Read(idx), ct);
-            if (nv != null) ApplyNvme(info, nv);
+            var read = Task.Run(() => NvmeSmart.Read(idx));
+            if (await Task.WhenAny(read, Task.Delay(8000, ct)) == read && read.Result is { } nv) ApplyNvme(info, nv);
         }
         catch { /* best-effort */ }
+    }
+
+    /// <summary>Final fallback for any drive still without SMART counters — most importantly NVMe behind a USB
+    /// bridge (ASMedia / JMicron / Realtek), which the native IOCTLs can't tunnel. Runs the bundled smartctl
+    /// (auto-detects the bridge) and parses its JSON. Needs admin (smartctl opens the raw disk).</summary>
+    private static async Task AugmentSmartctlAsync(string? deviceId, SmartInfo info, CancellationToken ct)
+    {
+        if (info.HasCounters || !int.TryParse(deviceId, out var idx)) return;
+        string? json;
+        try { json = await SmartctlReader.RunAsync(idx, ct); }
+        catch { return; }
+        if (string.IsNullOrWhiteSpace(json)) return;
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            var e = doc.RootElement;
+            if (e.ValueKind != JsonValueKind.Object) return;
+
+            if (string.IsNullOrEmpty(info.Model) && Str(e, "model_name") is { Length: > 0 } m) info.Model = m;
+            if (string.IsNullOrEmpty(info.Serial) && Str(e, "serial_number") is { Length: > 0 } sn) info.Serial = sn;
+            if (info.SizeBytes <= 0 && e.TryGetProperty("user_capacity", out var uc) && uc.ValueKind == JsonValueKind.Object && Num(uc, "bytes") is var ub && ub > 0) info.SizeBytes = ub;
+            if (e.TryGetProperty("temperature", out var tp) && tp.ValueKind == JsonValueKind.Object && tp.TryGetProperty("current", out var tc) && tc.ValueKind == JsonValueKind.Number) info.Temperature = tc.GetInt32();
+            if (e.TryGetProperty("power_on_time", out var pot) && pot.ValueKind == JsonValueKind.Object && pot.TryGetProperty("hours", out var ph) && ph.ValueKind == JsonValueKind.Number) info.PowerOnHours = ph.GetInt64();
+            if (e.TryGetProperty("power_cycle_count", out var pcc) && pcc.ValueKind == JsonValueKind.Number) info.PowerCycles = pcc.GetInt64();
+            if (string.IsNullOrEmpty(info.Health) && e.TryGetProperty("smart_status", out var ss) && ss.ValueKind == JsonValueKind.Object && ss.TryGetProperty("passed", out var pa))
+                info.Health = pa.ValueKind == JsonValueKind.True ? "Healthy" : pa.ValueKind == JsonValueKind.False ? "Warning" : info.Health;
+
+            if (e.TryGetProperty("nvme_smart_health_information_log", out var nv) && nv.ValueKind == JsonValueKind.Object)
+            {
+                info.IsNvme = true; info.IsSsd = true;
+                info.Attributes.Clear();
+                int? I(string k) => nv.TryGetProperty(k, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetInt32() : null;
+                long? L(string k) => nv.TryGetProperty(k, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetInt64() : null;
+                info.CriticalWarning = I("critical_warning");
+                if (info.Temperature is null && I("temperature") is int t2) info.Temperature = t2;
+                info.AvailableSpare = I("available_spare");
+                info.AvailableSpareThreshold = I("available_spare_threshold");
+                info.PercentageUsed = I("percentage_used");
+                if (info.PercentageUsed is int pu) info.RemainingLifePercent = Math.Clamp(100 - pu, 0, 100);
+                if (L("data_units_read") is long dr) info.HostReadsBytes = dr * 512000;       // NVMe data units = 1000 × 512 B
+                if (L("data_units_written") is long dw) info.HostWritesBytes = dw * 512000;
+                info.MediaErrors = L("media_errors");
+                info.UnsafeShutdowns = L("unsafe_shutdowns");
+                info.ErrorLogEntries = L("num_err_log_entries");
+                info.PowerOnHours ??= L("power_on_hours");
+                info.PowerCycles ??= L("power_cycles");
+                info.HasCounters = true;
+            }
+            else if (e.TryGetProperty("ata_smart_attributes", out var aa) && aa.ValueKind == JsonValueKind.Object
+                     && aa.TryGetProperty("table", out var tbl) && tbl.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var a in tbl.EnumerateArray())
+                {
+                    var id = (int)Num(a, "id");
+                    if (id == 0) continue;
+                    int cur = (int)Num(a, "value"), worst = (int)Num(a, "worst"), thr = (int)Num(a, "thresh");
+                    long raw = a.TryGetProperty("raw", out var rw) && rw.ValueKind == JsonValueKind.Object ? Num(rw, "value") : 0;
+                    var critical = (id is 5 or 196 or 197 or 198) && raw > 0;
+                    info.Attributes.Add(new SmartAttr(id, AttrName(id), cur, worst, thr, raw, critical));
+                }
+                long? Raw(int id) => info.Attributes.FirstOrDefault(x => x.Id == id)?.Raw;
+                int? Cur(int id) => info.Attributes.FirstOrDefault(x => x.Id == id)?.Current;
+                if (info.Temperature is null && Raw(194) is long t194) info.Temperature = (int)(t194 & 0xFF);
+                info.PowerOnHours ??= Raw(9);
+                info.PowerCycles ??= Raw(12);
+                info.Reallocated = Raw(5); info.Pending = Raw(197); info.Uncorrectable = Raw(198); info.Crc = Raw(199);
+                // Host read/write totals: the Device Statistics log (GP Log 0x04, via "-l devstat") is the
+                // authoritative source — it reports the true logical-sector counts. Prefer it over attrs
+                // 0xF1/0xF2, whose raw value is vendor-defined: SanDisk / WD store it pre-scaled to GiB (e.g.
+                // 1162 for 1162 GiB), so the usual ×512 under-reports by ~10⁹× and rounds to 0. Use 0xF1/0xF2
+                // only as a fallback when the Device Statistics log is unavailable.
+                ApplyDeviceStatistics(e, info);
+                if (info.HostWritesBytes is null && Raw(241) is long w) info.HostWritesBytes = w * 512;
+                if (info.HostReadsBytes is null && Raw(242) is long rd) info.HostReadsBytes = rd * 512;
+                info.RemainingLifePercent ??= Cur(231) ?? Cur(202) ?? Cur(173) ?? Cur(169) ?? Cur(177);
+                if (e.TryGetProperty("rotation_rate", out var rr) && rr.ValueKind == JsonValueKind.Number && rr.GetInt32() == 0) info.IsSsd = true;
+                info.HasCounters = info.Attributes.Count > 0;
+            }
+            if (info.HasCounters) info.Ok = true;
+        }
+        catch { /* unparseable JSON — leave whatever the native readers already populated */ }
+    }
+
+    /// <summary>Read host read/write totals from smartctl's Device Statistics log (GP Log 0x04). Used for SATA SSDs
+    /// that don't expose ATA attributes 0xF1/0xF2 — "Logical Sectors Written/Read" × 512 B = host bytes.</summary>
+    private static void ApplyDeviceStatistics(JsonElement e, SmartInfo info)
+    {
+        if (!e.TryGetProperty("ata_device_statistics", out var ds) || ds.ValueKind != JsonValueKind.Object) return;
+        if (!ds.TryGetProperty("pages", out var pages) || pages.ValueKind != JsonValueKind.Array) return;
+        foreach (var pg in pages.EnumerateArray())
+        {
+            if (!pg.TryGetProperty("table", out var t) || t.ValueKind != JsonValueKind.Array) continue;
+            foreach (var row in t.EnumerateArray())
+            {
+                if (row.TryGetProperty("valid", out var vd) && vd.ValueKind == JsonValueKind.False) continue;
+                if (!row.TryGetProperty("value", out var vv) || vv.ValueKind != JsonValueKind.Number) continue;
+                var name = Str(row, "name") ?? "";
+                if (info.HostWritesBytes is null && name == "Logical Sectors Written") info.HostWritesBytes = vv.GetInt64() * 512;
+                else if (info.HostReadsBytes is null && name == "Logical Sectors Read") info.HostReadsBytes = vv.GetInt64() * 512;
+            }
+        }
     }
 
     private static void ApplyNvme(SmartInfo info, NvmeSmart.NvmeHealthLog nv)

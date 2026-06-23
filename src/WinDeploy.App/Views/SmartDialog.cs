@@ -121,6 +121,16 @@ public sealed class SmartDialog : Window
                 // this drive / controller simply doesn't expose standard ATA SMART (some USB / RAID / NVMe bridges).
                 _body.Children.Add(Note("该驱动器 / 控制器未提供 SMART 属性（部分 USB / RAID / NVMe 桥接控制器不支持标准 ATA SMART 读取）。"));
             }
+            else if (IsExternalBus(s.Bus))
+            {
+                // USB / external bridge: the per-read WMI elevation can't reach it — only the in-process SAT
+                // (SCSI/ATA) pass-through can, and that needs the whole app elevated. Offer to relaunch as admin.
+                _body.Children.Add(Note("USB / 外接硬盘的 SMART 需以管理员身份运行本程序后读取（经 SCSI / ATA 直通）。"));
+                var relaunch = new Button { Content = "🛡 以管理员身份运行本程序", Margin = new Thickness(0, 10, 0, 0), HorizontalAlignment = HorizontalAlignment.Left };
+                if (Application.Current.TryFindResource("WarnButton") is Style ws) relaunch.Style = ws;
+                relaunch.Click += (_, _) => RelaunchAsAdmin();
+                _body.Children.Add(relaunch);
+            }
             else
             {
                 _body.Children.Add(Note("温度 / 寿命 / SMART 属性需要管理员权限才能读取（机械盘 C5/C6、固态盘读写量等）。"));
@@ -285,6 +295,29 @@ public sealed class SmartDialog : Window
     private static string Gb(long bytes) => bytes >= 1024L * 1024 * 1024 * 1024
         ? $"{bytes / 1024.0 / 1024 / 1024 / 1024:0.00} TB"
         : $"{bytes / 1024.0 / 1024 / 1024:0.0} GB";
+
+    /// <summary>True for drives reached through an external bridge (USB / FireWire / SCSI / SAS), whose SMART
+    /// can only be read via the admin-only SAT pass-through — so we offer an app relaunch rather than the
+    /// per-read WMI elevation (which can't reach them).</summary>
+    private static bool IsExternalBus(string? bus)
+    {
+        bus = (bus ?? "").Trim();
+        return bus.Equals("USB", StringComparison.OrdinalIgnoreCase) || bus == "1394"
+            || bus.Equals("SCSI", StringComparison.OrdinalIgnoreCase) || bus.Equals("SAS", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static void RelaunchAsAdmin()
+    {
+        try
+        {
+            var exe = Environment.ProcessPath;
+            if (string.IsNullOrEmpty(exe)) return;
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(exe) { UseShellExecute = true, Verb = "runas" });
+            System.Windows.Application.Current.Shutdown();
+        }
+        catch (System.ComponentModel.Win32Exception) { /* user declined UAC */ }
+        catch { /* ignore */ }
+    }
 
     private static bool IsElevated()
     {
