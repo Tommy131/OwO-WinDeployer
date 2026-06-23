@@ -43,6 +43,7 @@ public sealed class MainViewModel : ObservableObject
     public AdvancedToolsViewModel AdvancedTools { get; } = new();
     public ServiceConfigViewModel ServiceConfig { get; } = new();
     public FtpViewModel Ftp { get; } = new();
+    public CloudflareDdnsViewModel Cloudflare { get; } = new();
 
     public string AppName => WinDeploy.App.AppInfo.Name;
     public string WindowTitle => WinDeploy.App.AppInfo.TitleWithRole;
@@ -119,6 +120,11 @@ public sealed class MainViewModel : ObservableObject
     public void GoToLogs() => NavigateTo(Logs);
     public void GoToSettings() => NavigateTo(Settings);
     public void GoToSystemOverview() => NavigateTo(SystemOverview);
+    public void GoToCloudflare() => NavigateTo(Cloudflare);
+
+    /// <summary>Developer mode is on — gates the tray's system-affecting entries (终端 / 服务 / 环境变量 /
+    /// Cloudflare DDNS) so a non-developer can't reach them and risk the system. Read live by the tray on each open.</summary>
+    public bool IsDeveloperMode => _devMode;
 
     private void NavigateTo(object page)
     {
@@ -208,6 +214,7 @@ public sealed class MainViewModel : ObservableObject
         dev.Items.Add(new("", "终端", Terminal, advanced: true));
         dev.Items.Add(new("", "服务配置", ServiceConfig, advanced: true));
         dev.Items.Add(new("", "FTP 传输", Ftp, advanced: true));
+        dev.Items.Add(new("", "Cloudflare DDNS", Cloudflare, advanced: true));
         dev.Items.Add(new("", "WSL", Wsl, advanced: true, minBuild: OsInfo.Win10_1607));
         dev.Items.Add(new("", "系统调优", Tweaks, advanced: true));
         dev.Items.Add(new("", "高级工具", AdvancedTools, advanced: true));

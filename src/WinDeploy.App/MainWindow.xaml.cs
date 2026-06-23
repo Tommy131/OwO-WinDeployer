@@ -24,6 +24,7 @@ public partial class MainWindow : Window
             _tray?.Dispose();
             (DataContext as MainViewModel)?.Terminal.Dispose();
             (DataContext as MainViewModel)?.Ftp.Shutdown();
+            (DataContext as MainViewModel)?.Cloudflare.Shutdown();
         };
     }
 
@@ -66,15 +67,42 @@ public partial class MainWindow : Window
         var items = new List<TrayMenuItem>();
         if (DataContext is not MainViewModel vm) return items;
 
-        items.Add(BuildTerminalMenu(vm));
-        items.Add(BuildWebServicesMenu(vm));
-        items.Add(BuildFtpMenu(vm));
-        items.Add(TrayMenuItem.Sep);
+        // System-affecting entries (终端 / 管理服务 / Cloudflare DDNS / 环境变量设置) are shown ONLY in 开发人员模式,
+        // so a non-developer can't reach them from the tray and accidentally damage the system. Read live on
+        // every open — toggling developer mode in 设置 immediately changes what this menu offers.
+        if (vm.IsDeveloperMode)
+        {
+            items.Add(BuildTerminalMenu(vm));
+            items.Add(BuildWebServicesMenu(vm));
+            items.Add(BuildFtpMenu(vm));
+            items.Add(BuildCloudflareMenu(vm));
+            items.Add(TrayMenuItem.Sep);
+        }
+
         items.Add(TrayMenuItem.Item("打开日志", () => RestoreAndNavigate(vm.GoToLogs)));
         items.Add(TrayMenuItem.Item("打开设置", () => RestoreAndNavigate(vm.GoToSettings)));
-        items.Add(TrayMenuItem.Item("环境变量设置", OpenSystemEnvVars));
+        if (vm.IsDeveloperMode)
+            items.Add(TrayMenuItem.Item("环境变量设置", OpenSystemEnvVars));
         items.Add(TrayMenuItem.Item("系统概览", () => RestoreAndNavigate(vm.GoToSystemOverview)));
         return items;
+    }
+
+    /// <summary>Cloudflare DDNS：open the management page, see the resident monitor's status / current IP, and
+    /// start / stop / trigger it without leaving the tray. 开发人员模式 only.</summary>
+    private TrayMenuItem BuildCloudflareMenu(MainViewModel vm)
+    {
+        var cf = vm.Cloudflare;
+        var running = cf.MonitorRunning;
+        var children = new List<TrayMenuItem>
+        {
+            TrayMenuItem.Item("打开 DDNS 管理", () => RestoreAndNavigate(vm.GoToCloudflare)),
+            TrayMenuItem.Sep,
+            TrayMenuItem.Disabled("状态：" + cf.TrayStatusLine),
+            TrayMenuItem.Item("启动监听", cf.StartMonitor, enabled: !running),
+            TrayMenuItem.Item("停止监听", cf.StopMonitor, enabled: running),
+            TrayMenuItem.Item("立即检查并更新", cf.RunOnceFromTray),
+        };
+        return TrayMenuItem.Sub("Cloudflare DDNS" + (running ? "（监听中）" : ""), children);
     }
 
     /// <summary>终端：quick-open the page, start a new session (per shell), or jump back to a live session.</summary>

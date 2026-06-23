@@ -624,6 +624,9 @@
       <DataTemplate DataType="{x:Type vm:FtpClientViewModel}">
         <views:FtpClientView />
       </DataTemplate>
+      <DataTemplate DataType="{x:Type vm:CloudflareDdnsViewModel}">
+        <views:CloudflareDdnsView />
+      </DataTemplate>
       <DataTemplate DataType="{x:Type vm:DetailViewModel}">
         <views:DetailView />
       </DataTemplate>
