@@ -622,12 +622,19 @@ public sealed class MainViewModel : ObservableObject
         else MessageBox.Show($"未能定位 {item.Name} 的安装目录。", "打开软件目录", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
+    /// <summary>Open the software's homepage. Every item supports this: prefer the catalog homepage, then a
+    /// GitHub repo URL (for git-installed apps), and finally fall back to a web search of the name — so the
+    /// 「前往官网」menu entry is never a dead click, even for items without a configured homepage.</summary>
     private static void OpenHomepage(CatalogItem item)
     {
-        if (string.IsNullOrWhiteSpace(item.Homepage)) return;
-        try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(item.Homepage) { UseShellExecute = true }); }
+        var url = FirstHttpUrl(item.Homepage, item.Install?.Repo)
+                  ?? "https://www.bing.com/search?q=" + Uri.EscapeDataString((item.Name + " 官网 官方下载").Trim());
+        try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true }); }
         catch { /* ignore */ }
     }
+
+    private static string? FirstHttpUrl(params string?[] candidates)
+        => candidates.FirstOrDefault(c => !string.IsNullOrWhiteSpace(c) && c.StartsWith("http", StringComparison.OrdinalIgnoreCase));
 
     private async Task ConfirmRiskAndRun(CatalogItem item, string op)
     {

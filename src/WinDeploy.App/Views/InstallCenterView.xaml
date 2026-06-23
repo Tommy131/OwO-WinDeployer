@@ -197,7 +197,7 @@
                             <MenuItem.Icon><TextBlock Text="&#xE8B7;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource TextSecondary}" /></MenuItem.Icon>
                           </MenuItem>
                           <MenuItem Header="前往官网" Style="{StaticResource ThemedMenuItem}"
-                                    Visibility="{Binding HasHomepage, Converter={StaticResource BoolToVis}}"
+                                    ToolTip="打开官网；未配置官网的软件改为联网搜索该软件名"
                                     Command="{Binding PlacementTarget.Tag.OpenHomepageCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                     CommandParameter="{Binding}">
                             <MenuItem.Icon><TextBlock Text="&#xE774;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource TextSecondary}" /></MenuItem.Icon>
