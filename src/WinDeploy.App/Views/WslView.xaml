@@ -36,7 +36,8 @@
       </StackPanel>
     </Border>
 
-    <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto" Margin="0,12,0,0">
+    <!-- Margin right -24 / Padding right 24: scrollbar flush at the page's outer edge, content unchanged. -->
+    <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto" Margin="0,12,-24,0" Padding="0,0,24,0">
       <StackPanel>
         <!-- WSL 功能未启用：先去控制面板启用 -->
         <Border Style="{StaticResource Card}" Padding="18,16" Margin="0,2,0,0"

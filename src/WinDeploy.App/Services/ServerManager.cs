@@ -78,13 +78,17 @@ public static class ServerManager
     private static async Task<ServerRuntime> GetJavaRuntimeAsync(string dir)
     {
         // One CIM query: java processes whose command line references the Tomcat dir.
-        var esc = dir.Replace("\\", "\\\\").Replace("'", "''");
+        // The dir is embedded into a single-quoted PowerShell string, where the ONLY escaping needed
+        // is doubling '. Backslashes are literal there — do NOT double them, or the match never hits.
+        // Match with a case-insensitive substring (IndexOf), not -like, to avoid wildcard ([ ] * ?) and
+        // backslash surprises in the path.
+        var esc = dir.Replace("'", "''");
         var ps =
             "[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new($false);" +
             "$d='" + esc + "';" +
             "Get-CimInstance Win32_Process -Filter \"Name='java.exe' OR Name='javaw.exe'\" " +
-            "| Where-Object { $_.CommandLine -like ('*'+$d+'*') } " +
-            "| ForEach-Object { [pscustomobject]@{ Pid=$_.ProcessId; Start=$_.CreationDate } } | ConvertTo-Json -Compress";
+            "| Where-Object { $_.CommandLine -and $_.CommandLine.IndexOf($d,[System.StringComparison]::OrdinalIgnoreCase) -ge 0 } " +
+            "| ForEach-Object { [pscustomobject]@{ Pid=$_.ProcessId; Start=$_.CreationDate.ToString('o') } } | ConvertTo-Json -Compress";
         try
         {
             var r = await Proc.RunAsync("powershell.exe",

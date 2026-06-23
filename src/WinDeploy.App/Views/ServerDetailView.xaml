@@ -23,9 +23,15 @@
         </StackPanel>
       </Button>
       <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="14,0,0,0" VerticalAlignment="Center">
-        <Border CornerRadius="6" Padding="8,2" Background="{DynamicResource AccentBg}" VerticalAlignment="Center">
-          <TextBlock Text="{Binding KindTag}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource Accent}" />
-        </Border>
+        <Grid Width="26" Height="26" VerticalAlignment="Center">
+          <Border CornerRadius="6" Background="{DynamicResource AccentBg}"
+                  Visibility="{Binding NoIcon, Converter={StaticResource BoolToVis}}">
+            <TextBlock Text="{Binding KindTag}" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource Accent}"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+          </Border>
+          <Image Source="{Binding Icon}" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"
+                 Visibility="{Binding HasIcon, Converter={StaticResource BoolToVis}}" />
+        </Grid>
         <TextBlock Text="{Binding Name}" FontSize="19" FontWeight="SemiBold" Margin="10,0,0,0" VerticalAlignment="Center" />
       </StackPanel>
       <Button Grid.Column="2" Content="打开安装目录" Style="{StaticResource MiniButton}" Command="{Binding OpenDirCommand}" VerticalAlignment="Center" />

@@ -11,6 +11,8 @@ public sealed class HwSample
     public double? CpuTemp { get; set; }
     public double? MemUsedGb { get; set; }
     public double? MemAvailGb { get; set; }
+    /// <summary>NVIDIA GPU board power limit (W) for the GPU bar's 100% reference, or null (non-NVIDIA).</summary>
+    public double? GpuPowerLimitW { get; set; }
     public List<PowerReading> Powers { get; } = new();
     public double TotalPower => Powers.Sum(p => p.Watts);
     public bool HasPower => Powers.Count > 0;
@@ -64,6 +66,8 @@ public static class HardwareMonitor
                 foreach (var sub in hw.SubHardware) Read(sub, s);
             }
         }
+        // Real GPU power limit (cached after the first nvidia-smi call) — used as the GPU bar's 100% reference.
+        s.GpuPowerLimitW = PowerLimits.NvidiaGpuLimitW();
         return s;
     }
 

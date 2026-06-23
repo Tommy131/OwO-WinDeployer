@@ -24,6 +24,8 @@ public sealed class SmartInfo
     public string? Serial { get; set; }
     public long SizeBytes { get; set; }
     public bool IsSsd { get; set; }
+    /// <summary>True for an NVMe drive — its counters come from the NVMe SMART/Health log, not the ATA table.</summary>
+    public bool IsNvme { get; set; }
 
     public int? Temperature { get; set; }
     public long? PowerOnHours { get; set; }
@@ -37,14 +39,25 @@ public sealed class SmartInfo
     public long? HostWritesBytes { get; set; }  // 0xF1
     public long? HostReadsBytes { get; set; }   // 0xF2
     public int? RemainingLifePercent { get; set; }
+    // NVMe SMART/Health (log page 0x02)
+    public int? PercentageUsed { get; set; }          // 0–255, % of rated endurance consumed
+    public int? AvailableSpare { get; set; }          // %
+    public int? AvailableSpareThreshold { get; set; } // %
+    public int? CriticalWarning { get; set; }         // bitfield (0 = healthy)
+    public long? MediaErrors { get; set; }            // media & data-integrity errors
+    public long? UnsafeShutdowns { get; set; }
+    public long? ErrorLogEntries { get; set; }
 
     public List<SmartAttr> Attributes { get; } = new();
 
     public bool Ok { get; set; }
-    /// <summary>True when the raw ATA attribute table was read (needs admin).</summary>
+    /// <summary>True when SMART counters were read (ATA attribute table needs admin; NVMe log does not).</summary>
     public bool HasCounters { get; set; }
-    /// <summary>Any high-risk attribute is non-zero (reallocated / pending / uncorrectable).</summary>
-    public bool HasWarning => (Reallocated ?? 0) > 0 || (Pending ?? 0) > 0 || (Uncorrectable ?? 0) > 0;
+    /// <summary>Any high-risk indicator is non-zero (ATA reallocated/pending/uncorrectable, or NVMe critical
+    /// warning / media errors / spare below threshold).</summary>
+    public bool HasWarning => (Reallocated ?? 0) > 0 || (Pending ?? 0) > 0 || (Uncorrectable ?? 0) > 0
+        || (CriticalWarning ?? 0) != 0 || (MediaErrors ?? 0) > 0
+        || (AvailableSpare is int sp && AvailableSpareThreshold is int th && th > 0 && sp < th);
 }
 
 /// <summary>A one-shot snapshot of the machine's health: OS, CPU, RAM, drives (+ SMART), battery, activation.</summary>
@@ -177,7 +190,43 @@ public static class SystemInfo
         try { r = await Proc.RunAsync("powershell", new[] { "-NoProfile", "-NonInteractive", "-Command", SmartPs.Replace("__DEV__", deviceId) }, ct: ct); }
         catch { return info; }
         ParseSmart(r.StdOut, info);
+        await AugmentNvmeAsync(deviceId, info, ct);
         return info;
+    }
+
+    /// <summary>For an NVMe drive, read the NVMe SMART/Health log (no admin needed) and fill the counters the
+    /// ATA WMI path can't provide. No-op for non-NVMe drives or when the ATA table already supplied counters.</summary>
+    private static async Task AugmentNvmeAsync(string? deviceId, SmartInfo info, CancellationToken ct)
+    {
+        if (info.HasCounters) return;
+        if (!(info.Bus?.Equals("NVMe", StringComparison.OrdinalIgnoreCase) ?? false)) return;
+        if (!int.TryParse(deviceId, out var idx)) return;
+        try
+        {
+            var nv = await Task.Run(() => NvmeSmart.Read(idx), ct);
+            if (nv != null) ApplyNvme(info, nv);
+        }
+        catch { /* best-effort */ }
+    }
+
+    private static void ApplyNvme(SmartInfo info, NvmeSmart.NvmeHealthLog nv)
+    {
+        info.IsNvme = true;
+        info.IsSsd = true;
+        if (nv.TemperatureC is int t) info.Temperature = t;
+        info.PowerOnHours = nv.PowerOnHours;
+        info.PowerCycles = nv.PowerCycles;
+        info.HostWritesBytes = nv.DataUnitsWrittenBytes;
+        info.HostReadsBytes = nv.DataUnitsReadBytes;
+        info.PercentageUsed = nv.PercentageUsed;
+        info.RemainingLifePercent = Math.Clamp(100 - nv.PercentageUsed, 0, 100);
+        info.AvailableSpare = nv.AvailableSpare;
+        info.AvailableSpareThreshold = nv.AvailableSpareThreshold;
+        info.CriticalWarning = nv.CriticalWarning;
+        info.MediaErrors = nv.MediaErrors;
+        info.UnsafeShutdowns = nv.UnsafeShutdowns;
+        info.ErrorLogEntries = nv.ErrorLogEntries;
+        info.HasCounters = true;
     }
 
     /// <summary>Read full SMART for one disk by running the same query ELEVATED (UAC). Windows only returns
@@ -207,6 +256,7 @@ public static class SystemInfo
             await p.WaitForExitAsync(ct);
             if (System.IO.File.Exists(jsonPath))
                 ParseSmart(await System.IO.File.ReadAllTextAsync(jsonPath, ct), info);
+            await AugmentNvmeAsync(deviceId, info, ct);
         }
         catch (System.ComponentModel.Win32Exception) { /* user cancelled the UAC prompt */ }
         catch { /* best-effort */ }

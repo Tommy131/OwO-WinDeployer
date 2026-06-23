@@ -28,6 +28,26 @@ public sealed class ServiceConfigViewModel : ObservableObject
         Current = _list;
     }
 
+    /// <summary>Called every time the 服务配置 page becomes visible. If an open server-detail page now points
+    /// at a server that no longer exists (e.g. it was uninstalled while the user was on another page), fall
+    /// back to the (refreshed) server list instead of stranding the user on a stale detail page.</summary>
+    public void Activate()
+    {
+        if (_catalog == null) return;
+        if (_current is ServerDetailViewModel detail)
+        {
+            var stillInstalled = ServiceConfig.Detect(_catalog, _resolver).Any(s =>
+                s.Id == detail.Info.Id && string.Equals(s.Dir, detail.Info.Dir, StringComparison.OrdinalIgnoreCase));
+            if (stillInstalled) return;             // detail still valid — leave the user where they were
+            _list?.Refresh();
+            Current = _list;
+        }
+        else
+        {
+            _list?.Refresh();                        // already on the list — re-detect installed servers
+        }
+    }
+
     private void OpenServer(ServerInfo info)
     {
         var detail = new ServerDetailViewModel(info, () => { _list?.Refresh(); Current = _list; });
@@ -43,6 +63,11 @@ public sealed class ServerCardViewModel : ObservableObject
     public string Name => Info.Name;
     public string Dir => Info.Dir;
     public string KindTag => Info.Id;
+
+    private System.Windows.Media.ImageSource? _icon;
+    public System.Windows.Media.ImageSource? Icon => _icon ??= IconResolver.FromCatalogId(Info.Id) ?? IconCache.Load(Info.Id);
+    public bool HasIcon => Icon != null;
+    public bool NoIcon => !HasIcon;
     public int ConfigCount => Info.Configs.Count;
     public string Summary
     {
@@ -164,6 +189,10 @@ public sealed class ServerDetailViewModel : ObservableObject
     public string Name => Info.Name;
     public string Dir => Info.Dir;
     public string KindTag => Info.Id;
+    private System.Windows.Media.ImageSource? _icon;
+    public System.Windows.Media.ImageSource? Icon => _icon ??= IconResolver.FromCatalogId(Info.Id) ?? IconCache.Load(Info.Id);
+    public bool HasIcon => Icon != null;
+    public bool NoIcon => !HasIcon;
     public bool SupportsSsl => Info.SupportsSsl;
     public bool SupportsVhost => Info.SupportsVhost;
     public bool HasService => Info.HasService;

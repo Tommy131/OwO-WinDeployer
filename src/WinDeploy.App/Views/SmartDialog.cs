@@ -15,6 +15,8 @@ public sealed class SmartDialog : Window
     private SmartInfo? _last;
     private bool _showSerial;
     private bool _offerElevate = true;   // preserved across serial show/hide re-renders
+    private readonly bool _elevated = IsElevated();
+    private const double LabelCol = 128;  // wide enough for "介质 / 完整性错误" so it never overlaps the value
 
     public SmartDialog(string title, string? deviceId)
     {
@@ -44,7 +46,9 @@ public sealed class SmartDialog : Window
         _body.Children.Add(Row("读取中 …", ""));
         content.Children.Add(_body);
 
-        dock.Children.Add(new ScrollViewer { Content = content, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Padding = new Thickness(0, 0, 6, 0) });
+        // Margin right -14 / Padding right 6: the scrollbar sits near the dialog's outer edge (not inset 18px),
+        // and the body gains a little width — which also relieves the label/value crowding.
+        dock.Children.Add(new ScrollViewer { Content = content, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Margin = new Thickness(0, 0, -14, 0), Padding = new Thickness(0, 0, 6, 0) });
 
         Content = dock;
         Loaded += async (_, _) => await LoadAsync();
@@ -76,11 +80,24 @@ public sealed class SmartDialog : Window
 
         if (s.IsSsd)
         {
-            _body.Children.Add(Row("剩余寿命", s.RemainingLifePercent is int life ? $"{life}%" : "不可用"));
-            // Some SSDs (e.g. Samsung 860 EVO) only expose Total LBAs Written (0xF1) and omit reads (0xF2);
-            // distinguish "drive doesn't report it" from a read failure.
-            _body.Children.Add(Row("累计写入", s.HostWritesBytes is long hw ? Gb(hw) : "该型号未上报 (0xF1)"));
-            _body.Children.Add(Row("累计读取", s.HostReadsBytes is long hr ? Gb(hr) : "该型号未上报 (0xF2)"));
+            _body.Children.Add(Row("剩余寿命", s.RemainingLifePercent is int life ? $"{life}%" : "不可用",
+                danger: s.RemainingLifePercent is int lp && lp <= 10));
+            if (s.IsNvme && s.PercentageUsed is int pu)
+                _body.Children.Add(Row("已用寿命", $"{pu}%", danger: pu >= 90));
+            // Some SATA SSDs (e.g. Samsung 860 EVO) only expose Total LBAs Written (0xF1) and omit reads (0xF2);
+            // distinguish "drive doesn't report it" from a read failure. NVMe always reports both.
+            _body.Children.Add(Row("累计写入", s.HostWritesBytes is long hw ? Gb(hw) : s.IsNvme ? "不可用" : "该型号未上报 (0xF1)"));
+            _body.Children.Add(Row("累计读取", s.HostReadsBytes is long hr ? Gb(hr) : s.IsNvme ? "不可用" : "该型号未上报 (0xF2)"));
+            if (s.IsNvme)
+            {
+                if (s.AvailableSpare is int sp)
+                    _body.Children.Add(Row("可用备件", $"{sp}%" + (s.AvailableSpareThreshold is int th ? $"（阈值 {th}%）" : ""),
+                        danger: s.AvailableSpareThreshold is int t2 && t2 > 0 && sp < t2));
+                _body.Children.Add(Row("介质 / 完整性错误", s.MediaErrors?.ToString() ?? "不可用", danger: (s.MediaErrors ?? 0) > 0));
+                _body.Children.Add(Row("不安全关机", s.UnsafeShutdowns?.ToString() ?? "不可用"));
+                _body.Children.Add(Row("错误日志条目", s.ErrorLogEntries?.ToString() ?? "不可用"));
+                _body.Children.Add(Row("严重警告", NvmeWarn(s.CriticalWarning), danger: (s.CriticalWarning ?? 0) != 0));
+            }
         }
         else
         {
@@ -97,19 +114,28 @@ public sealed class SmartDialog : Window
 
         if (!s.HasCounters)
         {
-            _body.Children.Add(Note("温度 / 寿命 / SMART 属性需要管理员权限才能读取（机械盘 C5/C6、固态盘读写量等）。"));
-            if (offerElevate)
+            if (_elevated)
             {
-                var btn = new Button { Content = "以管理员身份读取完整 SMART", Margin = new Thickness(0, 10, 0, 0), HorizontalAlignment = HorizontalAlignment.Left };
-                if (Application.Current.TryFindResource("InfoButton") is Style st) btn.Style = st;
-                btn.Click += async (_, _) =>
+                // Already admin: the initial read already used full privileges, so re-elevating can't help —
+                // this drive / controller simply doesn't expose standard ATA SMART (some USB / RAID / NVMe bridges).
+                _body.Children.Add(Note("该驱动器 / 控制器未提供 SMART 属性（部分 USB / RAID / NVMe 桥接控制器不支持标准 ATA SMART 读取）。"));
+            }
+            else
+            {
+                _body.Children.Add(Note("温度 / 寿命 / SMART 属性需要管理员权限才能读取（机械盘 C5/C6、固态盘读写量等）。"));
+                if (offerElevate)
                 {
-                    btn.IsEnabled = false; btn.Content = "读取中 …";
-                    var s2 = await SystemInfo.GetSmartElevatedAsync(_deviceId);
-                    if (s2.HasCounters) Render(s2, offerElevate: false);
-                    else { Render(s, offerElevate: false); _body.Children.Add(Note("未获取到 SMART 属性（已取消授权，或该控制器/驱动器不支持 ATA SMART，如部分 NVMe / USB / RAID）。")); }
-                };
-                _body.Children.Add(btn);
+                    var btn = new Button { Content = "以管理员身份读取完整 SMART", Margin = new Thickness(0, 10, 0, 0), HorizontalAlignment = HorizontalAlignment.Left };
+                    if (Application.Current.TryFindResource("InfoButton") is Style st) btn.Style = st;
+                    btn.Click += async (_, _) =>
+                    {
+                        btn.IsEnabled = false; btn.Content = "读取中 …";
+                        var s2 = await SystemInfo.GetSmartElevatedAsync(_deviceId);
+                        if (s2.HasCounters) Render(s2, offerElevate: false);
+                        else { Render(s, offerElevate: false); _body.Children.Add(Note("未获取到 SMART 属性（已取消授权，或该控制器/驱动器不支持 ATA SMART，如部分 NVMe / USB / RAID）。")); }
+                    };
+                    _body.Children.Add(btn);
+                }
             }
         }
     }
@@ -117,7 +143,7 @@ public sealed class SmartDialog : Window
     private Border SerialRow(SmartInfo s)
     {
         var grid = new Grid();
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(96) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(LabelCol) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
@@ -179,7 +205,7 @@ public sealed class SmartDialog : Window
     private Border Row(string label, string value, bool? healthy = null, bool danger = false)
     {
         var grid = new Grid();
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(96) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(LabelCol) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.Children.Add(Col(new TextBlock { Text = label, FontSize = 13, Foreground = Brush("TextSecondary"), VerticalAlignment = VerticalAlignment.Center }, 0));
         grid.Children.Add(Col(new TextBlock
@@ -191,9 +217,34 @@ public sealed class SmartDialog : Window
         return new Border { Padding = new Thickness(0, 5, 0, 5), Child = grid };
     }
 
+    /// <summary>Decode the NVMe Critical Warning bitfield (byte 0 of the health log) into a readable summary.</summary>
+    private static string NvmeWarn(int? cw)
+    {
+        if (cw is not int w) return "不可用";
+        if (w == 0) return "正常";
+        var bits = new List<string>();
+        if ((w & 0x01) != 0) bits.Add("可用备件不足");
+        if ((w & 0x02) != 0) bits.Add("温度越限");
+        if ((w & 0x04) != 0) bits.Add("可靠性下降");
+        if ((w & 0x08) != 0) bits.Add("介质只读");
+        if ((w & 0x10) != 0) bits.Add("备份电容失效");
+        if ((w & 0x20) != 0) bits.Add("持久内存异常");
+        return bits.Count > 0 ? string.Join("、", bits) : $"0x{w:X2}";
+    }
+
     private static string Gb(long bytes) => bytes >= 1024L * 1024 * 1024 * 1024
         ? $"{bytes / 1024.0 / 1024 / 1024 / 1024:0.00} TB"
         : $"{bytes / 1024.0 / 1024 / 1024:0.0} GB";
+
+    private static bool IsElevated()
+    {
+        try
+        {
+            using var id = System.Security.Principal.WindowsIdentity.GetCurrent();
+            return new System.Security.Principal.WindowsPrincipal(id).IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
+        }
+        catch { return false; }
+    }
 
     private static Brush Brush(string key) => Application.Current.TryFindResource(key) as Brush ?? Brushes.Gray;
 }

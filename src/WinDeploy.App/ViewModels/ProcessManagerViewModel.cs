@@ -11,18 +11,26 @@ using WinDeploy.Core.Models;
 
 namespace WinDeploy.App.ViewModels;
 
-/// <summary>One process row (live-updated memory + CPU%).</summary>
+/// <summary>One process row (live-updated memory + CPU%). Carries its exe path so the row's right-click
+/// menu (打开文件位置 / 属性) works per-process — including a group's sub-processes.</summary>
 public sealed class ProcRowViewModel : ObservableObject
 {
     public int Pid { get; }
     public string Name { get; }
 
-    public ProcRowViewModel(int pid, string name, long memBytes, double cpu)
+    public ProcRowViewModel(int pid, string name, long memBytes, double cpu, string? path)
     {
         Pid = pid;
         Name = name;
+        Path = path;
         Update(memBytes, cpu);
     }
+
+    /// <summary>Full module path of the process, or null when it couldn't be read (protected / denied).</summary>
+    public string? Path { get; private set; }
+    public bool HasPath => !string.IsNullOrEmpty(Path);
+
+    public long MemBytes { get; private set; }
 
     private string _mem = "—";
     public string MemText { get => _mem; private set => Set(ref _mem, value); }
@@ -32,8 +40,18 @@ public sealed class ProcRowViewModel : ObservableObject
 
     public void Update(long memBytes, double cpu)
     {
+        MemBytes = memBytes;
         MemText = memBytes > 0 ? $"{memBytes / 1024.0 / 1024:0.0} MB" : "—";
         CpuText = $"{cpu:0.0}%";
+    }
+
+    /// <summary>Fill in the path once it becomes readable (e.g. resolved on a later tick).</summary>
+    public void EnsurePath(string? path)
+    {
+        if (HasPath || string.IsNullOrEmpty(path)) return;
+        Path = path;
+        OnPropertyChanged(nameof(Path));
+        OnPropertyChanged(nameof(HasPath));
     }
 }
 
@@ -62,12 +80,32 @@ public sealed class AppProcGroupViewModel : ObservableObject
     public bool IsExpanded
     {
         get => _isExpanded;
-        set { if (Set(ref _isExpanded, value)) OnPropertyChanged(nameof(ExpandGlyph)); }
+        set { if (Set(ref _isExpanded, value)) { OnPropertyChanged(nameof(ExpandGlyph)); OnPropertyChanged(nameof(ExpandMenuLabel)); } }
     }
     public string ExpandGlyph => _isExpanded ? "▼" : "▶";
+    /// <summary>Header right-click label for the toggle item — mirrors <see cref="ExpandGlyph"/>.</summary>
+    public string ExpandMenuLabel => _isExpanded ? "折叠子进程" : "展开子进程";
 
     public string CountText => $"{Processes.Count} 个进程";
     public void RaiseCount() => OnPropertyChanged(nameof(CountText));
+
+    /// <summary>True when this group's processes all run outside the interactive session (services / SYSTEM)
+    /// — used to place it in the 系统进程 section. Only meaningful in 全部进程 mode.</summary>
+    public bool IsSystemGroup { get; set; }
+
+    private bool _showSectionHeader;
+    public bool ShowSectionHeader { get => _showSectionHeader; private set => Set(ref _showSectionHeader, value); }
+
+    private string _sectionLabel = "";
+    public string SectionLabel { get => _sectionLabel; private set => Set(ref _sectionLabel, value); }
+
+    /// <summary>Set the Task-Manager-style section divider rendered above this group (only the first group of
+    /// each section shows one).</summary>
+    public void SetSection(bool show, string label)
+    {
+        ShowSectionHeader = show;
+        SectionLabel = label;
+    }
 
     public ImageSource? IconImage { get; private set; }
     public bool HasIcon => IconImage != null;
@@ -76,13 +114,15 @@ public sealed class AppProcGroupViewModel : ObservableObject
 
     private void LoadIcon(string repoRoot) => IconImage = Model != null ? IconResolver.FromCatalogId(Model.Id) : null;
 
-    /// <summary>If no bundled icon was found, extract the running app's real icon from its .exe.</summary>
+    /// <summary>If no bundled icon was found, extract the running app's real icon from its .exe. Catalog
+    /// groups stay embedded-only (never overwrite a brand icon with a blank shell icon); generic (non-catalog)
+    /// process groups take ANY icon — embedded, else the shell's associated icon — so they're recognizable.</summary>
     public void EnsureIconFromExe(string? exePath)
     {
         if (IconImage != null || string.IsNullOrWhiteSpace(exePath)) return;
         try
         {
-            IconImage = IconExtractor.FromExe(exePath);
+            IconImage = IsCatalog ? IconExtractor.FromExe(exePath) : IconExtractor.FromExeAnyIcon(exePath);
             OnPropertyChanged(nameof(IconImage));
             OnPropertyChanged(nameof(HasIcon));
             OnPropertyChanged(nameof(ShowLetter));
@@ -114,6 +154,11 @@ public sealed class ProcessManagerViewModel : ObservableObject
     public RelayCommand RestartCommand { get; }
     public RelayCommand OpenTaskManagerCommand { get; }
     public RelayCommand ToggleAllCommand { get; }
+    public RelayCommand ExpandCollapseAllCommand { get; }
+    public RelayCommand OpenFileLocationCommand { get; }
+    public RelayCommand ShowPropertiesCommand { get; }
+    public RelayCommand OpenGroupFileLocationCommand { get; }
+    public RelayCommand ShowGroupPropertiesCommand { get; }
 
     /// <summary>Group-level 结束全部 / 重启 — (item, "stop" | "restart"). Only fires for catalog groups.</summary>
     public event Action<CatalogItem, string>? OperationRequested;
@@ -123,6 +168,9 @@ public sealed class ProcessManagerViewModel : ObservableObject
     public bool ShowAll { get => _showAll; private set { if (Set(ref _showAll, value)) OnPropertyChanged(nameof(ToggleAllLabel)); } }
     public string ToggleAllLabel => _showAll ? "仅显示软件库进程" : "显示全部进程";
 
+    private bool _allExpanded = true;
+    public string ExpandAllLabel => _allExpanded ? "折叠全部子进程" : "展开全部子进程";
+
     public ProcessManagerViewModel()
     {
         RefreshCommand = new RelayCommand(_ => _ = RefreshAsync(resolveTargets: true));
@@ -130,11 +178,26 @@ public sealed class ProcessManagerViewModel : ObservableObject
         EndAllCommand = new RelayCommand(p => { if (p is AppProcGroupViewModel g) EndAll(g); });
         RestartCommand = new RelayCommand(p => { if (p is AppProcGroupViewModel { Model: { } m }) OperationRequested?.Invoke(m, "restart"); });
         OpenTaskManagerCommand = new RelayCommand(_ => OpenTaskManager());
+        OpenFileLocationCommand = new RelayCommand(p => { if (p is ProcRowViewModel r) ShellOps.RevealInExplorer(r.Path); },
+                                                  p => p is ProcRowViewModel { HasPath: true });
+        ShowPropertiesCommand = new RelayCommand(p => { if (p is ProcRowViewModel r) ShellOps.ShowProperties(r.Path); },
+                                                 p => p is ProcRowViewModel { HasPath: true });
+        // Group-header (main process) variants — act on the group's primary path-bearing process.
+        OpenGroupFileLocationCommand = new RelayCommand(p => { if (p is AppProcGroupViewModel g) ShellOps.RevealInExplorer(PrimaryPath(g)); },
+                                                        p => p is AppProcGroupViewModel g && PrimaryPath(g) != null);
+        ShowGroupPropertiesCommand = new RelayCommand(p => { if (p is AppProcGroupViewModel g) ShellOps.ShowProperties(PrimaryPath(g)); },
+                                                      p => p is AppProcGroupViewModel g && PrimaryPath(g) != null);
         ToggleAllCommand = new RelayCommand(_ =>
         {
             ShowAll = !ShowAll;
             Groups.Clear(); _groups.Clear(); _prevCpu.Clear();
             _ = RefreshAsync(resolveTargets: true);
+        });
+        ExpandCollapseAllCommand = new RelayCommand(_ =>
+        {
+            _allExpanded = !_allExpanded;
+            foreach (var g in Groups) g.IsExpanded = _allExpanded;
+            OnPropertyChanged(nameof(ExpandAllLabel));
         });
     }
 
@@ -229,11 +292,14 @@ public sealed class ProcessManagerViewModel : ObservableObject
 
             if (!_groups.TryGetValue(key, out var g))
             {
-                g = new AppProcGroupViewModel(key, name, model, _repoRoot);
-                g.EnsureIconFromExe(procs.FirstOrDefault()?.Path);   // exe fallback when no bundled icon
+                g = new AppProcGroupViewModel(key, name, model, _repoRoot) { IsExpanded = _allExpanded };
+                g.EnsureIconFromExe(procs.FirstOrDefault(p => p.Path != null)?.Path);   // exe fallback when no bundled icon
                 _groups[key] = g;
                 Groups.Add(g);
             }
+
+            // A group is "system-level" only when none of its processes run in the interactive session.
+            g.IsSystemGroup = !procs.Any(p => p.SessionId == ProcessControl.CurrentSessionId);
 
             var livePids = procs.Select(p => p.Pid).ToHashSet();
             for (var i = g.Processes.Count - 1; i >= 0; i--)
@@ -251,8 +317,8 @@ public sealed class ProcessManagerViewModel : ObservableObject
                 newCpu[p.Pid] = (p.CpuTime, now);
 
                 var row = g.Processes.FirstOrDefault(r => r.Pid == p.Pid);
-                if (row == null) g.Processes.Add(new ProcRowViewModel(p.Pid, p.Name, p.MemBytes, cpu));
-                else row.Update(p.MemBytes, cpu);
+                if (row == null) g.Processes.Add(new ProcRowViewModel(p.Pid, p.Name, p.MemBytes, cpu, p.Path));
+                else { row.Update(p.MemBytes, cpu); row.EnsurePath(p.Path); }
             }
             g.RaiseCount();
         }
@@ -260,15 +326,45 @@ public sealed class ProcessManagerViewModel : ObservableObject
         foreach (var id in _groups.Keys.ToList())
             if (!seen.Contains(id)) { Groups.Remove(_groups[id]); _groups.Remove(id); }
 
+        ApplySections();
+
         _prevCpu.Clear();
         foreach (var kv in newCpu) _prevCpu[kv.Key] = kv.Value;
 
         var procCount = Groups.Sum(x => x.Processes.Count);
         Summary = _showAll
-            ? $"全部进程：{Groups.Count} 组 · 共 {procCount} 个进程 · 每 2 秒刷新"
+            ? $"全部进程：用户 {Groups.Count(g => !g.IsSystemGroup)} · 系统 {Groups.Count(g => g.IsSystemGroup)} · 共 {procCount} 个进程 · 每 2 秒刷新"
             : (Groups.Count == 0 ? "未发现软件列表中的软件正在运行（点「显示全部进程」查看所有进程）"
                                  : $"{Groups.Count} 个软件运行中 · 共 {procCount} 个进程 · 每 2 秒刷新");
         OnPropertyChanged(nameof(IsEmpty));
+    }
+
+    /// <summary>In 全部进程 mode, lay groups out Task-Manager style: all user-level groups first, then a
+    /// 系统进程 divider, then all system-level groups. A stable partition (preserving each section's existing
+    /// order) so live memory churn doesn't reshuffle the list. No sections in 软件库 mode.</summary>
+    private void ApplySections()
+    {
+        if (!_showAll)
+        {
+            foreach (var g in Groups) g.SetSection(false, "");
+            return;
+        }
+
+        // Stable partition: user groups (in current order) before system groups (in current order).
+        var desired = Groups.Where(g => !g.IsSystemGroup).Concat(Groups.Where(g => g.IsSystemGroup)).ToList();
+        for (var i = 0; i < desired.Count; i++)
+        {
+            var cur = Groups.IndexOf(desired[i]);
+            if (cur != i) Groups.Move(cur, i);
+        }
+
+        bool userHeader = false, sysHeader = false;
+        foreach (var g in Groups)
+        {
+            if (!g.IsSystemGroup && !userHeader) { g.SetSection(true, "用户进程"); userHeader = true; }
+            else if (g.IsSystemGroup && !sysHeader) { g.SetSection(true, "系统进程"); sysHeader = true; }
+            else g.SetSection(false, "");
+        }
     }
 
     private void EndAll(AppProcGroupViewModel g)
@@ -282,6 +378,10 @@ public sealed class ProcessManagerViewModel : ObservableObject
         AuditLog.Action($"结束全部进程：{g.Name} — 结束 {n} 个");
         _ = RefreshAsync(resolveTargets: false);
     }
+
+    /// <summary>The path of the group's primary (first path-bearing) process — backs the header right-click
+    /// 打开文件位置 / 属性. Null when no process in the group exposed a readable module path.</summary>
+    private static string? PrimaryPath(AppProcGroupViewModel g) => g.Processes.FirstOrDefault(r => r.HasPath)?.Path;
 
     private void EndOne(ProcRowViewModel r)
     {

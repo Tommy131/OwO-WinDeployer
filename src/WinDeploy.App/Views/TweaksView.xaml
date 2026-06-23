@@ -18,7 +18,8 @@
       <Button Content="↻ 刷新状态" Style="{StaticResource MiniButton}" Command="{Binding RefreshCommand}" />
     </StackPanel>
 
-    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Margin="0,12,0,0">
+    <!-- Margin right -24 / Padding right 24: scrollbar flush at the page's outer edge, content unchanged. -->
+    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Margin="0,12,-24,0" Padding="0,0,24,0">
       <ItemsControl ItemsSource="{Binding Tweaks}">
         <ItemsControl.ItemTemplate>
           <DataTemplate>

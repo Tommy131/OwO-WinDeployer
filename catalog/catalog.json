@@ -720,10 +720,11 @@
         "extractTo": "${ToolsDir}/nginx", "strip": 1, "path": ["${ToolsDir}/nginx"] },
       "detect": { "path": "${ToolsDir}/nginx/nginx.exe", "arp": "nginx" } },
 
-    { "id": "apache", "name": "Apache HTTP Server", "summary": "Apache 2.4 Web 服务器（Apache Lounge：填入 url 或放入安装包后便携安装）", "icon": "assets/icons/apache.svg",
+    { "id": "apache", "name": "Apache HTTP Server", "summary": "Apache 2.4 Web 服务器（Apache Lounge 官方 Win64 构建，需 VC++ 2026/VS18 x64 运行库）", "icon": "assets/icons/apache.svg",
       "category": "server", "default": false,
       "homepage": "https://www.apachelounge.com/download/",
-      "install": { "method": "portable", "url": "…", "extractTo": "${ToolsDir}/apache", "strip": 0, "path": ["${ToolsDir}/apache/Apache24/bin"] },
+      "version": "2.4.68",
+      "install": { "method": "portable", "url": "https://www.apachelounge.com/download/VS18/binaries/httpd-2.4.68-260617-Win64-VS18.zip", "extractTo": "${ToolsDir}/apache", "strip": 0, "path": ["${ToolsDir}/apache/Apache24/bin"] },
       "detect": { "path": "${ToolsDir}/apache/Apache24/bin/httpd.exe" } },
 
     { "id": "tomcat", "name": "Apache Tomcat 10", "summary": "Java Servlet 容器（便携版，自动设置 CATALINA_HOME）", "icon": "assets/icons/tomcat.svg",

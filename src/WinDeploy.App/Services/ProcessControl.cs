@@ -6,12 +6,26 @@ using WinDeploy.Core.Models;
 namespace WinDeploy.App.Services;
 
 /// <summary>One running process belonging to a catalog item.</summary>
-public sealed record ProcItem(int Pid, string Name, long MemBytes, string? Path, TimeSpan CpuTime);
+public sealed record ProcItem(int Pid, string Name, long MemBytes, string? Path, TimeSpan CpuTime, int SessionId = -1);
 
 /// <summary>Finds and controls the processes of a catalog item. Resolving the target exe (process name +
 /// install dir) is split out so the live process page can resolve once and sample cheaply each tick.</summary>
 public static class ProcessControl
 {
+    /// <summary>The interactive (foreground) Windows session this app runs in. Processes in this session are
+    /// "user-level"; everything else (session 0 services / SYSTEM) is "system-level" — the Task-Manager split.</summary>
+    public static readonly int CurrentSessionId = SafeCurrentSession();
+
+    private static int SafeCurrentSession()
+    {
+        try { return Process.GetCurrentProcess().SessionId; } catch { return -1; }
+    }
+
+    private static int SafeSessionId(Process p)
+    {
+        try { return p.SessionId; } catch { return -1; }
+    }
+
     /// <summary>The item's process name + install dir (for verification), or null if unresolved.</summary>
     public static (string Proc, string? Dir)? ResolveTarget(CatalogItem item, PathResolver pr)
         => Launcher.ProcessTarget(item, pr);
@@ -37,7 +51,7 @@ public static class ProcessControl
                 long mem;
                 try { mem = p.WorkingSet64; } catch { mem = 0; }
 
-                result.Add(new ProcItem(p.Id, p.ProcessName, mem, path, cpu));
+                result.Add(new ProcItem(p.Id, p.ProcessName, mem, path, cpu, SafeSessionId(p)));
             }
             catch { /* skip */ }
             finally { try { p.Dispose(); } catch { /* ignore */ } }
@@ -114,7 +128,7 @@ public static class ProcessControl
                 long mem;
                 try { mem = p.WorkingSet64; } catch { mem = 0; }
 
-                result.Add((matchId, new ProcItem(p.Id, p.ProcessName, mem, path, cpu)));
+                result.Add((matchId, new ProcItem(p.Id, p.ProcessName, mem, path, cpu, SafeSessionId(p))));
             }
             catch { /* skip */ }
             finally { try { p.Dispose(); } catch { /* ignore */ } }
@@ -149,7 +163,7 @@ public static class ProcessControl
                 try { cpu = p.TotalProcessorTime; } catch { cpu = TimeSpan.Zero; }
                 long mem;
                 try { mem = p.WorkingSet64; } catch { mem = 0; }
-                result.Add(new ProcItem(p.Id, p.ProcessName, mem, path, cpu));
+                result.Add(new ProcItem(p.Id, p.ProcessName, mem, path, cpu, SafeSessionId(p)));
             }
             catch { /* skip */ }
             finally { try { p.Dispose(); } catch { /* ignore */ } }

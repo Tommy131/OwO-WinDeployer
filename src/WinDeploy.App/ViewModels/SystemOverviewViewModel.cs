@@ -31,6 +31,7 @@ public sealed class PowerRowViewModel
     public double Watts { get; init; }
     public string WattsText { get; init; } = "";
     public double BarPercent { get; init; }
+    public string BarTip { get; init; } = "";
 }
 
 /// <summary>The "系统概览" page: a one-glance health board — OS, CPU, RAM, drives (+ SMART), battery,
@@ -44,10 +45,12 @@ public sealed class SystemOverviewViewModel : ObservableObject
     public RelayCommand RefreshCommand { get; }
     public RelayCommand ExportInventoryCommand { get; }
     public RelayCommand ShowSmartCommand { get; }
+    public RelayCommand RelaunchAdminCommand { get; }
 
     private DispatcherTimer? _timer;
     private bool _sampling;
-    private long _totalMemBytes;
+    private static readonly bool Elevated = IsElevated();
+    private readonly Dictionary<string, double> _powerCeiling = new();   // per-kind TDP ceiling (peak-hold)
 
     public SystemOverviewViewModel()
     {
@@ -58,17 +61,33 @@ public sealed class SystemOverviewViewModel : ObservableObject
             if (p is PhysDiskRowViewModel r)
                 new Views.SmartDialog(r.Name, r.DeviceId) { Owner = System.Windows.Application.Current.MainWindow }.ShowDialog();
         });
+        RelaunchAdminCommand = new RelayCommand(_ => RelaunchAsAdmin());
         _ = LoadAsync();
+    }
+
+    /// <summary>True when NOT elevated — surfaces the "以管理员身份运行" button (CPU 温度/功耗 需管理员).</summary>
+    public bool ShowAdminHint => !Elevated;
+
+    private static void RelaunchAsAdmin()
+    {
+        try
+        {
+            var exe = Environment.ProcessPath;
+            if (string.IsNullOrEmpty(exe)) return;
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(exe) { UseShellExecute = true, Verb = "runas" });
+            System.Windows.Application.Current.Shutdown();
+        }
+        catch (System.ComponentModel.Win32Exception) { /* user declined UAC */ }
+        catch { /* ignore */ }
     }
 
     private bool _isLoading;
     public bool IsLoading { get => _isLoading; set { if (Set(ref _isLoading, value)) OnPropertyChanged(nameof(IsReady)); } }
     public bool IsReady => !_isLoading;
 
-    private string _os = "", _cpu = "", _ram = "", _machine = "", _uptime = "", _activation = "", _battery = "";
+    private string _os = "", _cpu = "", _machine = "", _uptime = "", _activation = "", _battery = "";
     public string Os { get => _os; set => Set(ref _os, value); }
     public string Cpu { get => _cpu; set => Set(ref _cpu, value); }
-    public string Ram { get => _ram; set => Set(ref _ram, value); }
     public string Machine { get => _machine; set => Set(ref _machine, value); }
     public string Uptime { get => _uptime; set => Set(ref _uptime, value); }
     public string Activation { get => _activation; set => Set(ref _activation, value); }
@@ -77,7 +96,20 @@ public sealed class SystemOverviewViewModel : ObservableObject
     // Live telemetry
     private string _cpuLive = "负载 —", _ramLive = "—";
     public string CpuLive { get => _cpuLive; set => Set(ref _cpuLive, value); }
+    /// <summary>Memory breakdown line, e.g. "已用 17.4 GB · 可用 14.5 GB · 共 31.9 GB".</summary>
     public string RamLive { get => _ramLive; set => Set(ref _ramLive, value); }
+
+    private double _ramPercent;
+    /// <summary>Memory usage 0–100 for the bar.</summary>
+    public double RamPercent { get => _ramPercent; set => Set(ref _ramPercent, value); }
+
+    private string _ramPercentText = "—";
+    /// <summary>Memory usage as "55%".</summary>
+    public string RamPercentText { get => _ramPercentText; set => Set(ref _ramPercentText, value); }
+
+    private bool _ramHigh;
+    /// <summary>True when memory is nearly full (≥90%) — drives the "占用偏高" badge.</summary>
+    public bool RamHigh { get => _ramHigh; set => Set(ref _ramHigh, value); }
 
     private string _totalPowerText = "—";
     public string TotalPowerText { get => _totalPowerText; set => Set(ref _totalPowerText, value); }
@@ -122,16 +154,18 @@ public sealed class SystemOverviewViewModel : ObservableObject
 
     private void ApplyLive(HwSample hw)
     {
-        // CPU
+        // CPU — only show a temperature when it's a real reading (>0). AMD Tctl/Tdie needs admin (WinRing0
+        // MSR); without it the sensor reads 0, so show a hint instead of a misleading "0 °C".
         if (hw.CpuLoad is double load)
-            CpuLive = hw.CpuTemp is double tc ? $"负载 {load:0}%  ·  {tc:0} °C" : $"负载 {load:0}%";
+        {
+            var tempPart = hw.CpuTemp is double tc && tc > 0 ? $"  ·  {tc:0} °C"
+                         : Elevated ? "" : "  ·  需要管理员权限以获取温度";
+            CpuLive = $"负载 {load:0}%{tempPart}";
+        }
 
         // Memory
         if (hw.MemUsedGb is double used && hw.MemAvailGb is double avail && used + avail > 0)
-        {
-            var total = used + avail;
-            RamLive = $"{used:0.0} / {total:0.0} GB  ·  {used / total * 100:0}%";
-        }
+            SetMemory(used, used + avail);
 
         // Power — one curated row per device kind (CPU / GPU / 硬盘 / 内存 / 其他)
         Powers.Clear();
@@ -156,28 +190,76 @@ public sealed class SystemOverviewViewModel : ObservableObject
         HasPower = Powers.Count > 0;
         if (HasPower)
         {
-            // scale each bar against the largest single draw for a quick visual comparison
-            var max = Powers.Max(p => p.Watts);
-            var scaled = Powers.Select(p => new PowerRowViewModel
+            // Scale each bar against the device's real power limit: the NVIDIA GPU's board limit (TGP) comes
+            // from nvidia-smi (exact — e.g. 300 W for an RTX 5070 Ti); other devices use a peak-hold estimate
+            // that converges to their realized max draw. Scaling against the largest current draw (or an
+            // over-high nominal TDP) would leave the busiest device pinned full / never full.
+            var scaled = Powers.Select(p =>
             {
-                Kind = p.Kind, Name = p.Name, Watts = p.Watts, WattsText = p.WattsText,
-                BarPercent = max > 0 ? p.Watts / max * 100 : 0,
+                var (ceiling, exact) = PowerCeiling(p.Kind, p.Watts, hw.GpuPowerLimitW);
+                var pct = ceiling > 0 ? Math.Min(100, p.Watts / ceiling * 100) : 0;
+                return new PowerRowViewModel
+                {
+                    Kind = p.Kind, Name = p.Name, Watts = p.Watts, WattsText = p.WattsText,
+                    BarPercent = pct,
+                    BarTip = exact
+                        ? $"约为功耗上限的 {pct:0}%（上限 {ceiling:0} W，来自 nvidia-smi）"
+                        : $"约为峰值功耗的 {pct:0}%（参考上限 ~{ceiling:0} W，按峰值自适应）",
+                };
             }).ToList();
             Powers.Clear();
             foreach (var p in scaled) Powers.Add(p);
 
             TotalPowerText = $"{sum:0.0} W";
-            PowerNote = "整机功耗为各部件功耗之和的估算值（不含主板 / 风扇等无传感器部件）。";
+            var hasCpuPower = Powers.Any(p => p.Kind == "CPU");
+            PowerNote = (!hasCpuPower && !Elevated)
+                ? "未含 CPU / 主板功耗：读取它们需以管理员身份运行（AMD 经 WinRing0 读 MSR/SMU）；GPU 功耗经 NVAPI 无需管理员。多数硬盘不提供功耗传感器。"
+                : "整机功耗为各部件功耗之和的估算值（不含主板 / 风扇等无传感器部件）。";
         }
         else
         {
             TotalPowerText = "不可用";
             PowerNote = HardwareMonitor.Available
-                ? (IsElevated()
+                ? (Elevated
                     ? "未读取到功耗传感器。部分主板 / 显卡 / 笔记本不提供功耗传感器。"
                     : "未读取到功耗传感器。CPU 封装功耗需以管理员身份运行本程序才能读取。")
                 : "硬件监控驱动未能加载（功耗 / 温度不可用）。";
         }
+    }
+
+    /// <summary>The bar's 100% reference for a device kind, plus whether it's an exact hardware limit. The GPU
+    /// uses the NVIDIA board power limit from nvidia-smi when available (exact). Everything else uses peak-hold:
+    /// seeded with a LOW per-kind floor and grown to the highest wattage actually seen, so it converges to the
+    /// device's realized max draw (PPT) instead of being pinned by an over-high nominal guess.</summary>
+    private (double Ceiling, bool Exact) PowerCeiling(string kind, double watts, double? gpuLimitW)
+    {
+        // Exact: NVIDIA GPU board power limit (TGP). The card can momentarily draw slightly above it, so the
+        // caller clamps the bar to 100%.
+        if (kind == "GPU" && gpuLimitW is double gl && gl > 1)
+            return (gl, true);
+
+        // Floor = a typical lower-bound max for that device kind (desktop CPU TDP ≈ 65 W), so a lightly-loaded
+        // device doesn't read as a full bar before a real peak is observed; it then grows to the realized peak.
+        var floor = kind switch { "CPU" => 65.0, "GPU" => 120.0, "硬盘" => 6.0, "内存" => 10.0, _ => 25.0 };
+        var c = _powerCeiling.TryGetValue(kind, out var v) ? v : floor;
+        c = Math.Max(c, Math.Max(floor, watts));   // never below the floor; grow to realized peak
+        _powerCeiling[kind] = c;
+        return (c, false);
+    }
+
+    /// <summary>Apply used / total memory (GB) to the card consistently from both the live sampler and the
+    /// initial WMI load: a labeled breakdown (已用 / 可用 / 共), the percent, and the bar value — so the
+    /// numbers are self-explanatory instead of a bare "17.4 / 31.9 GB · 55%".</summary>
+    private void SetMemory(double usedGb, double totalGb)
+    {
+        if (totalGb <= 0) return;
+        usedGb = Math.Clamp(usedGb, 0, totalGb);
+        var availGb = totalGb - usedGb;
+        var pct = usedGb / totalGb * 100;
+        RamPercent = pct;
+        RamPercentText = $"{pct:0}%";
+        RamHigh = pct >= 90;
+        RamLive = $"已用 {usedGb:0.0} GB  ·  可用 {availGb:0.0} GB  ·  共 {totalGb:0.0} GB";
     }
 
     private static bool IsElevated()
@@ -197,11 +279,8 @@ public sealed class SystemOverviewViewModel : ObservableObject
 
         Os = $"{s.OsCaption} · {s.Arch} · {s.OsVersion}";
         Cpu = $"{s.CpuName}  ·  {s.Cores} 核 {s.Threads} 线程";
-        _totalMemBytes = s.TotalMemKb * 1024;
         var usedKb = Math.Max(0, s.TotalMemKb - s.FreeMemKb);
-        var memPct = s.TotalMemKb > 0 ? usedKb * 100.0 / s.TotalMemKb : 0;
-        Ram = $"{Gb(usedKb * 1024)} / {Gb(s.TotalMemKb * 1024)}  ·  {memPct:0}%";
-        RamLive = Ram;
+        SetMemory(usedKb / 1024.0 / 1024, s.TotalMemKb / 1024.0 / 1024);
         if (s.CpuLoad > 0) CpuLive = $"负载 {s.CpuLoad}%";
         Machine = $"{s.Manufacturer} {s.Model}".Trim() + (string.IsNullOrWhiteSpace(s.User) ? "" : $"  ·  {s.User}");
         Uptime = s.UptimeHours >= 24 ? $"已运行 {(int)(s.UptimeHours / 24)} 天 {(int)(s.UptimeHours % 24)} 小时" : $"已运行 {s.UptimeHours:0.0} 小时";

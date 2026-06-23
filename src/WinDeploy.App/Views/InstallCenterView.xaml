@@ -26,24 +26,25 @@
 
       <!-- action buttons: full width below the title row so they fit on one line, wrapping only when truly narrow -->
       <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,10,0,0">
+        <!-- 统一用右/下外边距（不用左边距），换行后每一行都从左侧对齐 -->
         <WrapPanel>
-          <Button Content="↻ 刷新" Style="{StaticResource MiniButton}" Command="{Binding RefreshCommand}" Margin="0,0,0,4"
+          <Button Content="↻ 刷新" Style="{StaticResource MiniButton}" Command="{Binding RefreshCommand}" Margin="0,0,8,6"
                   ToolTip="重新检测本机软件安装状态与可用更新" />
-          <Border Width="1" Background="{DynamicResource BorderSoft}" Margin="10,2,0,2" />
-          <Button Content="全选" Style="{StaticResource MiniButton}" Command="{Binding SelectAllCommand}" Margin="10,0,0,4" />
-          <Button Content="反选" Style="{StaticResource MiniButton}" Command="{Binding InvertCommand}" Margin="8,0,0,4" />
-          <Button Content="恢复" Style="{StaticResource MiniButton}" Command="{Binding RestoreCommand}" Margin="8,0,0,4"
+          <Border Width="1" Background="{DynamicResource BorderSoft}" Margin="2,2,10,8" />
+          <Button Content="全选" Style="{StaticResource MiniButton}" Command="{Binding SelectAllCommand}" Margin="0,0,8,6" />
+          <Button Content="反选" Style="{StaticResource MiniButton}" Command="{Binding InvertCommand}" Margin="0,0,8,6" />
+          <Button Content="恢复" Style="{StaticResource MiniButton}" Command="{Binding RestoreCommand}" Margin="0,0,8,6"
                   ToolTip="恢复到上一次「全选 / 反选 / 切换预设」之前的勾选状态" />
-          <Button Content="设置安装路径" Style="{StaticResource MiniButton}" Click="SetPath_Click" Margin="8,0,0,4"
+          <Button Content="设置安装路径" Style="{StaticResource MiniButton}" Click="SetPath_Click" Margin="0,0,8,6"
                   ToolTip="为选中软件统一设置安装根目录（便携/git 在其下建 id 子目录；winget 用 --location）" />
-          <Border Width="1" Background="{DynamicResource BorderSoft}" Margin="10,2,0,2" />
-          <Button Content="{Binding UpdateLabel}" Style="{StaticResource MiniButton}" Command="{Binding UpdateSelectedCommand}" Margin="10,0,0,4"
+          <Border Width="1" Background="{DynamicResource BorderSoft}" Margin="2,2,10,8" />
+          <Button Content="{Binding UpdateLabel}" Style="{StaticResource MiniButton}" Command="{Binding UpdateSelectedCommand}" Margin="0,0,8,6"
                   ToolTip="更新选中且已安装的软件（winget upgrade / git pull / 便携包重拉），跳转到运行进度页" />
-          <Button Content="{Binding UpdateToggleLabel}" Style="{StaticResource MiniButton}" Command="{Binding ToggleUpdatesCommand}" Margin="8,0,0,4"
+          <Button Content="{Binding UpdateToggleLabel}" Style="{StaticResource MiniButton}" Command="{Binding ToggleUpdatesCommand}" Margin="0,0,8,6"
                   Visibility="{Binding HasUpdates, Converter={StaticResource BoolToVis}}"
                   ToolTip="忽略 / 显示「可更新」徽章" />
-          <Border Width="1" Background="{DynamicResource BorderSoft}" Margin="10,2,0,2" />
-          <ToggleButton x:Name="GroupFilterBtn" Content="{Binding GroupFilterLabel}" Style="{StaticResource MiniToggle}" Margin="10,0,0,4"
+          <Border Width="1" Background="{DynamicResource BorderSoft}" Margin="2,2,10,8" />
+          <ToggleButton x:Name="GroupFilterBtn" Content="{Binding GroupFilterLabel}" Style="{StaticResource MiniToggle}" Margin="0,0,8,6"
                         ToolTip="按分组筛选要显示的软件类别" />
           <Popup PlacementTarget="{Binding ElementName=GroupFilterBtn}" Placement="Bottom" StaysOpen="False" AllowsTransparency="True"
                  IsOpen="{Binding IsChecked, ElementName=GroupFilterBtn}">

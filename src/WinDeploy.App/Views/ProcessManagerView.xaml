@@ -10,7 +10,7 @@
 
     <StackPanel Grid.Row="0">
       <TextBlock Text="进程管理" FontSize="20" FontWeight="SemiBold" />
-      <TextBlock Text="实时（每 2 秒）显示进程的 CPU 占用与内存，支持展开/折叠、结束单个/全部进程。可切换「显示全部进程」查看本机所有可管理进程，或仅看软件库内软件。" FontSize="13"
+      <TextBlock Text="实时（每 2 秒）显示进程的 CPU 占用与内存，支持展开/折叠、结束单个/全部进程。「显示全部进程」按用户进程 / 系统进程分区（类任务管理器）；右键进程可结束任务 / 打开文件位置 / 属性。" FontSize="13"
                  Foreground="{DynamicResource TextSecondary}" Margin="0,3,0,0" TextWrapping="Wrap" />
     </StackPanel>
 
@@ -19,25 +19,65 @@
               ToolTip="重新解析并扫描进程" />
       <Button Content="{Binding ToggleAllLabel}" Style="{StaticResource InfoButton}" Command="{Binding ToggleAllCommand}" Margin="8,0,0,0"
               ToolTip="在「全部进程」与「仅软件库进程」之间切换" />
+      <Button Content="{Binding ExpandAllLabel}" Style="{StaticResource MiniButton}" Command="{Binding ExpandCollapseAllCommand}" Margin="8,0,0,0"
+              ToolTip="一键展开 / 折叠所有进程组的子进程" />
       <Button Content="打开任务管理器" Style="{StaticResource MiniButton}" Command="{Binding OpenTaskManagerCommand}" Margin="8,0,0,0"
               ToolTip="打开 Windows 任务管理器" />
       <TextBlock Text="{Binding Summary}" FontSize="12" Foreground="{DynamicResource TextTertiary}"
                  VerticalAlignment="Center" Margin="16,0,0,0" />
     </StackPanel>
 
-    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Margin="0,12,0,0">
+    <!-- Margin right -24 / Padding right 24: scrollbar flush at the page's outer edge, content unchanged. -->
+    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Margin="0,12,-24,0" Padding="0,0,24,0">
       <ItemsControl ItemsSource="{Binding Groups}">
         <ItemsControl.ItemTemplate>
           <DataTemplate>
+           <StackPanel>
+            <!-- Task-Manager-style section divider (用户进程 / 系统进程), shown on the first group of each section -->
+            <TextBlock Text="{Binding SectionLabel}" FontSize="12" FontWeight="SemiBold"
+                       Foreground="{DynamicResource TextTertiary}" Margin="2,6,0,6"
+                       Visibility="{Binding ShowSectionHeader, Converter={StaticResource BoolToVis}}" />
             <Border Style="{StaticResource Card}" Padding="12" Margin="0,0,0,10">
               <StackPanel>
                 <!-- group header -->
                 <Grid>
-                  <!-- 点击整个标题（图标 / 名称）展开 / 折叠 -->
-                  <Border Background="Transparent" Cursor="Hand" HorizontalAlignment="Left" ToolTip="点击展开 / 折叠子进程">
+                  <!-- 点击整个标题（图标 / 名称）展开 / 折叠；右键可对主进程结束 / 重启 / 打开位置 / 属性 -->
+                  <Border Background="Transparent" Cursor="Hand" HorizontalAlignment="Left" ToolTip="左键展开 / 折叠子进程；右键可结束全部 / 重启 / 打开文件位置 / 属性"
+                          Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=UserControl}}">
                     <Border.InputBindings>
                       <MouseBinding MouseAction="LeftClick" Command="{Binding ToggleCommand}" />
                     </Border.InputBindings>
+                    <Border.ContextMenu>
+                      <ContextMenu Style="{StaticResource ThemedContextMenu}">
+                        <MenuItem Header="{Binding ExpandMenuLabel}" Style="{StaticResource ThemedMenuItem}"
+                                  Command="{Binding ToggleCommand}">
+                          <MenuItem.Icon><TextBlock Text="&#xE70D;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource TextSecondary}" /></MenuItem.Icon>
+                        </MenuItem>
+                        <Separator Style="{StaticResource ThemedSeparator}" />
+                        <MenuItem Header="重启" Style="{StaticResource ThemedMenuItem}"
+                                  Visibility="{Binding IsCatalog, Converter={StaticResource BoolToVis}}"
+                                  Command="{Binding PlacementTarget.Tag.RestartCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                  CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                          <MenuItem.Icon><TextBlock Text="&#xE72C;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource Accent}" /></MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="结束全部进程" Style="{StaticResource ThemedMenuItem}"
+                                  Command="{Binding PlacementTarget.Tag.EndAllCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                  CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                          <MenuItem.Icon><TextBlock Text="&#xE71A;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource FailFg}" /></MenuItem.Icon>
+                        </MenuItem>
+                        <Separator Style="{StaticResource ThemedSeparator}" />
+                        <MenuItem Header="打开文件位置" Style="{StaticResource ThemedMenuItem}"
+                                  Command="{Binding PlacementTarget.Tag.OpenGroupFileLocationCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                  CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                          <MenuItem.Icon><TextBlock Text="&#xE8B7;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource TextSecondary}" /></MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="属性" Style="{StaticResource ThemedMenuItem}"
+                                  Command="{Binding PlacementTarget.Tag.ShowGroupPropertiesCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                  CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                          <MenuItem.Icon><TextBlock Text="&#xE946;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource TextSecondary}" /></MenuItem.Icon>
+                        </MenuItem>
+                      </ContextMenu>
+                    </Border.ContextMenu>
                     <StackPanel Orientation="Horizontal">
                       <TextBlock Text="{Binding ExpandGlyph}" FontSize="10" Width="18" TextAlignment="Center"
                                  Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" />
@@ -86,7 +126,10 @@
                   <ItemsControl ItemsSource="{Binding Processes}">
                     <ItemsControl.ItemTemplate>
                       <DataTemplate>
-                        <Grid Margin="0,3">
+                        <!-- Tag carries the page VM so the (popup) context menu can reach its commands.
+                             Background must be non-null so the whole row is a right-click hit target. -->
+                        <Grid Margin="0,3" Background="Transparent"
+                              Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=UserControl}}">
                           <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="86" />
@@ -94,6 +137,25 @@
                             <ColumnDefinition Width="92" />
                             <ColumnDefinition Width="64" />
                           </Grid.ColumnDefinitions>
+                          <Grid.ContextMenu>
+                            <ContextMenu Style="{StaticResource ThemedContextMenu}">
+                              <MenuItem Header="结束任务" Style="{StaticResource ThemedMenuItem}"
+                                        Command="{Binding PlacementTarget.Tag.EndProcessCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                        CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                <MenuItem.Icon><TextBlock Text="&#xE71A;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource FailFg}" /></MenuItem.Icon>
+                              </MenuItem>
+                              <MenuItem Header="打开文件位置" Style="{StaticResource ThemedMenuItem}"
+                                        Command="{Binding PlacementTarget.Tag.OpenFileLocationCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                        CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                <MenuItem.Icon><TextBlock Text="&#xE8B7;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource TextSecondary}" /></MenuItem.Icon>
+                              </MenuItem>
+                              <MenuItem Header="属性" Style="{StaticResource ThemedMenuItem}"
+                                        Command="{Binding PlacementTarget.Tag.ShowPropertiesCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                        CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                <MenuItem.Icon><TextBlock Text="&#xE946;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource TextSecondary}" /></MenuItem.Icon>
+                              </MenuItem>
+                            </ContextMenu>
+                          </Grid.ContextMenu>
                           <TextBlock Grid.Column="0" Text="{Binding Name}" FontFamily="Consolas" FontSize="12.5" VerticalAlignment="Center" />
                           <TextBlock Grid.Column="1" Text="{Binding Pid}" FontSize="12" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" />
                           <TextBlock Grid.Column="2" Text="{Binding CpuText}" FontSize="12" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" />
@@ -108,6 +170,7 @@
                 </StackPanel>
               </StackPanel>
             </Border>
+           </StackPanel>
           </DataTemplate>
         </ItemsControl.ItemTemplate>
       </ItemsControl>

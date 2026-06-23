@@ -42,21 +42,25 @@ public sealed class TrayIcon : IDisposable
         return SystemIcons.Application;
     }
 
-    /// <summary>Show the tray icon; pops a one-time balloon hint the first time.</summary>
+    /// <summary>Show the tray icon; pops a one-time hint the first time. Prefers a modern toast (correctly
+    /// shows the app name + icon); falls back to the legacy NotifyIcon balloon if toasts are unavailable.</summary>
     public void Show()
     {
         _icon.Visible = true;
-        if (!_tipShown)
+        if (_tipShown) return;
+        _tipShown = true;
+
+        const string title = "仍在后台运行";
+        const string body = "OwO! Win Deployer 已最小化到托盘。双击图标可重新打开，右键可退出。";
+        if (ToastService.TryShow(title, body)) return;
+
+        try
         {
-            _tipShown = true;
-            try
-            {
-                _icon.BalloonTipTitle = "仍在后台运行";
-                _icon.BalloonTipText = "OwO! Win Deployer 已最小化到托盘。双击图标可重新打开，右键可退出。";
-                _icon.ShowBalloonTip(3000);
-            }
-            catch { /* balloons can be suppressed by policy */ }
+            _icon.BalloonTipTitle = title;
+            _icon.BalloonTipText = body;
+            _icon.ShowBalloonTip(3000);
         }
+        catch { /* balloons can be suppressed by policy */ }
     }
 
     public void Hide() => _icon.Visible = false;

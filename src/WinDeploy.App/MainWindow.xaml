@@ -14,7 +14,9 @@
 
     <!-- Left nav rail: collapsible grouped sections -->
     <Border Grid.Column="0" Background="{DynamicResource NavBg}" BorderBrush="{DynamicResource BorderSoft}" BorderThickness="0,0,1,0">
-      <DockPanel Margin="8,16,8,10">
+      <!-- No right margin: lets the nav ScrollViewer span to the rail's outer edge so its scrollbar sits
+           flush against the right border (nav tabs keep their gap via the ScrollViewer's right Padding). -->
+      <DockPanel Margin="8,16,0,10">
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="8,0,0,14">
           <TextBlock Text="&#xE950;" FontFamily="Segoe MDL2 Assets" FontSize="18"
                      Foreground="{DynamicResource Accent}" VerticalAlignment="Center" />
@@ -23,10 +25,11 @@
         </StackPanel>
 
         <TextBlock DockPanel.Dock="Bottom" Text="{Binding Copyright}" FontSize="10"
-                   Foreground="{DynamicResource TextTertiary}" Margin="8,8,4,2" TextWrapping="Wrap"
+                   Foreground="{DynamicResource TextTertiary}" Margin="8,8,10,2" TextWrapping="Wrap"
                    ToolTip="{Binding WindowTitle}" />
 
-        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <!-- Padding right keeps a gap between the nav tabs and the (now edge-flush) scrollbar. -->
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,8,0">
           <ItemsControl ItemsSource="{Binding NavGroups}">
             <ItemsControl.ItemTemplate>
               <DataTemplate>

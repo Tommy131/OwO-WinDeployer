@@ -20,7 +20,8 @@
                  VerticalAlignment="Center" Margin="14,0,0,0" TextWrapping="Wrap" MaxWidth="760" />
     </StackPanel>
 
-    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Margin="0,14,0,0">
+    <!-- Margin right -24 / Padding right 24: scrollbar flush at the page's outer edge, content unchanged. -->
+    <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Margin="0,14,-24,0" Padding="0,0,24,0">
       <StackPanel>
         <TextBlock Text="未检测到受支持的 Web 服务端。请前往「软件安装中心」安装 nginx / Apache / Tomcat / PHP 后回到此页。"
                    FontSize="13" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"
@@ -44,10 +45,16 @@
                           <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
 
-                        <Border Grid.Column="0" Width="40" Height="40" CornerRadius="9" Background="{DynamicResource AccentBg}" VerticalAlignment="Center">
-                          <TextBlock Text="{Binding KindTag}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource Accent}"
-                                     HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        </Border>
+                        <Grid Grid.Column="0" Width="40" Height="40" VerticalAlignment="Center">
+                          <Border CornerRadius="9" Background="{DynamicResource AccentBg}"
+                                  Visibility="{Binding NoIcon, Converter={StaticResource BoolToVis}}">
+                            <TextBlock Text="{Binding KindTag}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource Accent}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                          </Border>
+                          <Image Source="{Binding Icon}" Stretch="Uniform" Margin="2"
+                                 RenderOptions.BitmapScalingMode="HighQuality"
+                                 Visibility="{Binding HasIcon, Converter={StaticResource BoolToVis}}" />
+                        </Grid>
 
                         <StackPanel Grid.Column="1" Margin="14,0,12,0" VerticalAlignment="Center">
                           <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}" />

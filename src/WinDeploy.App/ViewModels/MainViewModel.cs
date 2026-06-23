@@ -44,7 +44,7 @@ public sealed class MainViewModel : ObservableObject
     public ServiceConfigViewModel ServiceConfig { get; } = new();
 
     public string AppName => WinDeploy.App.AppInfo.Name;
-    public string WindowTitle => WinDeploy.App.AppInfo.TitleWithVersion;
+    public string WindowTitle => WinDeploy.App.AppInfo.TitleWithRole;
     public string Copyright => $"{WinDeploy.App.AppInfo.Copyright} · v{WinDeploy.App.AppInfo.Version}";
 
     public MainViewModel()

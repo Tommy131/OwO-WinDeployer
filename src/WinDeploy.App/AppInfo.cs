@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Security.Principal;
 
 namespace WinDeploy.App;
 
@@ -25,4 +26,20 @@ public static class AppInfo
     }
 
     public static string TitleWithVersion => $"{Name} v{Version}";
+
+    /// <summary>True when the process is running elevated (member of the Administrators role). Computed once.</summary>
+    public static bool IsAdministrator { get; } = ComputeElevated();
+
+    private static bool ComputeElevated()
+    {
+        try
+        {
+            using var id = WindowsIdentity.GetCurrent();
+            return new WindowsPrincipal(id).IsInRole(WindowsBuiltInRole.Administrator);
+        }
+        catch { return false; }
+    }
+
+    /// <summary>Window title; appends " (Administrator)" only when elevated, to distinguish admin runs.</summary>
+    public static string TitleWithRole => IsAdministrator ? $"{TitleWithVersion}  (Administrator)" : TitleWithVersion;
 }
