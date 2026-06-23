@@ -95,6 +95,15 @@ public sealed class SettingsViewModel : ObservableObject
         get => _developerMode;
         set
         {
+            if (value && !_developerMode)
+            {
+                // Turning on — require explicit confirmation; revert UI if user cancels.
+                if (ConfirmEnableDeveloperMode?.Invoke() == false)
+                {
+                    OnPropertyChanged(nameof(DeveloperMode));   // revert checkbox
+                    return;
+                }
+            }
             if (!Set(ref _developerMode, value)) return;
             _s.DeveloperMode = value;
             SettingsStore.Save(_s);
@@ -105,6 +114,9 @@ public sealed class SettingsViewModel : ObservableObject
 
     /// <summary>勾选/取消开发人员模式时触发，让软件安装中心立即重算分类可见性。</summary>
     public event Action<bool>? DeveloperModeChanged;
+
+    /// <summary>开启开发人员模式前触发，供外部显示二次确认弹窗。返回 false 则取消启用。</summary>
+    public event Func<bool>? ConfirmEnableDeveloperMode;
 
     // ── 关闭主窗口行为（即时持久化）────────────────────────────────────
     private string _closeAction;
@@ -122,6 +134,38 @@ public sealed class SettingsViewModel : ObservableObject
         SettingsStore.Save(_s);
         AuditLog.Action($"关闭行为：{(a switch { "tray" => "最小化到后台常驻", "exit" => "直接退出", _ => "每次询问" })}");
     }
+
+    // ── 终端特效（即时持久化并广播给终端页）──────────────────────────────
+    public bool TermHacker
+    {
+        get => TerminalFx.Hacker;
+        set { if (value != TerminalFx.Hacker) { TerminalFx.SetHacker(value); OnPropertyChanged(); } }
+    }
+    public bool TermCrt
+    {
+        get => TerminalFx.Crt;
+        set { if (value != TerminalFx.Crt) { TerminalFx.SetCrt(value); OnPropertyChanged(); } }
+    }
+    public bool TermCodeRain
+    {
+        get => TerminalFx.CodeRain;
+        set { if (value != TerminalFx.CodeRain) { TerminalFx.SetCodeRain(value); OnPropertyChanged(); OnPropertyChanged(nameof(CodeRainEnabled)); } }
+    }
+    public bool CodeRainEnabled => TerminalFx.CodeRain;
+
+    public double TermCodeOpacity
+    {
+        get => TerminalFx.CodeOpacity;
+        set { if (Math.Abs(value - TerminalFx.CodeOpacity) > 0.001) { TerminalFx.SetCodeOpacity(value); OnPropertyChanged(); OnPropertyChanged(nameof(TermCodeOpacityText)); } }
+    }
+    public string TermCodeOpacityText => $"{TerminalFx.CodeOpacity * 100:0}%";
+
+    public double TermCodeSpeed
+    {
+        get => TerminalFx.Speed;
+        set { if (Math.Abs(value - TerminalFx.Speed) > 0.001) { TerminalFx.SetSpeed(value); OnPropertyChanged(); OnPropertyChanged(nameof(TermCodeSpeedText)); } }
+    }
+    public string TermCodeSpeedText => $"{TerminalFx.Speed:0.0}×";
 
     private string _theme;
     public bool IsThemeSystem { get => _theme == "system"; set { if (value) SetTheme("system"); } }

@@ -1,118 +1,126 @@
-using System.Diagnostics;
-using System.IO;
-using System.Text;
+using System.Collections.ObjectModel;
 using System.Windows;
+using WinDeploy.App.Services;
 
 namespace WinDeploy.App.ViewModels;
 
-/// <summary>An embedded interactive shell (PowerShell / cmd) for quick command debugging.
-/// stdout/stderr stream into a log; typed commands are echoed and written to the shell's stdin.
-/// The console codepage is switched to UTF-8 on start so CJK output isn't garbled.</summary>
+/// <summary>The terminal page host: holds any number of live <see cref="TerminalSessionViewModel"/> tabs at
+/// once, each backed by its own ConPTY of a user-chosen shell. Sessions persist in the background — switching
+/// the active tab only re-binds the single on-screen surface, it never disconnects a session. Closing a
+/// session is gated behind a themed confirmation (the PTY's state is lost on disconnect).</summary>
 public sealed class TerminalViewModel : ObservableObject, IDisposable
 {
-    private const int MaxChars = 200_000;
-    private Process? _proc;
+    private bool _initialized;
 
-    public RelayCommand SendCommand { get; }
-    public RelayCommand ClearCommand { get; }
-    public RelayCommand RestartCommand { get; }
+    public ObservableCollection<TerminalSessionViewModel> Sessions { get; } = new();
 
-    public TerminalViewModel()
+    /// <summary>The shells installed on this machine, offered when creating a new session.</summary>
+    public IReadOnlyList<ShellInfo> AvailableShells { get; }
+
+    /// <summary>Create a session for the shell passed as the command parameter.</summary>
+    public RelayCommand NewSessionCommand { get; }
+    /// <summary>Make the session passed as the command parameter the active (visible) one.</summary>
+    public RelayCommand ActivateCommand { get; }
+    /// <summary>Confirm, then close the session passed as the command parameter.</summary>
+    public RelayCommand CloseSessionCommand { get; }
+    /// <summary>Rename / recolor the session passed as the command parameter.</summary>
+    public RelayCommand EditSessionCommand { get; }
+
+    /// <summary>Default accent colors handed out (cycling) to new sessions, so tabs start visually distinct.</summary>
+    public static readonly string[] Palette =
     {
-        SendCommand = new RelayCommand(_ => Send(), _ => !string.IsNullOrWhiteSpace(_input));
-        ClearCommand = new RelayCommand(_ => Output = "");
-        RestartCommand = new RelayCommand(_ => Restart());
-    }
+        "#4D9DFF", "#36C5A6", "#5BCC5B", "#E0B23C", "#E8754C",
+        "#E05D6F", "#C063D9", "#7C8AA5", "#3FB6E0", "#B5894A",
+    };
+
+    /// <summary>Raised when the active session changes (or its PTY restarts) so the view re-binds the surface.</summary>
+    public event Action? ActiveChanged;
+
+    public bool Supported => PtySession.IsSupported;
 
     public string WorkingDir { get; set; } = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
 
-    private bool _isPowerShell = true;
-    public bool IsPowerShell { get => _isPowerShell; set { if (Set(ref _isPowerShell, value) && value) Restart(); } }
-
-    private bool _isCmd;
-    public bool IsCmd { get => _isCmd; set { if (Set(ref _isCmd, value) && value) Restart(); } }
-
-    private string _output = "";
-    public string Output { get => _output; set => Set(ref _output, value); }
-
-    private string _input = "";
-    public string Input { get => _input; set => Set(ref _input, value); }
-
-    private string _status = "未启动";
-    public string Status { get => _status; private set => Set(ref _status, value); }
-
-    public void EnsureStarted()
+    public TerminalViewModel()
     {
-        if (_proc is { HasExited: false }) return;
-        Start();
+        AvailableShells = ShellCatalog.Detect();
+        NewSessionCommand = new RelayCommand(p => { if (p is ShellInfo s) NewSession(s); });
+        ActivateCommand = new RelayCommand(p => { if (p is TerminalSessionViewModel s) ActiveSession = s; });
+        CloseSessionCommand = new RelayCommand(p => { if (p is TerminalSessionViewModel s) RequestClose(s); });
+        EditSessionCommand = new RelayCommand(p => { if (p is TerminalSessionViewModel s) RequestEdit(s); });
     }
 
-    private void Start()
+    private TerminalSessionViewModel? _activeSession;
+    public TerminalSessionViewModel? ActiveSession
     {
-        try
+        get => _activeSession;
+        set
         {
-            var dir = Directory.Exists(WorkingDir) ? WorkingDir : Environment.CurrentDirectory;
-            var psi = new ProcessStartInfo
-            {
-                FileName = _isCmd ? "cmd.exe" : "powershell.exe",
-                Arguments = _isCmd ? "/Q /K chcp 65001 >nul" : "-NoLogo -NoProfile",
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                RedirectStandardInput = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                WorkingDirectory = dir,
-                StandardOutputEncoding = new UTF8Encoding(false),
-                StandardErrorEncoding = new UTF8Encoding(false),
-                StandardInputEncoding = new UTF8Encoding(false),
-            };
-            _proc = new Process { StartInfo = psi, EnableRaisingEvents = true };
-            _proc.OutputDataReceived += (_, e) => { if (e.Data != null) Append(e.Data + "\n"); };
-            _proc.ErrorDataReceived += (_, e) => { if (e.Data != null) Append(e.Data + "\n"); };
-            _proc.Exited += (_, _) => Append("\n[shell 已退出]\n");
-            _proc.Start();
-            _proc.BeginOutputReadLine();
-            _proc.BeginErrorReadLine();
-            if (!_isCmd)
-                _proc.StandardInput.WriteLine("chcp 65001 > $null; $OutputEncoding = [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new()");
-            Status = (_isCmd ? "cmd.exe" : "PowerShell") + " · " + dir;
+            if (ReferenceEquals(_activeSession, value)) return;
+            _activeSession = value;
+            foreach (var s in Sessions) s.IsActive = ReferenceEquals(s, value);
+            OnPropertyChanged();
+            ActiveChanged?.Invoke();
         }
-        catch (Exception ex) { Append("启动失败：" + ex.Message + "\n"); Status = "启动失败"; }
     }
 
-    private void Send()
+    /// <summary>Open the default session the first time the page is shown (after <see cref="WorkingDir"/> is
+    /// set). Idempotent: navigating away and back doesn't spawn extras, nor re-create one the user closed.</summary>
+    public void EnsureInitialSession()
     {
-        EnsureStarted();
-        if (_proc == null) return;
-        var cmd = _input;
-        Append((_isCmd ? "> " : "PS> ") + cmd + "\n");
-        try { _proc.StandardInput.WriteLine(cmd); _proc.StandardInput.Flush(); }
-        catch (Exception ex) { Append("发送失败：" + ex.Message + "\n"); }
-        Input = "";
+        if (_initialized) return;
+        _initialized = true;
+        if (Sessions.Count > 0) return;   // a session already exists (e.g. opened from the tray) — don't add one
+        var def = AvailableShells.FirstOrDefault(s => s.Id == "powershell") ?? AvailableShells.FirstOrDefault();
+        if (def != null) NewSession(def);
     }
 
-    private void Restart()
+    private int _created;   // total ever created — drives the cycling default color (stable across closes)
+
+    private void NewSession(ShellInfo shell)
     {
-        Kill();
-        Output = "";
-        Start();
+        var color = Palette[_created++ % Palette.Length];
+        var session = new TerminalSessionViewModel(shell, WorkingDir, MakeTitle(shell), color);
+        session.Reset += () => { if (ReferenceEquals(session, ActiveSession)) ActiveChanged?.Invoke(); };
+        Sessions.Add(session);
+        ActiveSession = session;
     }
 
-    private void Append(string s)
+    /// <summary>"Git Bash", then "Git Bash 2", "Git Bash 3" … for repeats of the same shell.</summary>
+    private string MakeTitle(ShellInfo shell)
     {
-        var disp = Application.Current?.Dispatcher;
-        if (disp != null && !disp.CheckAccess()) { disp.BeginInvoke(() => Append(s)); return; }
-        var text = _output + s;
-        if (text.Length > MaxChars) text = text[^MaxChars..];
-        Output = text;
+        var n = Sessions.Count(s => s.Shell.Id == shell.Id) + 1;
+        return n == 1 ? shell.Name : $"{shell.Name} {n}";
     }
 
-    private void Kill()
+    private void RequestClose(TerminalSessionViewModel session)
     {
-        try { if (_proc is { HasExited: false }) _proc.Kill(true); } catch { /* best effort */ }
-        try { _proc?.Dispose(); } catch { /* ignore */ }
-        _proc = null;
+        var dlg = new Views.TerminalCloseConfirmDialog(session.Title) { Owner = Application.Current.MainWindow };
+        if (dlg.ShowDialog() != true) return;
+        CloseSession(session);
     }
 
-    public void Dispose() => Kill();
+    private void RequestEdit(TerminalSessionViewModel session)
+    {
+        var dlg = new Views.TerminalSessionEditDialog(session.Title, session.ColorHex) { Owner = Application.Current.MainWindow };
+        if (dlg.ShowDialog() != true) return;
+        session.Title = dlg.SessionName;       // setter ignores blank, keeping the old name
+        session.ColorHex = dlg.ColorHex;
+    }
+
+    private void CloseSession(TerminalSessionViewModel session)
+    {
+        var idx = Sessions.IndexOf(session);
+        // Re-point the active session to a neighbour BEFORE removal, so the bound picker never transits null.
+        if (ReferenceEquals(ActiveSession, session))
+            ActiveSession = Sessions.Count <= 1 ? null
+                : Sessions[idx == Sessions.Count - 1 ? idx - 1 : idx + 1];
+        Sessions.Remove(session);
+        session.Dispose();
+    }
+
+    public void Dispose()
+    {
+        foreach (var s in Sessions) s.Dispose();
+        Sessions.Clear();
+    }
 }

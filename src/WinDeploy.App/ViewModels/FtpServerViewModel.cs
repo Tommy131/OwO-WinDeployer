@@ -59,6 +59,12 @@ public sealed class FtpServerViewModel : ObservableObject
     public RelayCommand ClearLogCommand { get; }
 
     public bool Running => _server.Running;
+
+    // ── tray / external control (start / stop / restart from the system-tray menu) ──────────────
+    public void StartServer() => Start();
+    public void StopServer() { if (Running) Stop(); }
+    public void RestartServer() { if (Running) Stop(); Start(); }
+
     public string StatusText => _server.Running ? "运行中" : "已停止";
     public string StatusBrush => _server.Running ? "OkFg" : "TextTertiary";
     public string LocalAddresses { get; }

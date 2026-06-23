@@ -30,6 +30,41 @@
 
         <Border Style="{StaticResource Card}" Padding="16" Margin="0,12,0,0">
           <StackPanel>
+            <TextBlock Text="终端特效" FontSize="14" FontWeight="SemiBold" />
+            <TextBlock FontSize="12" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Margin="0,4,0,10"
+                       Text="「开发 → 终端」的外观特效，各项独立开关，调整即时生效。" />
+            <CheckBox Content="黑客风格配色（绿色磷光 + 辉光 + 近黑底）" IsChecked="{Binding TermHacker}" FontSize="13" Margin="0,2,0,0" />
+            <CheckBox Content="CRT 特效（扫描线 + 轻微闪烁）" IsChecked="{Binding TermCrt}" FontSize="13" Margin="0,8,0,0" />
+            <CheckBox Content="背景代码滚动特效" IsChecked="{Binding TermCodeRain}" FontSize="13" Margin="0,8,0,0" />
+
+            <Grid Margin="0,12,0,0" IsEnabled="{Binding CodeRainEnabled}">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="130" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="56" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Grid.Column="0" Text="代码不透明度" FontSize="12.5" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" />
+              <Slider Grid.Column="1" Minimum="0.05" Maximum="1.0" Value="{Binding TermCodeOpacity}" VerticalAlignment="Center" Margin="6,0" />
+              <TextBlock Grid.Column="2" Text="{Binding TermCodeOpacityText}" FontSize="12" Foreground="{DynamicResource TextTertiary}" VerticalAlignment="Center" HorizontalAlignment="Right" />
+            </Grid>
+            <TextBlock FontSize="11" Foreground="{DynamicResource TextTertiary}" TextWrapping="Wrap" Margin="0,4,0,0"
+                       Text="不透明度越低，背景代码越淡，前景命令文字越清晰。" />
+
+            <Grid Margin="0,10,0,0" IsEnabled="{Binding CodeRainEnabled}">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="130" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="56" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Grid.Column="0" Text="滚动速度" FontSize="12.5" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" />
+              <Slider Grid.Column="1" Minimum="0.2" Maximum="4.0" Value="{Binding TermCodeSpeed}" VerticalAlignment="Center" Margin="6,0" />
+              <TextBlock Grid.Column="2" Text="{Binding TermCodeSpeedText}" FontSize="12" Foreground="{DynamicResource TextTertiary}" VerticalAlignment="Center" HorizontalAlignment="Right" />
+            </Grid>
+          </StackPanel>
+        </Border>
+
+        <Border Style="{StaticResource Card}" Padding="16" Margin="0,12,0,0">
+          <StackPanel>
             <TextBlock Text="软件图标" FontSize="14" FontWeight="SemiBold" />
             <TextBlock FontSize="12" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Margin="0,4,0,10"
                        Text="对没有内置图标的软件，联网获取高清品牌图标并缓存到本地（%LOCALAPPDATA%\WinDeploy\iconcache）。启动时会自动补全；也可手动刷新。" />
@@ -44,10 +79,10 @@
         <Border Style="{StaticResource Card}" Padding="16" Margin="0,12,0,0">
           <StackPanel>
             <TextBlock Text="开发者选项" FontSize="14" FontWeight="SemiBold" />
-            <CheckBox Content="开发人员模式（显示完整软件列表与高级功能）" IsChecked="{Binding DeveloperMode}"
+            <CheckBox Content="开发人员模式（解锁完整软件列表与专业功能）" IsChecked="{Binding DeveloperMode}"
                       FontSize="13" Margin="0,10,0,0" />
             <TextBlock FontSize="12" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Margin="0,6,0,0"
-                       Text="关闭时仅显示「办公 / 通讯、游戏平台、系统依赖、媒体」四类常用软件；开启后额外显示开发工具链、IDE / 编辑器、AI 工具、数据库 / API、虚拟化、实用工具等全部分类，并在左侧导航解锁「WSL、系统调优、高级工具」等专业功能页。即时生效。" />
+                       Text="关闭时仅显示「办公 / 通讯、游戏平台、系统依赖、媒体」四类常用软件；开启后额外显示完整软件分类（开发工具链、IDE、AI、数据库等），并在左侧导航解锁「开发」栏的全部功能页（终端、服务配置、FTP、WSL、系统调优、高级工具）以及「系统」栏下的系统维护、进程管理、启动项和环境变量。即时生效。" />
           </StackPanel>
         </Border>
 

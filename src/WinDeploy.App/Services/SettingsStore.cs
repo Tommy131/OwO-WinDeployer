@@ -20,6 +20,21 @@ public sealed class AppSettings
     /// 办公/通讯、游戏平台、系统依赖、媒体四类。默认关闭。</summary>
     public bool DeveloperMode { get; set; }
 
+    /// <summary>终端「黑客风格」配色（绿色磷光 + 辉光 + 近黑底）。null 视为默认开启。</summary>
+    public bool? TerminalHackerFx { get; set; }
+
+    /// <summary>终端 CRT 特效（扫描线 + 轻微闪烁）。null 视为默认开启。</summary>
+    public bool? TerminalCrtFx { get; set; }
+
+    /// <summary>终端背景代码滚动特效。null 视为默认开启。</summary>
+    public bool? TerminalCodeRain { get; set; }
+
+    /// <summary>背景代码不透明度 0.05–1.0（越低前景越清晰）。null 视为默认 0.4。</summary>
+    public double? TerminalCodeOpacity { get; set; }
+
+    /// <summary>背景代码滚动速度倍率 0.2–4.0。null 视为默认 1.0。</summary>
+    public double? TerminalCodeSpeed { get; set; }
+
     /// <summary>Custom install locations chosen per item (id → path), so a portable/git/winget app
     /// installed outside its default location is still found after a restart.</summary>
     public Dictionary<string, string> InstallPaths { get; set; } = new();
@@ -61,6 +76,12 @@ public static class SettingsStore
     public static void SetCloseAction(string action)
     {
         try { var s = Load(); s.CloseAction = action; Save(s); } catch { /* best effort */ }
+    }
+
+    /// <summary>Persist the terminal hacker-FX toggle. Load-modify-save.</summary>
+    public static void SetTerminalHackerFx(bool on)
+    {
+        try { var s = Load(); s.TerminalHackerFx = on; Save(s); } catch { /* best effort */ }
     }
 
     /// <summary>Remember (or forget, when <paramref name="path"/> is null/empty) a per-item custom install

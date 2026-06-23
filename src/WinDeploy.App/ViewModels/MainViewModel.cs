@@ -65,6 +65,7 @@ public sealed class MainViewModel : ObservableObject
         Processes.OperationRequested += (item, op) => _ = ConfirmRiskAndRun(item, op);
         Progress.CancelRequested += () => _cts?.Cancel();
         Settings.Saved += () => Secrets.ExtraKeywords = SettingsViewModel.ParseKeywords(Settings.RedactKeywords);
+        Settings.ConfirmEnableDeveloperMode += ShowDevModeConfirmDialog;
         Settings.DeveloperModeChanged += on => { _devMode = on; Install.SetDeveloperMode(on); RebuildNav(); };
         Settings.RefreshIconsRequested += () => _ = RefreshIconsManualAsync();
         SelectNavCommand = new RelayCommand(p => { if (p is NavItemViewModel n) SelectedNav = n; });
@@ -100,10 +101,58 @@ public sealed class MainViewModel : ObservableObject
 
     private bool _devMode = SettingsStore.Load().DeveloperMode;
 
+    private static bool ShowDevModeConfirmDialog()
+    {
+        var dlg = new Views.DevModeConfirmDialog { Owner = Application.Current.MainWindow };
+        return dlg.ShowDialog() == true;
+    }
+
     /// <summary>Click a nav item to navigate to its page.</summary>
     public RelayCommand SelectNavCommand { get; }
 
     private IEnumerable<NavItemViewModel> AllNavItems => NavGroups.SelectMany(g => g.Items);
+
+    // ── tray-menu navigation / actions ──────────────────────────────────────────
+    // Public entry points the system-tray context menu drives. Navigation prefers the matching nav item
+    // (so its highlight follows); falls back to setting the page directly if that item is hidden.
+    public void GoToTerminal() => NavigateTo(Terminal);
+    public void GoToLogs() => NavigateTo(Logs);
+    public void GoToSettings() => NavigateTo(Settings);
+    public void GoToSystemOverview() => NavigateTo(SystemOverview);
+
+    private void NavigateTo(object page)
+    {
+        var item = AllNavItems.FirstOrDefault(n => ReferenceEquals(n.Page, page));
+        if (item != null && item.IsVisible) SelectedNav = item;
+        else Current = page;   // page not in the (visible) nav — still show it
+    }
+
+    /// <summary>The installed Web servers (nginx / Apache / Tomcat / PHP) that support process control, for the
+    /// tray's per-service start/stop/restart submenu. Empty until the catalog is loaded.</summary>
+    public IReadOnlyList<ServerInfo> InstalledWebServices()
+    {
+        if (_catalog == null) return Array.Empty<ServerInfo>();
+        // Fully qualified: `ServiceConfig` here is the page VM property, not the static service helper.
+        try { return Services.ServiceConfig.Detect(_catalog, _resolver).Where(s => s.HasService).ToList(); }
+        catch { return Array.Empty<ServerInfo>(); }
+    }
+
+    /// <summary>Run a service action from the tray (no UI navigation); report the result as a toast + audit.</summary>
+    public void RunWebServiceAction(ServerInfo info, SvcAction action)
+    {
+        var verb = action switch { SvcAction.Start => "启动", SvcAction.Stop => "停止", SvcAction.Reload => "重载", _ => "重启" };
+        try
+        {
+            var (ok, msg) = Services.ServiceConfig.Run(info, action);
+            AuditLog.Action($"托盘：{verb} {info.Name} — {(ok ? "成功" : "失败")} {msg}".TrimEnd());
+            ToastService.TryShow($"{verb} {info.Name}", ok ? (string.IsNullOrWhiteSpace(msg) ? "操作成功" : msg) : "失败：" + msg);
+        }
+        catch (Exception ex)
+        {
+            AuditLog.Action($"托盘：{verb} {info.Name} 异常 — {ex.Message}");
+            ToastService.TryShow($"{verb} {info.Name}", "异常：" + ex.Message);
+        }
+    }
 
     /// <summary>Build the grouped, collapsible nav. Items flagged Advanced only show in 开发人员模式;
     /// items with a MinBuild only show on a high-enough Windows build. Built once; visibility toggled live.</summary>
@@ -119,15 +168,15 @@ public sealed class MainViewModel : ObservableObject
 
         var system = new NavGroupViewModel("", "系统");
         system.Items.Add(new("", "系统概览", SystemOverview));
-        system.Items.Add(new("", "系统维护", Maintenance));
-        system.Items.Add(new("", "进程管理", Processes));
-        system.Items.Add(new("", "启动项", Startup));
-        system.Items.Add(new("", "环境变量", EnvVars));
+        system.Items.Add(new("", "系统维护", Maintenance, advanced: true));
+        system.Items.Add(new("", "进程管理", Processes, advanced: true));
+        system.Items.Add(new("", "启动项", Startup, advanced: true));
+        system.Items.Add(new("", "环境变量", EnvVars, advanced: true));
 
         var dev = new NavGroupViewModel("", "开发");
-        dev.Items.Add(new("", "终端", Terminal));
-        dev.Items.Add(new("", "服务配置", ServiceConfig));
-        dev.Items.Add(new("", "FTP 传输", Ftp));
+        dev.Items.Add(new("", "终端", Terminal, advanced: true));
+        dev.Items.Add(new("", "服务配置", ServiceConfig, advanced: true));
+        dev.Items.Add(new("", "FTP 传输", Ftp, advanced: true));
         dev.Items.Add(new("", "WSL", Wsl, advanced: true, minBuild: OsInfo.Win10_1607));
         dev.Items.Add(new("", "系统调优", Tweaks, advanced: true));
         dev.Items.Add(new("", "高级工具", AdvancedTools, advanced: true));

@@ -443,6 +443,54 @@
         </Setter>
       </Style>
 
+      <!-- Slider (terminal FX opacity / speed) -->
+      <Style TargetType="Slider">
+        <Setter Property="MinHeight" Value="22" />
+        <Setter Property="Cursor" Value="Hand" />
+        <!-- Click the track to jump the thumb to that point (instead of a full-range page step). -->
+        <Setter Property="IsMoveToPointEnabled" Value="True" />
+        <Setter Property="SmallChange" Value="0.05" />
+        <Setter Property="LargeChange" Value="0.1" />
+        <Setter Property="Template">
+          <Setter.Value>
+            <ControlTemplate TargetType="Slider">
+              <Grid VerticalAlignment="Center" Height="22">
+                <Border Height="4" CornerRadius="2" VerticalAlignment="Center" Background="{DynamicResource BorderSoft}" />
+                <Track x:Name="PART_Track">
+                  <Track.DecreaseRepeatButton>
+                    <RepeatButton Focusable="False" Command="Slider.DecreaseLarge">
+                      <RepeatButton.Template>
+                        <ControlTemplate TargetType="RepeatButton">
+                          <Border Height="4" CornerRadius="2" VerticalAlignment="Center" Background="{DynamicResource Accent}" />
+                        </ControlTemplate>
+                      </RepeatButton.Template>
+                    </RepeatButton>
+                  </Track.DecreaseRepeatButton>
+                  <Track.IncreaseRepeatButton>
+                    <RepeatButton Focusable="False" Command="Slider.IncreaseLarge">
+                      <RepeatButton.Template>
+                        <ControlTemplate TargetType="RepeatButton">
+                          <Border Background="Transparent" />
+                        </ControlTemplate>
+                      </RepeatButton.Template>
+                    </RepeatButton>
+                  </Track.IncreaseRepeatButton>
+                  <Track.Thumb>
+                    <Thumb>
+                      <Thumb.Template>
+                        <ControlTemplate TargetType="Thumb">
+                          <Ellipse Width="16" Height="16" Fill="{DynamicResource Accent}" />
+                        </ControlTemplate>
+                      </Thumb.Template>
+                    </Thumb>
+                  </Track.Thumb>
+                </Track>
+              </Grid>
+            </ControlTemplate>
+          </Setter.Value>
+        </Setter>
+      </Style>
+
       <!-- Themed context menu (matches the app theme instead of the OS default) -->
       <Style x:Key="ThemedContextMenu" TargetType="ContextMenu">
         <Setter Property="Background" Value="{DynamicResource CardBg}" />
@@ -488,6 +536,7 @@
                 </Trigger>
                 <Trigger Property="IsEnabled" Value="False">
                   <Setter Property="Foreground" Value="{DynamicResource TextTertiary}" />
+                  <Setter TargetName="Bd" Property="Opacity" Value="0.4" />
                 </Trigger>
               </ControlTemplate.Triggers>
             </ControlTemplate>
