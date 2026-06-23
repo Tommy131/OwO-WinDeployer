@@ -42,6 +42,7 @@ public sealed class MainViewModel : ObservableObject
     public TweaksViewModel Tweaks { get; } = new();
     public AdvancedToolsViewModel AdvancedTools { get; } = new();
     public ServiceConfigViewModel ServiceConfig { get; } = new();
+    public FtpViewModel Ftp { get; } = new();
 
     public string AppName => WinDeploy.App.AppInfo.Name;
     public string WindowTitle => WinDeploy.App.AppInfo.TitleWithRole;
@@ -126,6 +127,7 @@ public sealed class MainViewModel : ObservableObject
         var dev = new NavGroupViewModel("", "开发");
         dev.Items.Add(new("", "终端", Terminal));
         dev.Items.Add(new("", "服务配置", ServiceConfig));
+        dev.Items.Add(new("", "FTP 传输", Ftp));
         dev.Items.Add(new("", "WSL", Wsl, advanced: true, minBuild: OsInfo.Win10_1607));
         dev.Items.Add(new("", "系统调优", Tweaks, advanced: true));
         dev.Items.Add(new("", "高级工具", AdvancedTools, advanced: true));

@@ -560,6 +560,18 @@
       <DataTemplate DataType="{x:Type vm:ServerDetailViewModel}">
         <views:ServerDetailView />
       </DataTemplate>
+      <DataTemplate DataType="{x:Type vm:FtpViewModel}">
+        <views:FtpView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type vm:FtpServerViewModel}">
+        <views:FtpServerView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type vm:FtpConfigViewModel}">
+        <views:FtpConfigView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type vm:FtpClientViewModel}">
+        <views:FtpClientView />
+      </DataTemplate>
       <DataTemplate DataType="{x:Type vm:DetailViewModel}">
         <views:DetailView />
       </DataTemplate>

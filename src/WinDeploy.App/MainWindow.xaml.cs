@@ -19,7 +19,12 @@ public partial class MainWindow : Window
         // Native title bar gets its handle only at SourceInitialized; theme it then.
         SourceInitialized += (_, _) => ThemeManager.ApplyTitleBar(this);
         Closing += OnClosing;
-        Closed += (_, _) => { _tray?.Dispose(); (DataContext as MainViewModel)?.Terminal.Dispose(); };
+        Closed += (_, _) =>
+        {
+            _tray?.Dispose();
+            (DataContext as MainViewModel)?.Terminal.Dispose();
+            (DataContext as MainViewModel)?.Ftp.Shutdown();
+        };
     }
 
     /// <summary>Close-button behavior: ask (default) → prompt; tray → minimize to tray; exit → really quit.</summary>
