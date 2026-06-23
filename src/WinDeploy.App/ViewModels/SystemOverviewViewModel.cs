@@ -22,6 +22,23 @@ public sealed class PhysDiskRowViewModel
     public string Health { get; init; } = "";
     public bool Healthy { get; init; }
     public string? DeviceId { get; init; }
+    /// <summary>Short interface/media type for the corner badge: NVMe / SSD / HDD / USB / SD …</summary>
+    public string TypeLabel { get; init; } = "";
+
+    /// <summary>Classify a physical disk into a concise type, preferring the interface (NVMe / USB) over the
+    /// raw media type, so an NVMe SSD reads "NVMe" (not "SSD") and an external drive reads "USB".</summary>
+    public static string Classify(string? media, string? bus)
+    {
+        var b = (bus ?? "").Trim();
+        var m = (media ?? "").Trim();
+        if (b.Equals("USB", StringComparison.OrdinalIgnoreCase) || b == "1394") return "USB";
+        if (b.Equals("NVMe", StringComparison.OrdinalIgnoreCase)) return "NVMe";
+        if (m.Equals("SSD", StringComparison.OrdinalIgnoreCase)) return "SSD";
+        if (m.Equals("HDD", StringComparison.OrdinalIgnoreCase)) return "HDD";
+        if (m.Equals("SCM", StringComparison.OrdinalIgnoreCase)) return "SCM";
+        if (b.Length > 0 && !b.Equals("Unknown", StringComparison.OrdinalIgnoreCase)) return b;   // SD / MMC / virtual …
+        return m.Length > 0 ? m : "未知";
+    }
 }
 
 public sealed class PowerRowViewModel
@@ -312,6 +329,7 @@ public sealed class SystemOverviewViewModel : ObservableObject
                 Health = string.IsNullOrWhiteSpace(p.Health) ? "未知" : p.Health,
                 Healthy = string.Equals(p.Health, "Healthy", StringComparison.OrdinalIgnoreCase),
                 DeviceId = p.DeviceId,
+                TypeLabel = PhysDiskRowViewModel.Classify(p.Media, p.Bus),
             });
 
         IsLoading = false;

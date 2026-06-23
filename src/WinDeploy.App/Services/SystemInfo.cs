@@ -4,7 +4,7 @@ using WinDeploy.Core.Util;
 namespace WinDeploy.App.Services;
 
 public sealed record DiskInfo(string Drive, long SizeBytes, long FreeBytes, string? Label);
-public sealed record PhysDiskInfo(string Name, string? Media, string? Health, long SizeGb, string? DeviceId);
+public sealed record PhysDiskInfo(string Name, string? Media, string? Health, long SizeGb, string? DeviceId, string? Bus);
 
 /// <summary>One parsed SMART attribute (raw ATA table). Raw is the 48-bit vendor raw value.</summary>
 public sealed record SmartAttr(int Id, string Name, int Current, int Worst, int Threshold, long Raw, bool Critical)
@@ -97,7 +97,7 @@ public static class SystemInfo
         $disks = @(Get-CimInstance Win32_LogicalDisk -Filter "DriveType=3" | Select-Object DeviceID,Size,FreeSpace,VolumeName)
         $bat = Get-CimInstance Win32_Battery -ErrorAction SilentlyContinue | Select-Object -First 1
         $phys = @()
-        try { $phys = @(Get-PhysicalDisk -ErrorAction Stop | Select-Object FriendlyName,MediaType,HealthStatus,DeviceId,@{n='SizeGB';e={[math]::Round($_.Size/1GB,0)}}) } catch {}
+        try { $phys = @(Get-PhysicalDisk -ErrorAction Stop | Select-Object FriendlyName,MediaType,BusType,HealthStatus,DeviceId,@{n='SizeGB';e={[math]::Round($_.Size/1GB,0)}}) } catch {}
         $act = $null
         try { $act = (Get-CimInstance SoftwareLicensingProduct -Filter "ApplicationID='55c92734-d682-4d71-983e-d6ec3f16059f' AND PartialProductKey IS NOT NULL" -ErrorAction Stop | Select-Object -First 1).LicenseStatus } catch {}
         $uptime = [math]::Round(((Get-Date) - $os.LastBootUpTime).TotalHours, 1)
@@ -142,7 +142,7 @@ public static class SystemInfo
             foreach (var d in Items(e, "Disks"))
                 snap.Disks.Add(new DiskInfo(Str(d, "DeviceID") ?? "?", Num(d, "Size"), Num(d, "FreeSpace"), Str(d, "VolumeName")));
             foreach (var p in Items(e, "PhysicalDisks"))
-                snap.PhysicalDisks.Add(new PhysDiskInfo(Str(p, "FriendlyName") ?? "?", Str(p, "MediaType"), Str(p, "HealthStatus"), Num(p, "SizeGB"), IdStr(p, "DeviceId")));
+                snap.PhysicalDisks.Add(new PhysDiskInfo(Str(p, "FriendlyName") ?? "?", Str(p, "MediaType"), Str(p, "HealthStatus"), Num(p, "SizeGB"), IdStr(p, "DeviceId"), Str(p, "BusType")));
         }
         catch { /* partial / unparseable */ }
         return snap;
