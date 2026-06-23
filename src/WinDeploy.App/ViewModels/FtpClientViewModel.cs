@@ -57,8 +57,8 @@ public sealed class FtpClientViewModel : ObservableObject
         RefreshRemoteCommand = new RelayCommand(_ => _ = ListRemoteAsync(), _ => Connected && !Busy);
         RemoteUpCommand = new RelayCommand(_ => _ = RemoteUpAsync(), _ => Connected && !Busy);
         OpenRemoteCommand = new RelayCommand(p => { if (p is FtpRemoteRowVm r) _ = OpenRemoteAsync(r); });
-        DownloadCommand = new RelayCommand(_ => _ = DownloadAsync(), _ => Connected && !Busy && SelectedRemote is { IsDir: false });
-        UploadCommand = new RelayCommand(_ => _ = UploadAsync(), _ => Connected && !Busy && SelectedLocal is { IsDir: false });
+        DownloadCommand = new RelayCommand(_ => _ = DownloadAsync(), _ => Connected && !Busy && SelectedRemote != null);
+        UploadCommand = new RelayCommand(_ => _ = UploadAsync(), _ => Connected && !Busy && SelectedLocal is { IsUp: false });
         DeleteRemoteCommand = new RelayCommand(_ => _ = DeleteRemoteAsync(), _ => Connected && !Busy && SelectedRemote != null);
         MkdirRemoteCommand = new RelayCommand(_ => _ = MkdirRemoteAsync(), _ => Connected && !Busy);
         RenameRemoteCommand = new RelayCommand(_ => _ = RenameRemoteAsync(), _ => Connected && !Busy && SelectedRemote != null);
@@ -89,8 +89,8 @@ public sealed class FtpClientViewModel : ObservableObject
 
     // ── state ────────────────────────────────────────────────────────────────
     private bool _connected; public bool Connected { get => _connected; private set { if (Set(ref _connected, value)) { OnPropertyChanged(nameof(StatusBrush)); OnPropertyChanged(nameof(StatusText)); Requery(); } } }
-    private bool _busy; public bool Busy { get => _busy; private set { if (Set(ref _busy, value)) Requery(); } }
-    public string StatusText => _connected ? $"已连接 {Host}" : "未连接";
+    private bool _busy; public bool Busy { get => _busy; private set { if (Set(ref _busy, value)) { OnPropertyChanged(nameof(StatusText)); Requery(); } } }
+    public string StatusText => _connected ? $"已连接 {Host}" : _busy ? "连接中…" : "未连接";
     public string StatusBrush => _connected ? "OkFg" : "TextTertiary";
 
     private string _note = "填写远端服务器信息并连接。支持明文 FTP、显式 FTPS (AUTH TLS)、隐式 FTPS。";
@@ -137,17 +137,28 @@ public sealed class FtpClientViewModel : ObservableObject
         try
         {
             await client.ConnectAsync(Host.Trim(), Port, _tlsMode, UserName, Password, _cts.Token);
+            // Confirm the data channel actually works (initial listing) BEFORE declaring connected: a wrong
+            // encryption mode often logs in over the control channel but then stalls/fails on the data
+            // connection — marking 已连接 at that point would mislead the user.
+            var entries = await client.ListAsync(_cts.Token);
             _client = client;
+            RemoteDir = client.CurrentDir;
+            RemoteEntries.Clear();
+            foreach (var e in entries) RemoteEntries.Add(new FtpRemoteRowVm(e));
+            OnPropertyChanged(nameof(NoRemote));
             Connected = true;
-            RemoteDir = _client.CurrentDir;
             AuditLog.Action($"FTP 客户端连接 {Host}:{Port} · TLS {_tlsMode}");
-            await ListRemoteAsync();
             Note = $"已连接到 {Host}。";
         }
         catch (Exception ex)
         {
-            client.Dispose();
-            Note = "连接失败：" + ex.Message;
+            try { client.Dispose(); } catch { }
+            _client = null;
+            Connected = false;
+            RemoteEntries.Clear();
+            OnPropertyChanged(nameof(NoRemote));
+            Note = "连接失败：" + (ex is OperationCanceledException ? "连接超时或被取消" : ex.Message)
+                   + "（请检查主机、端口与加密方式是否与服务器一致）";
         }
         finally { Busy = false; }
     }
@@ -207,15 +218,26 @@ public sealed class FtpClientViewModel : ObservableObject
     // ── transfers ────────────────────────────────────────────────────────────
     private async Task DownloadAsync()
     {
-        if (_client == null || SelectedRemote is not { IsDir: false } r) return;
-        var local = Path.Combine(LocalDir, r.Name);
+        if (_client == null || SelectedRemote is not { } r) return;
         Busy = true;
-        var progress = new Progress<long>(b => Note = $"下载 {r.Name} … {FtpRemoteRowVm.Human(b)}");
         try
         {
-            await _client.DownloadAsync(r.Name, local, progress, _cts!.Token);
-            AuditLog.Action($"FTP 下载 {r.Name} → {local}");
-            Note = $"已下载 {r.Name} → {LocalDir}";
+            if (r.IsDir)
+            {
+                var n = 0;
+                var p = new Progress<string>(name => { n++; Note = $"下载文件夹 {r.Name} … 第 {n} 个：{name}"; });
+                await _client.DownloadDirectoryAsync(r.Name, LocalDir, p, _cts!.Token);
+                AuditLog.Action($"FTP 下载文件夹 {r.Name} → {LocalDir}（{n} 个文件）");
+                Note = $"已下载文件夹 {r.Name}（{n} 个文件）→ {LocalDir}";
+            }
+            else
+            {
+                var local = Path.Combine(LocalDir, r.Name);
+                var p = new Progress<long>(b => Note = $"下载 {r.Name} … {FtpRemoteRowVm.Human(b)}");
+                await _client.DownloadAsync(r.Name, local, p, _cts!.Token);
+                AuditLog.Action($"FTP 下载 {r.Name} → {local}");
+                Note = $"已下载 {r.Name} → {LocalDir}";
+            }
             ListLocal();
         }
         catch (Exception ex) { Note = "下载失败：" + ex.Message; }
@@ -224,14 +246,25 @@ public sealed class FtpClientViewModel : ObservableObject
 
     private async Task UploadAsync()
     {
-        if (_client == null || SelectedLocal is not { IsDir: false } l) return;
+        if (_client == null || SelectedLocal is not { IsUp: false } l) return;
         Busy = true;
-        var progress = new Progress<long>(b => Note = $"上传 {l.Name} … {FtpRemoteRowVm.Human(b)}");
         try
         {
-            await _client.UploadAsync(l.Path, l.Name, progress, _cts!.Token);
-            AuditLog.Action($"FTP 上传 {l.Path} → {RemoteDir}/{l.Name}");
-            Note = $"已上传 {l.Name} → {RemoteDir}";
+            if (l.IsDir)
+            {
+                var n = 0;
+                var p = new Progress<string>(name => { n++; Note = $"上传文件夹 {l.Name} … 第 {n} 个：{name}"; });
+                await _client.UploadDirectoryAsync(l.Path, l.Name, p, _cts!.Token);
+                AuditLog.Action($"FTP 上传文件夹 {l.Path} → {RemoteDir}/{l.Name}（{n} 个文件）");
+                Note = $"已上传文件夹 {l.Name}（{n} 个文件）→ {RemoteDir}";
+            }
+            else
+            {
+                var p = new Progress<long>(b => Note = $"上传 {l.Name} … {FtpRemoteRowVm.Human(b)}");
+                await _client.UploadAsync(l.Path, l.Name, p, _cts!.Token);
+                AuditLog.Action($"FTP 上传 {l.Path} → {RemoteDir}/{l.Name}");
+                Note = $"已上传 {l.Name} → {RemoteDir}";
+            }
             await ListRemoteAsync();
         }
         catch (Exception ex) { Note = "上传失败：" + ex.Message; }

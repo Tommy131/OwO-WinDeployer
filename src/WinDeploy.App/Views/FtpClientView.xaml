@@ -81,7 +81,8 @@
           <DockPanel Grid.Row="1" Margin="10,0,10,6">
             <Button DockPanel.Dock="Left" Content="↑ 上级" Style="{StaticResource MiniButton}" Margin="0,0,6,0" Command="{Binding LocalUpCommand}" />
             <Button DockPanel.Dock="Left" Content="选择目录" Style="{StaticResource MiniButton}" Margin="0,0,6,0" Command="{Binding PickLocalCommand}" />
-            <Button DockPanel.Dock="Right" Content="上传 →" Style="{StaticResource InfoButton}" Command="{Binding UploadCommand}" />
+            <Button DockPanel.Dock="Right" Content="上传 →" Style="{StaticResource InfoButton}" Command="{Binding UploadCommand}"
+                    ToolTip="上传选中的文件或文件夹（文件夹会递归上传，含子目录）" />
             <TextBlock Text="{Binding LocalDir}" FontSize="11" FontFamily="Consolas" Foreground="{DynamicResource TextTertiary}"
                        VerticalAlignment="Center" Margin="6,0,8,0" TextTrimming="CharacterEllipsis" ToolTip="{Binding LocalDir}" />
           </DockPanel>
@@ -120,7 +121,8 @@
             <Button DockPanel.Dock="Left" Content="新建目录" Style="{StaticResource MiniButton}" Margin="0,0,6,0" Command="{Binding MkdirRemoteCommand}" />
             <Button DockPanel.Dock="Right" Content="删除" Style="{StaticResource DangerButton}" Command="{Binding DeleteRemoteCommand}" />
             <Button DockPanel.Dock="Right" Content="重命名" Style="{StaticResource MiniButton}" Margin="0,0,6,0" Command="{Binding RenameRemoteCommand}" />
-            <Button DockPanel.Dock="Right" Content="← 下载" Style="{StaticResource InfoButton}" Margin="0,0,6,0" Command="{Binding DownloadCommand}" />
+            <Button DockPanel.Dock="Right" Content="← 下载" Style="{StaticResource InfoButton}" Margin="0,0,6,0" Command="{Binding DownloadCommand}"
+                    ToolTip="下载选中的文件或文件夹（文件夹会递归下载，含子目录）" />
             <TextBlock Text="{Binding RemoteDir}" FontSize="11" FontFamily="Consolas" Foreground="{DynamicResource TextTertiary}"
                        VerticalAlignment="Center" Margin="6,0,8,0" TextTrimming="CharacterEllipsis" ToolTip="{Binding RemoteDir}" />
           </DockPanel>

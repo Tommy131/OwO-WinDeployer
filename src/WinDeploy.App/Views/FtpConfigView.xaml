@@ -198,7 +198,7 @@
               <Button DockPanel.Dock="Right" Content="+ 添加分组" Style="{StaticResource OkButton}" Command="{Binding AddGroupCommand}" />
               <TextBlock Text="分组" Style="{StaticResource SectionTitle}" Margin="0" VerticalAlignment="Center" />
             </DockPanel>
-            <TextBlock Text="分组用于给多个用户统一设置默认主目录与权限（FileZilla 用户组语义）。用户可选择继承所属分组的权限。"
+            <TextBlock Text="分组用于给多个用户统一设置默认主目录与权限。用户可选择继承所属分组的权限。"
                        FontSize="11.5" Foreground="{DynamicResource TextTertiary}" TextWrapping="Wrap" Margin="0,0,0,8" />
             <TextBlock Text="还没有分组。"
                        FontSize="12.5" Foreground="{DynamicResource TextSecondary}"

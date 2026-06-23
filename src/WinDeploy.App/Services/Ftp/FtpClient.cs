@@ -31,7 +31,7 @@ public sealed class FtpClient : IDisposable
     {
         _host = host;
         _tcp = new TcpClient { NoDelay = true };
-        await _tcp.ConnectAsync(host, port, ct);
+        using (var to = LinkTimeout(ct)) await _tcp.ConnectAsync(host, port, to.Token);
         _ctrl = _tcp.GetStream();
 
         var implicitTls = string.Equals(tlsMode, "implicit", StringComparison.OrdinalIgnoreCase);
@@ -73,11 +73,12 @@ public sealed class FtpClient : IDisposable
     {
         var ssl = new SslStream(_ctrl, leaveInnerStreamOpen: false,
             (_, _, _, _) => true);   // accept self-signed — ad-hoc personal usage
-        await ssl.AuthenticateAsClientAsync(new SslClientAuthenticationOptions
-        {
-            TargetHost = _host,
-            EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
-        }, ct);
+        using (var to = LinkTimeout(ct))
+            await ssl.AuthenticateAsClientAsync(new SslClientAuthenticationOptions
+            {
+                TargetHost = _host,
+                EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
+            }, to.Token);
         _ctrl = ssl;
         _secure = true;
         _rpos = _rlen = 0;
@@ -171,6 +172,65 @@ public sealed class FtpClient : IDisposable
         catch { conn.Dispose(); throw; }
     }
 
+    // ── directory (recursive) transfers ─────────────────────────────────────────
+    /// <summary>Recursively download remote directory <paramref name="remoteName"/> (under the current dir)
+    /// into <paramref name="localParent"/>/&lt;remoteName&gt;. The working directory is restored afterwards.
+    /// <paramref name="progress"/> reports each file name as its transfer starts.</summary>
+    public async Task DownloadDirectoryAsync(string remoteName, string localParent, IProgress<string>? progress, CancellationToken ct)
+    {
+        var start = CurrentDir;
+        try { await DownloadDirRecAsync(remoteName, localParent, progress, ct); }
+        finally { try { await ChangeDirAsync(start, ct); } catch { } }
+    }
+
+    private async Task DownloadDirRecAsync(string remoteName, string localParent, IProgress<string>? progress, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        var localDir = Path.Combine(localParent, SafeLocal(remoteName));
+        Directory.CreateDirectory(localDir);
+        await ChangeDirAsync(remoteName, ct);
+        var entries = await ListAsync(ct);
+        foreach (var e in entries)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (e.IsDir) await DownloadDirRecAsync(e.Name, localDir, progress, ct);
+            else { progress?.Report(e.Name); await DownloadAsync(e.Name, Path.Combine(localDir, SafeLocal(e.Name)), null, ct); }
+        }
+        await ChangeDirAsync("..", ct);
+    }
+
+    /// <summary>Recursively upload local directory <paramref name="localDir"/> into a remote directory named
+    /// <paramref name="remoteName"/> (created under the current dir). The working directory is restored after.</summary>
+    public async Task UploadDirectoryAsync(string localDir, string remoteName, IProgress<string>? progress, CancellationToken ct)
+    {
+        var start = CurrentDir;
+        try { await UploadDirRecAsync(localDir, remoteName, progress, ct); }
+        finally { try { await ChangeDirAsync(start, ct); } catch { } }
+    }
+
+    private async Task UploadDirRecAsync(string localDir, string remoteName, IProgress<string>? progress, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        try { await MakeDirAsync(remoteName, ct); } catch { /* may already exist */ }
+        await ChangeDirAsync(remoteName, ct);
+        foreach (var sub in Directory.GetDirectories(localDir))
+            await UploadDirRecAsync(sub, Path.GetFileName(sub), progress, ct);
+        foreach (var file in Directory.GetFiles(localDir))
+        {
+            ct.ThrowIfCancellationRequested();
+            progress?.Report(Path.GetFileName(file));
+            await UploadAsync(file, Path.GetFileName(file), null, ct);
+        }
+        await ChangeDirAsync("..", ct);
+    }
+
+    /// <summary>Make a remote name safe to use as a local file/dir name.</summary>
+    private static string SafeLocal(string name)
+    {
+        foreach (var c in Path.GetInvalidFileNameChars()) name = name.Replace(c, '_');
+        return name.Trim();
+    }
+
     private static async Task PumpAsync(Stream from, Stream to, IProgress<long>? progress, CancellationToken ct)
     {
         var buf = new byte[81920];
@@ -193,7 +253,7 @@ public sealed class FtpClient : IDisposable
     {
         var (ip, port) = await EnterPassiveAsync(ct);
         var conn = new TcpClient { NoDelay = true };
-        await conn.ConnectAsync(ip, port, ct);
+        using (var to = LinkTimeout(ct)) await conn.ConnectAsync(ip, port, to.Token);
         return conn;
     }
 
@@ -202,12 +262,23 @@ public sealed class FtpClient : IDisposable
         Stream s = conn.GetStream();
         if (!_secure) return s;
         var ssl = new SslStream(s, leaveInnerStreamOpen: false, (_, _, _, _) => true);
-        await ssl.AuthenticateAsClientAsync(new SslClientAuthenticationOptions
-        {
-            TargetHost = _host,
-            EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
-        }, ct);
+        using (var to = LinkTimeout(ct))
+            await ssl.AuthenticateAsClientAsync(new SslClientAuthenticationOptions
+            {
+                TargetHost = _host,
+                EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
+            }, to.Token);
         return ssl;
+    }
+
+    /// <summary>A cancellation source linked to <paramref name="ct"/> that also self-cancels after a timeout,
+    /// so a misconfigured connection (e.g. wrong TLS mode, unreachable passive port) fails fast instead of
+    /// hanging the UI.</summary>
+    private static CancellationTokenSource LinkTimeout(CancellationToken ct, int seconds = 15)
+    {
+        var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        cts.CancelAfter(TimeSpan.FromSeconds(seconds));
+        return cts;
     }
 
     private static void Close(Stream s, TcpClient conn)
