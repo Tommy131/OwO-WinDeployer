@@ -4,6 +4,7 @@
              xmlns:vm="clr-namespace:WinDeploy.App.ViewModels"
              xmlns:views="clr-namespace:WinDeploy.App.Views"
              xmlns:app="clr-namespace:WinDeploy.App"
+             xmlns:b="clr-namespace:WinDeploy.App.Behaviors"
              StartupUri="MainWindow.xaml">
   <Application.Resources>
     <ResourceDictionary>
@@ -497,6 +498,8 @@
         <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BorderStrong}" />
         <Setter Property="HasDropShadow" Value="False" />
+        <!-- Auto-hide leading/trailing/consecutive separators left behind by conditionally-hidden items. -->
+        <Setter Property="b:MenuTidy.AutoSeparators" Value="True" />
         <Setter Property="Template">
           <Setter.Value>
             <ControlTemplate TargetType="ContextMenu">
