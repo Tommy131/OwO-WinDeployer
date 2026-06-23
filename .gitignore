@@ -16,3 +16,9 @@ assets/packages/
 configs/ssh/id_*
 configs/ssh/*.pem
 configs/ssh/*.key
+
+# 安全/个性化：不提交个人的 git 与 VS Code 配置（由各自机器通过「配置同步」导出生成）
+configs/git/.gitconfig
+configs/vscode/settings.json
+configs/vscode/keybindings.json
+configs/vscode/extensions.txt
