@@ -37,16 +37,22 @@ public sealed class ProcRowViewModel : ObservableObject
     }
 }
 
-/// <summary>A catalog item, its icon, and its running processes (expand/collapse).</summary>
+/// <summary>A process group (a catalog app, or — in 全部进程 mode — any process by name), its icon, and
+/// its running processes (expand/collapse).</summary>
 public sealed class AppProcGroupViewModel : ObservableObject
 {
-    public CatalogItem Model { get; }
-    public string Name => Model.Name;
+    /// <summary>The catalog item this group maps to, or null for a generic (non-catalog) process group.</summary>
+    public CatalogItem? Model { get; }
+    public string Key { get; }
+    public string Name { get; }
+    public bool IsCatalog => Model != null;
     public ObservableCollection<ProcRowViewModel> Processes { get; } = new();
     public RelayCommand ToggleCommand { get; }
 
-    public AppProcGroupViewModel(CatalogItem model, string repoRoot)
+    public AppProcGroupViewModel(string key, string name, CatalogItem? model, string repoRoot)
     {
+        Key = key;
+        Name = name;
         Model = model;
         ToggleCommand = new RelayCommand(_ => IsExpanded = !IsExpanded);
         LoadIcon(repoRoot);
@@ -66,9 +72,9 @@ public sealed class AppProcGroupViewModel : ObservableObject
     public ImageSource? IconImage { get; private set; }
     public bool HasIcon => IconImage != null;
     public bool ShowLetter => IconImage == null;
-    public string Badge => Model.Name.Length > 0 ? Model.Name[..1].ToUpperInvariant() : "?";
+    public string Badge => Name.Length > 0 ? Name[..1].ToUpperInvariant() : "?";
 
-    private void LoadIcon(string repoRoot) => IconImage = IconResolver.FromCatalogId(Model.Id);
+    private void LoadIcon(string repoRoot) => IconImage = Model != null ? IconResolver.FromCatalogId(Model.Id) : null;
 
     /// <summary>If no bundled icon was found, extract the running app's real icon from its .exe.</summary>
     public void EnsureIconFromExe(string? exePath)
@@ -107,17 +113,29 @@ public sealed class ProcessManagerViewModel : ObservableObject
     public RelayCommand EndAllCommand { get; }
     public RelayCommand RestartCommand { get; }
     public RelayCommand OpenTaskManagerCommand { get; }
+    public RelayCommand ToggleAllCommand { get; }
 
-    /// <summary>Group-level 结束全部 / 重启 — (item, "stop" | "restart").</summary>
+    /// <summary>Group-level 结束全部 / 重启 — (item, "stop" | "restart"). Only fires for catalog groups.</summary>
     public event Action<CatalogItem, string>? OperationRequested;
+
+    private bool _showAll;
+    /// <summary>When true, show every running process (grouped by name); else only catalog-software processes.</summary>
+    public bool ShowAll { get => _showAll; private set { if (Set(ref _showAll, value)) OnPropertyChanged(nameof(ToggleAllLabel)); } }
+    public string ToggleAllLabel => _showAll ? "仅显示软件库进程" : "显示全部进程";
 
     public ProcessManagerViewModel()
     {
         RefreshCommand = new RelayCommand(_ => _ = RefreshAsync(resolveTargets: true));
         EndProcessCommand = new RelayCommand(p => { if (p is ProcRowViewModel r) EndOne(r); });
-        EndAllCommand = new RelayCommand(p => { if (p is AppProcGroupViewModel g) OperationRequested?.Invoke(g.Model, "stop"); });
-        RestartCommand = new RelayCommand(p => { if (p is AppProcGroupViewModel g) OperationRequested?.Invoke(g.Model, "restart"); });
+        EndAllCommand = new RelayCommand(p => { if (p is AppProcGroupViewModel g) EndAll(g); });
+        RestartCommand = new RelayCommand(p => { if (p is AppProcGroupViewModel { Model: { } m }) OperationRequested?.Invoke(m, "restart"); });
         OpenTaskManagerCommand = new RelayCommand(_ => OpenTaskManager());
+        ToggleAllCommand = new RelayCommand(_ =>
+        {
+            ShowAll = !ShowAll;
+            Groups.Clear(); _groups.Clear(); _prevCpu.Clear();
+            _ = RefreshAsync(resolveTargets: true);
+        });
     }
 
     public void Initialize(Catalog catalog, PathResolver resolver, string repoRoot)
@@ -151,55 +169,69 @@ public sealed class ProcessManagerViewModel : ObservableObject
         _scanning = true;
         try
         {
-            if (resolveTargets)
-            {
-                var items = _catalog.Items.ToList();
-                var pr = _resolver;
-                var resolved = await Task.Run(() =>
-                {
-                    var d = new Dictionary<string, (string, string?)>();
-                    foreach (var it in items)
-                    {
-                        try { var rt = ProcessControl.ResolveTarget(it, pr); if (rt != null) d[it.Id] = rt.Value; }
-                        catch { /* skip */ }
-                    }
-                    return d;
-                });
-                _targets.Clear();
-                foreach (var kv in resolved) _targets[kv.Key] = kv.Value;
-            }
-
-            var targetList = _targets.Select(kv => (kv.Key, kv.Value.Proc, kv.Value.Dir)).ToList();
+            List<(string Key, string Name, CatalogItem? Model, List<ProcItem> Procs)> grouped;
             var cache = _pathCache;
-            var flat = await Task.Run(() => ProcessControl.ScanAll(targetList, cache));
 
-            var grouped = flat
-                .GroupBy(x => x.Id)
-                .Select(g => (g.Key, g.Select(x => x.Proc).ToList()))
-                .ToList();
+            if (_showAll)
+            {
+                var flat = await Task.Run(() => ProcessControl.AllProcesses(cache));
+                grouped = flat
+                    .GroupBy(x => x.Name)
+                    .Select(g => (Key: g.Key, Name: g.Key, Model: (CatalogItem?)null, Procs: g.ToList()))
+                    .OrderByDescending(t => t.Procs.Sum(p => p.MemBytes))
+                    .ToList();
+            }
+            else
+            {
+                if (resolveTargets)
+                {
+                    var items = _catalog.Items.ToList();
+                    var pr = _resolver;
+                    var resolved = await Task.Run(() =>
+                    {
+                        var d = new Dictionary<string, (string, string?)>();
+                        foreach (var it in items)
+                        {
+                            try { var rt = ProcessControl.ResolveTarget(it, pr); if (rt != null) d[it.Id] = rt.Value; }
+                            catch { /* skip */ }
+                        }
+                        return d;
+                    });
+                    _targets.Clear();
+                    foreach (var kv in resolved) _targets[kv.Key] = kv.Value;
+                }
+
+                var targetList = _targets.Select(kv => (kv.Key, kv.Value.Proc, kv.Value.Dir)).ToList();
+                var flat = await Task.Run(() => ProcessControl.ScanAll(targetList, cache));
+                grouped = flat
+                    .GroupBy(x => x.Id)
+                    .Select(g =>
+                    {
+                        var item = _catalog!.Items.FirstOrDefault(i => i.Id == g.Key);
+                        return (Key: g.Key, Name: item?.Name ?? g.Key, Model: item, Procs: g.Select(x => x.Proc).ToList());
+                    })
+                    .ToList();
+            }
             ApplySample(grouped);
         }
         finally { _scanning = false; }
     }
 
-    private void ApplySample(List<(string Id, List<ProcItem> Procs)> sampled)
+    private void ApplySample(List<(string Key, string Name, CatalogItem? Model, List<ProcItem> Procs)> sampled)
     {
-        if (_catalog == null) return;
         var now = DateTime.Now;
         var seen = new HashSet<string>();
         var newCpu = new Dictionary<int, (TimeSpan, DateTime)>();
 
-        foreach (var (id, procs) in sampled)
+        foreach (var (key, name, model, procs) in sampled)
         {
-            seen.Add(id);
-            var item = _catalog.Items.FirstOrDefault(i => i.Id == id);
-            if (item == null) continue;
+            seen.Add(key);
 
-            if (!_groups.TryGetValue(id, out var g))
+            if (!_groups.TryGetValue(key, out var g))
             {
-                g = new AppProcGroupViewModel(item, _repoRoot);
+                g = new AppProcGroupViewModel(key, name, model, _repoRoot);
                 g.EnsureIconFromExe(procs.FirstOrDefault()?.Path);   // exe fallback when no bundled icon
-                _groups[id] = g;
+                _groups[key] = g;
                 Groups.Add(g);
             }
 
@@ -231,10 +263,24 @@ public sealed class ProcessManagerViewModel : ObservableObject
         _prevCpu.Clear();
         foreach (var kv in newCpu) _prevCpu[kv.Key] = kv.Value;
 
-        Summary = Groups.Count == 0
-            ? "未发现软件列表中的软件正在运行"
-            : $"{Groups.Count} 个软件运行中 · 共 {Groups.Sum(x => x.Processes.Count)} 个进程 · 每 2 秒刷新";
+        var procCount = Groups.Sum(x => x.Processes.Count);
+        Summary = _showAll
+            ? $"全部进程：{Groups.Count} 组 · 共 {procCount} 个进程 · 每 2 秒刷新"
+            : (Groups.Count == 0 ? "未发现软件列表中的软件正在运行（点「显示全部进程」查看所有进程）"
+                                 : $"{Groups.Count} 个软件运行中 · 共 {procCount} 个进程 · 每 2 秒刷新");
         OnPropertyChanged(nameof(IsEmpty));
+    }
+
+    private void EndAll(AppProcGroupViewModel g)
+    {
+        if (g.Model is { } m) { OperationRequested?.Invoke(m, "stop"); return; }
+        if (g.Processes.Count == 0) return;
+        if (MessageBox.Show($"确定结束「{g.Name}」的全部 {g.Processes.Count} 个进程？", "结束全部进程",
+                MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        var n = 0;
+        foreach (var r in g.Processes.ToList()) if (ProcessControl.Kill(r.Pid)) n++;
+        AuditLog.Action($"结束全部进程：{g.Name} — 结束 {n} 个");
+        _ = RefreshAsync(resolveTargets: false);
     }
 
     private void EndOne(ProcRowViewModel r)

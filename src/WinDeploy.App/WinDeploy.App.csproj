@@ -6,6 +6,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <!-- 后台常驻托管用到 System.Windows.Forms.NotifyIcon（系统托盘图标）。 -->
+    <UseWindowsForms>true</UseWindowsForms>
     <LangVersion>latest</LangVersion>
     <RootNamespace>WinDeploy.App</RootNamespace>
     <AssemblyName>WinDeploy</AssemblyName>
@@ -28,8 +30,19 @@
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
   </PropertyGroup>
 
+  <!-- WinForms 仅用于托盘图标（TrayIcon.cs 显式 using）。移除其全局隐式 using，避免
+       System.Drawing / System.Windows.Forms 的 Brush/Color/FontFamily 等与 WPF 类型在全项目冲突。 -->
+  <ItemGroup>
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\WinDeploy.Core\WinDeploy.Core.csproj" />
+    <!-- 配置文件编辑器：行号 + 语法高亮（服务配置页） -->
+    <PackageReference Include="AvalonEdit" Version="6.3.0.90" />
+    <!-- 硬件传感器：CPU/GPU 功耗、温度、负载（系统概览功耗监控）。附带 WinRing0 驱动，部分传感器需管理员。 -->
+    <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.4" />
   </ItemGroup>
 
 </Project>

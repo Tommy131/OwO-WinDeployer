@@ -96,6 +96,11 @@ public sealed class DetectSpec
     /// <summary>Process base-name hint for running detection (e.g. MSIX/Store apps like Claude that
     /// have no classic ARP entry). Used only by process matching, not install detection.</summary>
     public string? Proc { get; set; }
+
+    /// <summary>Env var (e.g. GOROOT / JAVA_HOME / PHP_HOME / LUA_HOME / GCC_HOME / CATALINA_HOME) whose
+    /// value, if set to an existing directory, means the toolchain is already installed there. Drives both
+    /// detection and the auto-set-after-install of the same variable.</summary>
+    public string? EnvVar { get; set; }
 }
 
 /// <summary>Config payload that travels in the repo regardless of install state.</summary>

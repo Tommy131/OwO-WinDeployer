@@ -126,6 +126,39 @@ public static class ProcessControl
         return result;
     }
 
+    /// <summary>Enumerate every running process (pid, name, working set, module path, cpu time) — for the
+    /// "all processes" view. <paramref name="pathCache"/> (pid → module path) is reused across ticks so
+    /// MainModule is queried at most once per process.</summary>
+    public static List<ProcItem> AllProcesses(Dictionary<int, string?> pathCache)
+    {
+        var result = new List<ProcItem>();
+        Process[] all;
+        try { all = Process.GetProcesses(); } catch { return result; }
+        var alive = new HashSet<int>();
+        foreach (var p in all)
+        {
+            try
+            {
+                alive.Add(p.Id);
+                if (!pathCache.TryGetValue(p.Id, out var path))
+                {
+                    try { path = p.MainModule?.FileName; } catch { path = null; }
+                    pathCache[p.Id] = path;
+                }
+                TimeSpan cpu;
+                try { cpu = p.TotalProcessorTime; } catch { cpu = TimeSpan.Zero; }
+                long mem;
+                try { mem = p.WorkingSet64; } catch { mem = 0; }
+                result.Add(new ProcItem(p.Id, p.ProcessName, mem, path, cpu));
+            }
+            catch { /* skip */ }
+            finally { try { p.Dispose(); } catch { /* ignore */ } }
+        }
+        foreach (var pid in pathCache.Keys.ToList())
+            if (!alive.Contains(pid)) pathCache.Remove(pid);
+        return result;
+    }
+
     public static bool Kill(int pid)
     {
         try

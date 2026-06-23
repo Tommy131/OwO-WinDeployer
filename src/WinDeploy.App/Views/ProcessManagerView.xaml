@@ -10,13 +10,15 @@
 
     <StackPanel Grid.Row="0">
       <TextBlock Text="进程管理" FontSize="20" FontWeight="SemiBold" />
-      <TextBlock Text="仅针对软件中心列表内的软件：实时（每 2 秒）显示各软件的进程、CPU 占用与内存，支持展开/折叠、结束单个/全部进程、重启。" FontSize="13"
+      <TextBlock Text="实时（每 2 秒）显示进程的 CPU 占用与内存，支持展开/折叠、结束单个/全部进程。可切换「显示全部进程」查看本机所有可管理进程，或仅看软件库内软件。" FontSize="13"
                  Foreground="{DynamicResource TextSecondary}" Margin="0,3,0,0" TextWrapping="Wrap" />
     </StackPanel>
 
     <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,0">
       <Button Content="↻ 刷新" Style="{StaticResource MiniButton}" Command="{Binding RefreshCommand}"
               ToolTip="重新解析并扫描进程" />
+      <Button Content="{Binding ToggleAllLabel}" Style="{StaticResource InfoButton}" Command="{Binding ToggleAllCommand}" Margin="8,0,0,0"
+              ToolTip="在「全部进程」与「仅软件库进程」之间切换" />
       <Button Content="打开任务管理器" Style="{StaticResource MiniButton}" Command="{Binding OpenTaskManagerCommand}" Margin="8,0,0,0"
               ToolTip="打开 Windows 任务管理器" />
       <TextBlock Text="{Binding Summary}" FontSize="12" Foreground="{DynamicResource TextTertiary}"
@@ -57,6 +59,7 @@
                   </Border>
                   <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                     <Button Content="↻ 重启" Style="{StaticResource InfoButton}"
+                            Visibility="{Binding IsCatalog, Converter={StaticResource BoolToVis}}"
                             Command="{Binding DataContext.RestartCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                             CommandParameter="{Binding}" />
                     <Button Content="■ 结束全部" Style="{StaticResource DangerButton}" Margin="8,0,0,0"

@@ -5,7 +5,7 @@ using WinDeploy.Core.Models;
 
 namespace WinDeploy.App.ViewModels;
 
-public sealed class NavItemViewModel
+public sealed class NavItemViewModel : ObservableObject
 {
     public string Glyph { get; }
     public string Label { get; }
@@ -26,6 +26,54 @@ public sealed class NavItemViewModel
         Advanced = advanced;
         MinBuild = minBuild;
     }
+
+    private bool _isVisible = true;
+    public bool IsVisible { get => _isVisible; set => Set(ref _isVisible, value); }
+
+    private bool _isSelected;
+    public bool IsSelected { get => _isSelected; set => Set(ref _isSelected, value); }
+}
+
+/// <summary>A collapsible nav group (e.g. 部署 / 系统 / 开发) with an icon and a set of nav items.</summary>
+public sealed class NavGroupViewModel : ObservableObject
+{
+    public string Glyph { get; }
+    public string Title { get; }
+    public System.Collections.ObjectModel.ObservableCollection<NavItemViewModel> Items { get; } = new();
+    public RelayCommand ToggleCommand { get; }
+
+    public NavGroupViewModel(string glyph, string title)
+    {
+        Glyph = glyph;
+        Title = title;
+        ToggleCommand = new RelayCommand(_ => IsExpanded = !IsExpanded);
+    }
+
+    private bool _isExpanded = true;
+    public bool IsExpanded { get => _isExpanded; set { if (Set(ref _isExpanded, value)) OnPropertyChanged(nameof(ChevronGlyph)); } }
+
+    /// <summary>▾ when expanded, ▸ when collapsed (Segoe MDL2).</summary>
+    public string ChevronGlyph => _isExpanded ? ((char)0xE70D).ToString() : ((char)0xE76C).ToString();
+
+    /// <summary>Whether any item in the group is currently visible (drives the whole group's visibility).</summary>
+    public bool HasVisibleItems => Items.Any(i => i.IsVisible);
+    public void RaiseVisibility() => OnPropertyChanged(nameof(HasVisibleItems));
+}
+
+/// <summary>One toggle chip in the install-center category filter (全选 + per-group show/hide).</summary>
+public sealed class CategoryFilterViewModel : ObservableObject
+{
+    public string Key { get; }
+    public string Title { get; }
+    public CategoryFilterViewModel(string key, string title) { Key = key; Title = title; }
+
+    private bool _isChecked = true;
+    public bool IsChecked { get => _isChecked; set { if (Set(ref _isChecked, value)) Changed?.Invoke(); } }
+
+    /// <summary>Set without firing Changed (for bulk 全选 / 全不选).</summary>
+    public void SetSilently(bool v) { if (_isChecked != v) { _isChecked = v; OnPropertyChanged(nameof(IsChecked)); } }
+
+    public event Action? Changed;
 }
 
 public sealed class PlaceholderViewModel
@@ -54,6 +102,7 @@ public sealed class AppItemViewModel : ObservableObject
         ["db-api"] = ("#E1F5EE", "#085041"),
         ["vm"] = ("#FAEEDA", "#633806"),
         ["games"] = ("#F1EFE8", "#444441"),
+        ["server"] = ("#E1F5EE", "#085041"),
         ["browser"] = ("#E6F1FB", "#0C447C"),
         ["proxy"] = ("#E1F5EE", "#085041"),
         ["dict"] = ("#EEEDFE", "#3C3489"),

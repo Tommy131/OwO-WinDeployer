@@ -6,25 +6,45 @@ namespace WinDeploy.App.Services;
 public sealed record DiskInfo(string Drive, long SizeBytes, long FreeBytes, string? Label);
 public sealed record PhysDiskInfo(string Name, string? Media, string? Health, long SizeGb, string? DeviceId);
 
-/// <summary>Simplified SMART / reliability counters for one physical disk (from Get-StorageReliabilityCounter).
-/// Fields are null when the drive / driver doesn't expose them.</summary>
+/// <summary>One parsed SMART attribute (raw ATA table). Raw is the 48-bit vendor raw value.</summary>
+public sealed record SmartAttr(int Id, string Name, int Current, int Worst, int Threshold, long Raw, bool Critical)
+{
+    public string IdHex => $"0x{Id:X2}";
+}
+
+/// <summary>SMART / health for one physical disk. Identity (model/serial/capacity) comes from Win32_DiskDrive
+/// (no admin); the raw ATA attribute table (temperature, C5/C6, host reads/writes, wear) needs admin.</summary>
 public sealed class SmartInfo
 {
     public string Friendly { get; set; } = "";
     public string? Health { get; set; }
     public string? Media { get; set; }
     public string? Bus { get; set; }
+    public string? Model { get; set; }
+    public string? Serial { get; set; }
+    public long SizeBytes { get; set; }
+    public bool IsSsd { get; set; }
+
     public int? Temperature { get; set; }
-    public int? TemperatureMax { get; set; }
-    public int? Wear { get; set; }                 // % used (SSD endurance)
     public long? PowerOnHours { get; set; }
     public long? PowerCycles { get; set; }
-    public long? StartStop { get; set; }
-    public long? ReadErrorsTotal { get; set; }
-    public long? ReadErrorsUncorrected { get; set; }
-    public long? WriteErrorsTotal { get; set; }
-    public long? WriteErrorsUncorrected { get; set; }
+    // HDD-relevant high-risk counters
+    public long? Reallocated { get; set; }      // 0x05
+    public long? Pending { get; set; }          // 0xC5
+    public long? Uncorrectable { get; set; }    // 0xC6
+    public long? Crc { get; set; }              // 0xC7
+    // SSD endurance
+    public long? HostWritesBytes { get; set; }  // 0xF1
+    public long? HostReadsBytes { get; set; }   // 0xF2
+    public int? RemainingLifePercent { get; set; }
+
+    public List<SmartAttr> Attributes { get; } = new();
+
     public bool Ok { get; set; }
+    /// <summary>True when the raw ATA attribute table was read (needs admin).</summary>
+    public bool HasCounters { get; set; }
+    /// <summary>Any high-risk attribute is non-zero (reallocated / pending / uncorrectable).</summary>
+    public bool HasWarning => (Reallocated ?? 0) > 0 || (Pending ?? 0) > 0 || (Uncorrectable ?? 0) > 0;
 }
 
 /// <summary>A one-shot snapshot of the machine's health: OS, CPU, RAM, drives (+ SMART), battery, activation.</summary>
@@ -119,22 +139,36 @@ public static class SystemInfo
         else if (v.ValueKind == JsonValueKind.Object) yield return v;
     }
 
-    // Get-PhysicalDisk's DeviceId serializes as a number; read it as a string either way.
+    // Identity (model/serial/size) comes from Win32_DiskDrive (no admin). The raw ATA SMART attribute table
+    // (MSStorageDriver_FailurePredictData, 512 bytes) needs admin — parsed in C#. __DEV__ = disk index.
     private const string SmartPs = """
         [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
-        $d = Get-PhysicalDisk -ErrorAction SilentlyContinue | Where-Object { "$($_.DeviceId)" -eq '__DEV__' } | Select-Object -First 1
-        if ($null -eq $d) { '{}'; exit }
-        $r = $d | Get-StorageReliabilityCounter -ErrorAction SilentlyContinue
+        $idx = __DEV__
+        $pd = Get-PhysicalDisk -ErrorAction SilentlyContinue | Where-Object { "$($_.DeviceId)" -eq "$idx" } | Select-Object -First 1
+        $dd = Get-CimInstance Win32_DiskDrive -ErrorAction SilentlyContinue | Where-Object { $_.Index -eq $idx } | Select-Object -First 1
+        $pnp = if ($dd) { "$($dd.PNPDeviceID)" } else { "" }
+        $vendor = $null; $thr = $null
+        try {
+          $all = Get-CimInstance -Namespace root\wmi -ClassName MSStorageDriver_FailurePredictData -ErrorAction Stop
+          $m = $all | Where-Object { $pnp -and (($_.InstanceName -replace '_0$','') -ieq $pnp) } | Select-Object -First 1
+          if (-not $m) { $m = $all | Where-Object { $pnp -and $_.InstanceName -like "$pnp*" } | Select-Object -First 1 }
+          if (-not $m -and (@($all).Count -eq 1)) { $m = @($all)[0] }
+          if ($m) { $vendor = $m.VendorSpecific }
+          $allt = Get-CimInstance -Namespace root\wmi -ClassName MSStorageDriver_FailurePredictThresholds -ErrorAction SilentlyContinue
+          $mt = $allt | Where-Object { $pnp -and (($_.InstanceName -replace '_0$','') -ieq $pnp) } | Select-Object -First 1
+          if (-not $mt -and (@($allt).Count -eq 1)) { $mt = @($allt)[0] }
+          if ($mt) { $thr = $mt.VendorSpecific }
+        } catch {}
         [pscustomobject]@{
-          Friendly="$($d.FriendlyName)"; Health="$($d.HealthStatus)"; Media="$($d.MediaType)"; Bus="$($d.BusType)";
-          Temperature=$r.Temperature; TemperatureMax=$r.TemperatureMax; Wear=$r.Wear;
-          PowerOnHours=$r.PowerOnHours; StartStop=$r.StartStopCycleCount;
-          ReadErrorsTotal=$r.ReadErrorsTotal; ReadErrorsUncorrected=$r.ReadErrorsUncorrected;
-          WriteErrorsTotal=$r.WriteErrorsTotal; WriteErrorsUncorrected=$r.WriteErrorsUncorrected
-        } | ConvertTo-Json -Compress
+          Friendly="$($pd.FriendlyName)"; Health="$($pd.HealthStatus)"; Media="$($pd.MediaType)"; Bus="$($pd.BusType)";
+          Model=("$($dd.Model)").Trim(); Serial=("$($dd.SerialNumber)").Trim(); SizeBytes=[int64]($dd.Size);
+          Vendor=$vendor; Thresholds=$thr
+        } | ConvertTo-Json -Compress -Depth 4
         """;
 
-    /// <summary>Read simplified SMART / reliability counters for one physical disk (by Get-PhysicalDisk DeviceId).</summary>
+    /// <summary>Read simplified SMART for one physical disk (by Get-PhysicalDisk DeviceId), WITHOUT elevation.
+    /// Health / media / bus work; temperature / wear / power-on-hours etc. need admin (Windows denies the
+    /// reliability counters to non-elevated callers) — use <see cref="GetSmartElevatedAsync"/> for those.</summary>
     public static async Task<SmartInfo> GetSmartAsync(string? deviceId, CancellationToken ct = default)
     {
         var info = new SmartInfo();
@@ -142,30 +176,130 @@ public static class SystemInfo
         ProcResult r;
         try { r = await Proc.RunAsync("powershell", new[] { "-NoProfile", "-NonInteractive", "-Command", SmartPs.Replace("__DEV__", deviceId) }, ct: ct); }
         catch { return info; }
-        if (string.IsNullOrWhiteSpace(r.StdOut)) return info;
+        ParseSmart(r.StdOut, info);
+        return info;
+    }
 
+    /// <summary>Read full SMART for one disk by running the same query ELEVATED (UAC). Windows only returns
+    /// temperature / wear / power-on-hours / error counts to an administrator, so the elevated child writes
+    /// the JSON to a temp file we then read back. Returns an empty result if the user cancels UAC.</summary>
+    public static async Task<SmartInfo> GetSmartElevatedAsync(string? deviceId, CancellationToken ct = default)
+    {
+        var info = new SmartInfo();
+        if (string.IsNullOrWhiteSpace(deviceId)) return info;
+        var jsonPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"wd_smart_{Guid.NewGuid():N}.json");
+        var ps1Path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"wd_smart_{Guid.NewGuid():N}.ps1");
         try
         {
-            using var doc = JsonDocument.Parse(r.StdOut.Trim());
+            var script = SmartPs.Replace("__DEV__", deviceId).TrimEnd()
+                         + $" | Out-File -LiteralPath '{jsonPath}' -Encoding utf8";
+            await System.IO.File.WriteAllTextAsync(ps1Path, script, ct);
+
+            var psi = new System.Diagnostics.ProcessStartInfo("powershell")
+            {
+                Arguments = $"-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"{ps1Path}\"",
+                UseShellExecute = true,        // required for Verb=runas (UAC)
+                Verb = "runas",
+                WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden,
+            };
+            var p = System.Diagnostics.Process.Start(psi);
+            if (p == null) return info;
+            await p.WaitForExitAsync(ct);
+            if (System.IO.File.Exists(jsonPath))
+                ParseSmart(await System.IO.File.ReadAllTextAsync(jsonPath, ct), info);
+        }
+        catch (System.ComponentModel.Win32Exception) { /* user cancelled the UAC prompt */ }
+        catch { /* best-effort */ }
+        finally
+        {
+            try { System.IO.File.Delete(ps1Path); } catch { }
+            try { System.IO.File.Delete(jsonPath); } catch { }
+        }
+        return info;
+    }
+
+    private static void ParseSmart(string? stdout, SmartInfo info)
+    {
+        if (string.IsNullOrWhiteSpace(stdout)) return;
+        try
+        {
+            using var doc = JsonDocument.Parse(stdout.Trim());
             var e = doc.RootElement;
-            if (e.ValueKind != JsonValueKind.Object) return info;
-            info.Friendly = Str(e, "Friendly") ?? "";
-            info.Health = Str(e, "Health");
-            info.Media = Str(e, "Media");
-            info.Bus = Str(e, "Bus");
-            info.Temperature = NumI(e, "Temperature");
-            info.TemperatureMax = NumI(e, "TemperatureMax");
-            info.Wear = NumI(e, "Wear");
-            info.PowerOnHours = NumL(e, "PowerOnHours");
-            info.StartStop = NumL(e, "StartStop");
-            info.ReadErrorsTotal = NumL(e, "ReadErrorsTotal");
-            info.ReadErrorsUncorrected = NumL(e, "ReadErrorsUncorrected");
-            info.WriteErrorsTotal = NumL(e, "WriteErrorsTotal");
-            info.WriteErrorsUncorrected = NumL(e, "WriteErrorsUncorrected");
-            info.Ok = !string.IsNullOrEmpty(info.Friendly) || !string.IsNullOrEmpty(info.Health);
+            if (e.ValueKind != JsonValueKind.Object) return;
+            info.Friendly = Str(e, "Friendly") ?? info.Friendly;
+            info.Health = Str(e, "Health") ?? info.Health;
+            info.Media = Str(e, "Media") ?? info.Media;
+            info.Bus = Str(e, "Bus") ?? info.Bus;
+            info.Model = Str(e, "Model") ?? info.Model;
+            info.Serial = Str(e, "Serial") ?? info.Serial;
+            info.SizeBytes = Num(e, "SizeBytes") is var sz && sz > 0 ? sz : info.SizeBytes;
+            info.IsSsd = (info.Media?.Contains("SSD", StringComparison.OrdinalIgnoreCase) ?? false)
+                         || (info.Bus?.Equals("NVMe", StringComparison.OrdinalIgnoreCase) ?? false);
+            info.Ok = !string.IsNullOrEmpty(info.Friendly) || !string.IsNullOrEmpty(info.Health) || !string.IsNullOrEmpty(info.Model);
+
+            var vendor = Bytes(e, "Vendor");
+            if (vendor != null && vendor.Length >= 14)
+            {
+                ParseAttributes(vendor, Bytes(e, "Thresholds"), info);
+                info.HasCounters = info.Attributes.Count > 0;
+            }
         }
         catch { /* unparseable */ }
-        return info;
+    }
+
+    /// <summary>Parse the 512-byte ATA SMART attribute table (30 × 12-byte entries from offset 2) and derive
+    /// the headline values (temperature / power-on hours / reallocated-C5/C6 / host reads+writes / wear).</summary>
+    private static void ParseAttributes(byte[] v, byte[]? thr, SmartInfo info)
+    {
+        var thrMap = new Dictionary<int, int>();
+        if (thr != null)
+            for (var o = 2; o + 12 <= thr.Length; o += 12) { int id = thr[o]; if (id != 0) thrMap[id] = thr[o + 1]; }
+
+        for (var o = 2; o + 12 <= v.Length; o += 12)
+        {
+            int id = v[o];
+            if (id == 0) continue;
+            int cur = v[o + 3], worst = v[o + 4];
+            long raw = 0;
+            for (var k = 0; k < 6; k++) raw |= (long)v[o + 5 + k] << (8 * k);
+            var threshold = thrMap.TryGetValue(id, out var tv) ? tv : 0;
+            var critical = (id is 5 or 196 or 197 or 198) && raw > 0;
+            info.Attributes.Add(new SmartAttr(id, AttrName(id), cur, worst, threshold, raw, critical));
+        }
+
+        long? Raw(int id) => info.Attributes.FirstOrDefault(a => a.Id == id)?.Raw;
+        int? Cur(int id) => info.Attributes.FirstOrDefault(a => a.Id == id)?.Current;
+
+        info.Temperature = Raw(194) is long t194 ? (int)(t194 & 0xFF) : Raw(190) is long t190 ? (int)(t190 & 0xFF) : null;
+        info.PowerOnHours = Raw(9);
+        info.PowerCycles = Raw(12);
+        info.Reallocated = Raw(5);
+        info.Pending = Raw(197);
+        info.Uncorrectable = Raw(198);
+        info.Crc = Raw(199);
+        if (Raw(241) is long w) info.HostWritesBytes = w * 512;
+        if (Raw(242) is long rd) info.HostReadsBytes = rd * 512;
+        info.RemainingLifePercent = Cur(231) ?? Cur(202) ?? Cur(173) ?? Cur(169) ?? Cur(177);
+    }
+
+    private static readonly Dictionary<int, string> SmartNames = new()
+    {
+        [1] = "读取错误率", [4] = "启停次数", [5] = "重映射扇区数 (05)", [9] = "通电时间", [10] = "主轴重试",
+        [12] = "通电次数", [187] = "已报告无法纠正", [188] = "命令超时", [190] = "气流温度",
+        [194] = "温度", [195] = "硬件 ECC 已恢复", [196] = "重映射事件 (C4)", [197] = "当前待映射扇区 (C5)",
+        [198] = "无法纠正扇区 (C6)", [199] = "UDMA CRC 错误 (C7)", [231] = "SSD 剩余寿命", [233] = "媒体磨损指标",
+        [173] = "磨损均衡次数", [177] = "磨损均衡次数", [202] = "剩余寿命百分比", [241] = "总写入量 (LBA)",
+        [242] = "总读取量 (LBA)", [192] = "断电磁头收回", [193] = "磁头加载次数", [169] = "剩余寿命",
+    };
+    private static string AttrName(int id) => SmartNames.TryGetValue(id, out var n) ? n : $"属性 0x{id:X2}";
+
+    private static byte[]? Bytes(JsonElement e, string p)
+    {
+        if (!e.TryGetProperty(p, out var v) || v.ValueKind != JsonValueKind.Array) return null;
+        var list = new List<byte>(v.GetArrayLength());
+        foreach (var x in v.EnumerateArray())
+            list.Add(x.ValueKind == JsonValueKind.Number && x.TryGetInt32(out var b) ? (byte)b : (byte)0);
+        return list.ToArray();
     }
 
     private static string? IdStr(JsonElement e, string p)

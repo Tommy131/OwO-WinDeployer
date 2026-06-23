@@ -18,6 +18,7 @@ public sealed class SettingsViewModel : ObservableObject
         _mirror = _s.Mirror ?? "";
         _redactKeywords = _s.RedactKeywords ?? "";
         _theme = _s.Theme ?? "system";
+        _closeAction = _s.CloseAction ?? "ask";
         _developerMode = _s.DeveloperMode;
         SettingsPath = SettingsStore.FilePath;
         SaveCommand = new RelayCommand(_ => Save());
@@ -104,6 +105,23 @@ public sealed class SettingsViewModel : ObservableObject
 
     /// <summary>勾选/取消开发人员模式时触发，让软件安装中心立即重算分类可见性。</summary>
     public event Action<bool>? DeveloperModeChanged;
+
+    // ── 关闭主窗口行为（即时持久化）────────────────────────────────────
+    private string _closeAction;
+    public bool IsCloseAsk { get => _closeAction == "ask"; set { if (value) SetCloseAction("ask"); } }
+    public bool IsCloseTray { get => _closeAction == "tray"; set { if (value) SetCloseAction("tray"); } }
+    public bool IsCloseExit { get => _closeAction == "exit"; set { if (value) SetCloseAction("exit"); } }
+
+    private void SetCloseAction(string a)
+    {
+        _closeAction = a;
+        OnPropertyChanged(nameof(IsCloseAsk));
+        OnPropertyChanged(nameof(IsCloseTray));
+        OnPropertyChanged(nameof(IsCloseExit));
+        _s.CloseAction = a;
+        SettingsStore.Save(_s);
+        AuditLog.Action($"关闭行为：{(a switch { "tray" => "最小化到后台常驻", "exit" => "直接退出", _ => "每次询问" })}");
+    }
 
     private string _theme;
     public bool IsThemeSystem { get => _theme == "system"; set { if (value) SetTheme("system"); } }

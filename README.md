@@ -1,5 +1,16 @@
 # OwO! Win Deployer (owo-win-deployer)
 
+> [!CAUTION]
+> # ⛔ 请不要 Fork 本项目！⛔
+>
+> **当前处于不稳定版本更新阶段，可能会重写 Git 历史提交记录、增删文件。**
+>
+> - 🚫 **不要提交 Pull Request** —— 本项目**不会处理任何不受信任的 Pull Request**。
+> - ✅ 使用过程中遇到问题，请**直接提交 [Issue](../../issues)**。
+> - ⚠️ Fork 后随时可能因历史重写而与上游彻底冲突，请勿 Fork。
+
+---
+
 一键在任意 Windows 设备上复刻开发环境、应用与个人配置。完整设计见 [`docs/DESIGN.md`](docs/DESIGN.md)。
 
 ## 界面预览 Screenshots

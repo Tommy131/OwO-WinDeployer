@@ -9,30 +9,69 @@
 
     <!-- Header / top bar -->
     <Grid Grid.Row="0" Margin="24,18,24,8">
-      <StackPanel>
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+      </Grid.RowDefinitions>
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="Auto" />
+      </Grid.ColumnDefinitions>
+
+      <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,12,0">
         <TextBlock Text="软件安装中心" FontSize="20" FontWeight="SemiBold" />
-        <TextBlock Text="{Binding Subtitle}" FontSize="13" Foreground="{DynamicResource TextSecondary}" Margin="0,3,0,0" />
-        <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-          <Button Content="↻ 刷新" Style="{StaticResource MiniButton}" Command="{Binding RefreshCommand}"
-                  ToolTip="重新检测本机软件安装状态与可用更新" />
-          <Border Width="1" Background="{DynamicResource BorderSoft}" Margin="10,2,0,2" />
-          <Button Content="全选" Style="{StaticResource MiniButton}" Command="{Binding SelectAllCommand}" Margin="10,0,0,0" />
-          <Button Content="反选" Style="{StaticResource MiniButton}" Command="{Binding InvertCommand}" Margin="8,0,0,0" />
-          <Button Content="恢复" Style="{StaticResource MiniButton}" Command="{Binding RestoreCommand}" Margin="8,0,0,0"
-                  ToolTip="恢复到上一次「全选 / 反选 / 切换预设」之前的勾选状态" />
-          <Button Content="设置安装路径" Style="{StaticResource MiniButton}" Click="SetPath_Click" Margin="8,0,0,0"
-                  ToolTip="为选中软件统一设置安装根目录（便携/git 在其下建 id 子目录；winget 用 --location）" />
-          <Border Width="1" Background="{DynamicResource BorderSoft}" Margin="10,2,0,2" />
-          <Button Content="{Binding UpdateLabel}" Style="{StaticResource MiniButton}" Command="{Binding UpdateSelectedCommand}" Margin="10,0,0,0"
-                  ToolTip="更新选中且已安装的软件（winget upgrade / git pull / 便携包重拉），跳转到运行进度页" />
-          <Button Content="{Binding UpdateToggleLabel}" Style="{StaticResource MiniButton}" Command="{Binding ToggleUpdatesCommand}" Margin="8,0,0,0"
-                  Visibility="{Binding HasUpdates, Converter={StaticResource BoolToVis}}"
-                  ToolTip="忽略 / 显示「可更新」徽章" />
-        </StackPanel>
-        <TextBlock Text="{Binding PathNote}" FontSize="12" Foreground="{DynamicResource TextSecondary}" Margin="0,6,0,0" />
+        <TextBlock Text="{Binding Subtitle}" FontSize="13" Foreground="{DynamicResource TextSecondary}" Margin="0,3,0,0"
+                   TextTrimming="CharacterEllipsis" />
       </StackPanel>
 
-      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
+      <!-- action buttons: full width below the title row so they fit on one line, wrapping only when truly narrow -->
+      <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,10,0,0">
+        <WrapPanel>
+          <Button Content="↻ 刷新" Style="{StaticResource MiniButton}" Command="{Binding RefreshCommand}" Margin="0,0,0,4"
+                  ToolTip="重新检测本机软件安装状态与可用更新" />
+          <Border Width="1" Background="{DynamicResource BorderSoft}" Margin="10,2,0,2" />
+          <Button Content="全选" Style="{StaticResource MiniButton}" Command="{Binding SelectAllCommand}" Margin="10,0,0,4" />
+          <Button Content="反选" Style="{StaticResource MiniButton}" Command="{Binding InvertCommand}" Margin="8,0,0,4" />
+          <Button Content="恢复" Style="{StaticResource MiniButton}" Command="{Binding RestoreCommand}" Margin="8,0,0,4"
+                  ToolTip="恢复到上一次「全选 / 反选 / 切换预设」之前的勾选状态" />
+          <Button Content="设置安装路径" Style="{StaticResource MiniButton}" Click="SetPath_Click" Margin="8,0,0,4"
+                  ToolTip="为选中软件统一设置安装根目录（便携/git 在其下建 id 子目录；winget 用 --location）" />
+          <Border Width="1" Background="{DynamicResource BorderSoft}" Margin="10,2,0,2" />
+          <Button Content="{Binding UpdateLabel}" Style="{StaticResource MiniButton}" Command="{Binding UpdateSelectedCommand}" Margin="10,0,0,4"
+                  ToolTip="更新选中且已安装的软件（winget upgrade / git pull / 便携包重拉），跳转到运行进度页" />
+          <Button Content="{Binding UpdateToggleLabel}" Style="{StaticResource MiniButton}" Command="{Binding ToggleUpdatesCommand}" Margin="8,0,0,4"
+                  Visibility="{Binding HasUpdates, Converter={StaticResource BoolToVis}}"
+                  ToolTip="忽略 / 显示「可更新」徽章" />
+          <Border Width="1" Background="{DynamicResource BorderSoft}" Margin="10,2,0,2" />
+          <ToggleButton x:Name="GroupFilterBtn" Content="{Binding GroupFilterLabel}" Style="{StaticResource MiniToggle}" Margin="10,0,0,4"
+                        ToolTip="按分组筛选要显示的软件类别" />
+          <Popup PlacementTarget="{Binding ElementName=GroupFilterBtn}" Placement="Bottom" StaysOpen="False" AllowsTransparency="True"
+                 IsOpen="{Binding IsChecked, ElementName=GroupFilterBtn}">
+            <Border Style="{StaticResource Card}" Padding="10" Margin="0,4,0,0" MinWidth="180">
+              <StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="2,0,2,8">
+                  <TextBlock Text="按分组筛选" FontSize="12.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                  <Button Content="全选" Style="{StaticResource MiniButton}" Command="{Binding ShowAllGroupsCommand}" Margin="12,0,0,0" />
+                  <Button Content="清空" Style="{StaticResource MiniButton}" Command="{Binding HideAllGroupsCommand}" Margin="6,0,0,0" />
+                </StackPanel>
+                <ScrollViewer MaxHeight="320" VerticalScrollBarVisibility="Auto">
+                  <ItemsControl ItemsSource="{Binding CategoryFilters}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate>
+                        <CheckBox Content="{Binding Title}" IsChecked="{Binding IsChecked, Mode=TwoWay}" FontSize="13" Margin="2,4" />
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </ScrollViewer>
+              </StackPanel>
+            </Border>
+          </Popup>
+        </WrapPanel>
+
+        <TextBlock Text="{Binding PathNote}" FontSize="12" Foreground="{DynamicResource TextSecondary}" Margin="0,6,0,0" TextWrapping="Wrap" />
+      </StackPanel>
+
+      <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
         <!-- 搜索框（带水印 + 说明） -->
         <Grid Width="150" Height="32" ToolTip="搜索：按名称 / 简介 / id 过滤软件列表">
           <TextBox VerticalContentAlignment="Center" Padding="8,0"

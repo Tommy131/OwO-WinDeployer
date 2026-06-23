@@ -10,7 +10,7 @@
 
     <StackPanel Grid.Row="0">
       <TextBlock Text="系统概览" FontSize="20" FontWeight="SemiBold" />
-      <TextBlock Text="本机硬件 / 系统健康一览：CPU、内存、磁盘（含 SMART）、电池、激活状态。" FontSize="13"
+      <TextBlock Text="本机硬件 / 系统健康实时一览：CPU、内存、功耗、磁盘（含 SMART）、电池、激活状态（每 2 秒刷新）。" FontSize="13"
                  Foreground="{DynamicResource TextSecondary}" Margin="0,3,0,0" TextWrapping="Wrap" />
     </StackPanel>
 
@@ -36,9 +36,10 @@
               </Grid.ColumnDefinitions>
               <StackPanel Grid.Column="0">
                 <TextBlock Text="处理器" FontSize="11" Foreground="{DynamicResource TextTertiary}" />
-                <TextBlock Text="{Binding Cpu}" FontSize="13" TextWrapping="Wrap" Margin="0,2,12,10" />
+                <TextBlock Text="{Binding Cpu}" FontSize="13" TextWrapping="Wrap" Margin="0,2,12,2" />
+                <TextBlock Text="{Binding CpuLive}" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource Accent}" Margin="0,0,12,10" />
                 <TextBlock Text="内存" FontSize="11" Foreground="{DynamicResource TextTertiary}" />
-                <TextBlock Text="{Binding Ram}" FontSize="13" Margin="0,2,12,10" />
+                <TextBlock Text="{Binding RamLive}" FontSize="13" FontWeight="SemiBold" Margin="0,2,12,10" />
               </StackPanel>
               <StackPanel Grid.Column="1">
                 <TextBlock Text="运行时间" FontSize="11" Foreground="{DynamicResource TextTertiary}" />
@@ -49,6 +50,46 @@
                 </TextBlock>
               </StackPanel>
             </Grid>
+          </StackPanel>
+        </Border>
+
+        <!-- Power monitoring -->
+        <Grid Margin="2,18,0,8">
+          <TextBlock Text="系统功耗 · 实时" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
+          <Border CornerRadius="8" Padding="12,4" HorizontalAlignment="Right" Background="{DynamicResource AccentBg}"
+                  Visibility="{Binding HasPower, Converter={StaticResource BoolToVis}}">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Text="整机功耗" FontSize="11.5" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" Margin="0,0,8,0" />
+              <TextBlock Text="{Binding TotalPowerText}" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource Accent}" />
+            </StackPanel>
+          </Border>
+        </Grid>
+        <Border Style="{StaticResource Card}" Padding="14,12">
+          <StackPanel>
+            <ItemsControl ItemsSource="{Binding Powers}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Grid Margin="0,0,0,9">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="52" />
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Border Grid.Column="0" CornerRadius="6" Padding="7,2" Background="{DynamicResource AccentBg}" HorizontalAlignment="Left" VerticalAlignment="Center">
+                      <TextBlock Text="{Binding Kind}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource Accent}" HorizontalAlignment="Center" />
+                    </Border>
+                    <StackPanel Grid.Column="1" Margin="10,0,12,0" VerticalAlignment="Center">
+                      <TextBlock Text="{Binding Name}" FontSize="12" Foreground="{DynamicResource TextSecondary}" TextTrimming="CharacterEllipsis" />
+                      <ProgressBar Value="{Binding BarPercent, Mode=OneWay}" Maximum="100" Height="5" Margin="0,4,0,0"
+                                   Background="{DynamicResource PageBg}" Foreground="{DynamicResource Accent}" BorderThickness="0" />
+                    </StackPanel>
+                    <TextBlock Grid.Column="2" Text="{Binding WattsText}" FontSize="14" FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center" />
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Text="{Binding PowerNote}" FontSize="11.5" Foreground="{DynamicResource TextTertiary}" TextWrapping="Wrap" />
           </StackPanel>
         </Border>
 

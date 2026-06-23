@@ -17,6 +17,7 @@ public static class Detection
     {
         var d = item.Detect;
         if (d?.Cmd != null && CommandFinder.Exists(d.Cmd)) return true;
+        if (d?.EnvVar != null && EnvVarDir(d.EnvVar) != null) return true;
         if (d?.Path != null)
         {
             var rp = pr.Resolve(d.Path);
@@ -44,6 +45,20 @@ public static class Detection
                 break;
         }
         return false;
+    }
+
+    /// <summary>If the env var (User or Machine) is set to an existing directory, return that resolved
+    /// directory; else null. Used both for detection and to backfill the install path.</summary>
+    public static string? EnvVarDir(string name)
+    {
+        foreach (var target in new[] { EnvironmentVariableTarget.User, EnvironmentVariableTarget.Machine, EnvironmentVariableTarget.Process })
+        {
+            var v = Environment.GetEnvironmentVariable(name, target);
+            if (string.IsNullOrWhiteSpace(v)) continue;
+            try { var p = Environment.ExpandEnvironmentVariables(v.Trim()); if (Directory.Exists(p)) return p.TrimEnd('\\', '/'); }
+            catch { /* bad value */ }
+        }
+        return null;
     }
 
     private static async Task<bool> WingetHasAsync(string id)

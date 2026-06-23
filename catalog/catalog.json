@@ -7,7 +7,7 @@
     "ToolsDir": "%LOCALAPPDATA%/tools"
   },
 
-  "categories": ["dev", "system", "ide", "ai", "office", "media", "db-api", "vm", "games", "browser", "proxy", "dict", "hwmon", "tools"],
+  "categories": ["dev", "system", "ide", "server", "ai", "office", "media", "db-api", "vm", "games", "browser", "proxy", "dict", "hwmon", "tools"],
 
   "items": [
     // ── 开发工具链（默认强制） ─────────────────────────────
@@ -50,12 +50,12 @@
     { "id": "jdk17", "name": "Oracle JDK 17", "summary": "Java 开发套件", "icon": "assets/icons/java.svg",
       "category": "dev", "default": true,
       "install": { "method": "winget", "id": "Oracle.JDK.17" },
-      "detect": { "cmd": "javac" } },
+      "detect": { "cmd": "javac", "envVar": "JAVA_HOME" } },
 
     { "id": "go", "name": "Go", "summary": "Go 语言工具链", "icon": "assets/icons/go.svg",
       "category": "dev", "default": true,
       "install": { "method": "winget", "id": "GoLang.Go" },
-      "detect": { "cmd": "go" } },
+      "detect": { "cmd": "go", "envVar": "GOROOT" } },
 
     { "id": "dotnet-sdk", "name": ".NET SDK 10", "summary": ".NET 软件开发工具包", "icon": "assets/icons/dotnet.svg",
       "category": "dev", "default": true,
@@ -82,13 +82,13 @@
       "category": "dev", "default": false,
       "homepage": "https://winlibs.com/",
       "install": { "method": "portable", "url": "…", "extractTo": "${ToolsDir}/mingw64", "strip": 1, "path": ["${ToolsDir}/mingw64/bin"] },
-      "detect": { "path": "${ToolsDir}/mingw64/bin/gcc.exe" } },
+      "detect": { "path": "${ToolsDir}/mingw64/bin/gcc.exe", "envVar": "GCC_HOME" } },
 
     { "id": "mingw-builds", "name": "MinGW-builds (niXman)", "summary": "GCC/G++ 工具链 niXman 构建（选择编译版自动下载，需 7-Zip）", "icon": "assets/icons/gcc.svg",
       "category": "dev", "default": false,
       "homepage": "https://github.com/niXman/mingw-builds-binaries",
       "install": { "method": "portable", "url": "…", "extractTo": "${ToolsDir}/mingw-builds", "strip": 1, "path": ["${ToolsDir}/mingw-builds/bin"] },
-      "detect": { "path": "${ToolsDir}/mingw-builds/bin/gcc.exe" } },
+      "detect": { "path": "${ToolsDir}/mingw-builds/bin/gcc.exe", "envVar": "GCC_HOME" } },
 
     { "id": "flutter", "name": "Flutter + Dart", "summary": "跨平台 UI SDK（移动开发）", "icon": "assets/icons/flutter.svg",
       "category": "dev", "default": false,
@@ -696,6 +696,41 @@
     { "id": "gog-galaxy", "name": "GOG Galaxy", "summary": "GOG 游戏平台", "icon": "assets/icons/gog-galaxy.svg",
       "category": "games", "default": false,
       "homepage": "https://www.gog.com",
-      "install": { "method": "winget", "id": "GOG.Galaxy" } }
+      "install": { "method": "winget", "id": "GOG.Galaxy" } },
+
+    // ══ 运行时 / 解释器（便携，自动设置 *_HOME 环境变量） ══════════════════
+    { "id": "php", "name": "PHP", "summary": "PHP 解释器（多版本可共存，安装时选择版本，自动设置 PHP_HOME）", "icon": "assets/icons/php.svg",
+      "category": "dev", "default": false,
+      "homepage": "https://windows.php.net/download/",
+      "install": { "method": "portable", "url": "https://windows.php.net/downloads/releases/archives/php-8.3.14-Win32-vs16-x64.zip",
+        "extractTo": "${ToolsDir}/php", "strip": 0, "path": ["${ToolsDir}/php"] },
+      "detect": { "path": "${ToolsDir}/php", "cmd": "php", "envVar": "PHP_HOME" } },
+
+    { "id": "lua", "name": "Lua", "summary": "Lua 解释器（Lua for Windows，自动设置 LUA_HOME）", "icon": "assets/icons/lua.svg",
+      "category": "dev", "default": false,
+      "homepage": "https://github.com/rjpcomputing/luaforwindows",
+      "install": { "method": "winget", "id": "rjpcomputing.luaforwindows" },
+      "detect": { "cmd": "lua", "envVar": "LUA_HOME" } },
+
+    // ══ Web / 反代 / 应用服务器 ══════════════════════════════
+    { "id": "nginx", "name": "nginx", "summary": "高性能 Web 服务器 / 反向代理（便携版，可在「服务配置」管理）", "icon": "assets/icons/nginx.svg",
+      "category": "server", "default": false,
+      "homepage": "https://nginx.org/en/download.html",
+      "install": { "method": "portable", "url": "https://nginx.org/download/nginx-1.27.4.zip",
+        "extractTo": "${ToolsDir}/nginx", "strip": 1, "path": ["${ToolsDir}/nginx"] },
+      "detect": { "path": "${ToolsDir}/nginx/nginx.exe", "arp": "nginx" } },
+
+    { "id": "apache", "name": "Apache HTTP Server", "summary": "Apache 2.4 Web 服务器（Apache Lounge：填入 url 或放入安装包后便携安装）", "icon": "assets/icons/apache.svg",
+      "category": "server", "default": false,
+      "homepage": "https://www.apachelounge.com/download/",
+      "install": { "method": "portable", "url": "…", "extractTo": "${ToolsDir}/apache", "strip": 0, "path": ["${ToolsDir}/apache/Apache24/bin"] },
+      "detect": { "path": "${ToolsDir}/apache/Apache24/bin/httpd.exe" } },
+
+    { "id": "tomcat", "name": "Apache Tomcat 10", "summary": "Java Servlet 容器（便携版，自动设置 CATALINA_HOME）", "icon": "assets/icons/tomcat.svg",
+      "category": "server", "default": false,
+      "homepage": "https://tomcat.apache.org/",
+      "install": { "method": "portable", "url": "https://archive.apache.org/dist/tomcat/tomcat-10/v10.1.34/bin/apache-tomcat-10.1.34-windows-x64.zip",
+        "extractTo": "${ToolsDir}/tomcat", "strip": 1 },
+      "detect": { "path": "${ToolsDir}/tomcat/bin/catalina.bat", "envVar": "CATALINA_HOME" } }
   ]
 }

@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Threading;
@@ -25,7 +25,7 @@ public sealed class MainViewModel : ObservableObject
     // so install always routes through the cached release-list picker.
     private readonly HashSet<string> _githubReleaseIds = new(StringComparer.OrdinalIgnoreCase);
 
-    public ObservableCollection<NavItemViewModel> NavItems { get; } = new();
+    public ObservableCollection<NavGroupViewModel> NavGroups { get; } = new();
     public InstallCenterViewModel Install { get; } = new();
     public ProgressViewModel Progress { get; } = new();
     public ConfigSyncViewModel ConfigSync { get; } = new();
@@ -41,6 +41,7 @@ public sealed class MainViewModel : ObservableObject
     public WslViewModel Wsl { get; } = new();
     public TweaksViewModel Tweaks { get; } = new();
     public AdvancedToolsViewModel AdvancedTools { get; } = new();
+    public ServiceConfigViewModel ServiceConfig { get; } = new();
 
     public string AppName => WinDeploy.App.AppInfo.Name;
     public string WindowTitle => WinDeploy.App.AppInfo.TitleWithVersion;
@@ -65,6 +66,7 @@ public sealed class MainViewModel : ObservableObject
         Settings.Saved += () => Secrets.ExtraKeywords = SettingsViewModel.ParseKeywords(Settings.RedactKeywords);
         Settings.DeveloperModeChanged += on => { _devMode = on; Install.SetDeveloperMode(on); RebuildNav(); };
         Settings.RefreshIconsRequested += () => _ = RefreshIconsManualAsync();
+        SelectNavCommand = new RelayCommand(p => { if (p is NavItemViewModel n) SelectedNav = n; });
         Load();
 
         BuildNav();
@@ -96,45 +98,70 @@ public sealed class MainViewModel : ObservableObject
     }
 
     private bool _devMode = SettingsStore.Load().DeveloperMode;
-    private readonly List<NavItemViewModel> _allNav = new();
 
-    /// <summary>Master nav list. Items flagged Advanced=true only appear when 开发人员模式 is on.</summary>
+    /// <summary>Click a nav item to navigate to its page.</summary>
+    public RelayCommand SelectNavCommand { get; }
+
+    private IEnumerable<NavItemViewModel> AllNavItems => NavGroups.SelectMany(g => g.Items);
+
+    /// <summary>Build the grouped, collapsible nav. Items flagged Advanced only show in 开发人员模式;
+    /// items with a MinBuild only show on a high-enough Windows build. Built once; visibility toggled live.</summary>
     private void BuildNav()
     {
-        _allNav.Clear();
-        _allNav.Add(new("", "软件安装中心", Install));
-        _allNav.Add(new("", "配置同步", ConfigSync));
-        _allNav.Add(new("", "运行进度", Progress));
-        _allNav.Add(new("", "系统概览", SystemOverview));
-        _allNav.Add(new("", "系统维护", Maintenance));
-        _allNav.Add(new("", "进程管理", Processes));
-        _allNav.Add(new("", "启动项", Startup));
-        _allNav.Add(new("", "导出", Export));
-        _allNav.Add(new("", "环境变量", EnvVars));
-        _allNav.Add(new("", "终端", Terminal));
-        // ── 开发人员模式专属（高级 / 专业功能） ──
-        _allNav.Add(new("", "WSL", Wsl, advanced: true, minBuild: OsInfo.Win10_1607));
-        _allNav.Add(new("", "系统调优", Tweaks, advanced: true));
-        _allNav.Add(new("", "高级工具", AdvancedTools, advanced: true));
-        _allNav.Add(new("", "日志", Logs));
-        _allNav.Add(new("", "设置", Settings));
+        NavGroups.Clear();
+
+        var deploy = new NavGroupViewModel("", "部署");
+        deploy.Items.Add(new("", "软件安装中心", Install));
+        deploy.Items.Add(new("", "配置同步", ConfigSync));
+        deploy.Items.Add(new("", "运行进度", Progress));
+        deploy.Items.Add(new("", "导出", Export));
+
+        var system = new NavGroupViewModel("", "系统");
+        system.Items.Add(new("", "系统概览", SystemOverview));
+        system.Items.Add(new("", "系统维护", Maintenance));
+        system.Items.Add(new("", "进程管理", Processes));
+        system.Items.Add(new("", "启动项", Startup));
+        system.Items.Add(new("", "环境变量", EnvVars));
+
+        var dev = new NavGroupViewModel("", "开发");
+        dev.Items.Add(new("", "终端", Terminal));
+        dev.Items.Add(new("", "服务配置", ServiceConfig));
+        dev.Items.Add(new("", "WSL", Wsl, advanced: true, minBuild: OsInfo.Win10_1607));
+        dev.Items.Add(new("", "系统调优", Tweaks, advanced: true));
+        dev.Items.Add(new("", "高级工具", AdvancedTools, advanced: true));
+
+        var misc = new NavGroupViewModel("", "其他");
+        misc.Items.Add(new("", "日志", Logs));
+        misc.Items.Add(new("", "设置", Settings));
+
+        foreach (var g in new[] { deploy, system, dev, misc }) NavGroups.Add(g);
     }
 
-    /// <summary>Re-filter the visible nav by developer mode, keeping the current page if still visible.</summary>
+    /// <summary>Recompute each item's visibility (developer mode + OS build) and each group's visibility,
+    /// keeping the current page selected if still visible (else select the first visible item).</summary>
     private void RebuildNav()
     {
-        var keep = SelectedNav;
-        NavItems.Clear();
-        foreach (var n in _allNav)
-            if ((!n.Advanced || _devMode) && OsInfo.AtLeastBuild(n.MinBuild)) NavItems.Add(n);
-        SelectedNav = keep != null && NavItems.Contains(keep) ? keep : NavItems.FirstOrDefault();
+        foreach (var g in NavGroups)
+        {
+            foreach (var n in g.Items)
+                n.IsVisible = (!n.Advanced || _devMode) && OsInfo.AtLeastBuild(n.MinBuild);
+            g.RaiseVisibility();
+        }
+        var visible = AllNavItems.Where(i => i.IsVisible).ToList();
+        if (_selectedNav == null || !_selectedNav.IsVisible)
+            SelectedNav = visible.FirstOrDefault();
     }
 
     private NavItemViewModel? _selectedNav;
     public NavItemViewModel? SelectedNav
     {
         get => _selectedNav;
-        set { if (Set(ref _selectedNav, value) && value != null) Current = value.Page; }
+        set
+        {
+            if (!Set(ref _selectedNav, value)) return;
+            foreach (var n in AllNavItems) n.IsSelected = ReferenceEquals(n, value);
+            if (value != null) Current = value.Page;
+        }
     }
 
     private object? _current;
@@ -231,6 +258,7 @@ public sealed class MainViewModel : ObservableObject
         Export.Initialize(_catalog, _resolver, _repoRoot);
         Processes.Initialize(_catalog, _resolver, _repoRoot);
         AdvancedTools.Initialize(_catalog, _resolver, _repoRoot, dir);
+        ServiceConfig.Initialize(_catalog, _resolver);
         _ = DetectAllAsync();
     }
 
@@ -264,6 +292,23 @@ public sealed class MainViewModel : ObservableObject
                     if (StoreApps.HasMsixApp(vm.Model.Name)) vm.Installed = true;
         }
         catch { /* StartApps unavailable */ }
+
+        // Toolchains exposed via an env var (GOROOT/JAVA_HOME/PHP_HOME/LUA_HOME/GCC_HOME/CATALINA_HOME):
+        // if the var points to an existing dir, treat as installed and use it as the install path so
+        // 打开目录 / 进程状态 / 启动 all work, even if it was installed outside this tool.
+        foreach (var vm in items)
+        {
+            var ev = vm.Model.Detect?.EnvVar;
+            if (string.IsNullOrEmpty(ev)) continue;
+            var envDir = Detection.EnvVarDir(ev);
+            if (envDir == null) continue;
+            vm.Installed = true;
+            if (string.IsNullOrEmpty(vm.Model.InstallPathOverride))
+            {
+                vm.Model.InstallPathOverride = envDir;
+                SettingsStore.SetInstallPath(vm.Model.Id, envDir);
+            }
+        }
 
         // Portable/git apps installed to a custom folder the catalog/settings don't know about
         // (e.g. cc-switch under D:\Tools): locate the real .exe (ARP / install-spec / Run key / Start menu)
@@ -362,7 +407,7 @@ public sealed class MainViewModel : ObservableObject
             .Where(i => i.IsSelected).Select(i => i.Model).ToList();
         if (selected.Count == 0) return;
 
-        SelectedNav = NavItems.First(n => ReferenceEquals(n.Page, Progress));
+        SelectedNav = AllNavItems.First(n => ReferenceEquals(n.Page, Progress));
         _ = RunAsync(selected);
     }
 
@@ -376,7 +421,7 @@ public sealed class MainViewModel : ObservableObject
         vm.LaunchRequested += m => _ = RunQuickOpAsync(m, "launch");
         vm.StopRequested += m => _ = ConfirmRiskAndRun(m, "stop");
         vm.RestartRequested += m => _ = ConfirmRiskAndRun(m, "restart");
-        vm.EnvVarsRequested += () => SelectedNav = NavItems.First(n => ReferenceEquals(n.Page, EnvVars));
+        vm.EnvVarsRequested += () => SelectedNav = AllNavItems.First(n => ReferenceEquals(n.Page, EnvVars));
         Current = vm;
     }
 
@@ -385,9 +430,64 @@ public sealed class MainViewModel : ObservableObject
     {
         "mingw" => InstallMinGwAsync(m),
         "mingw-builds" => InstallMingwBuildsAsync(m),
+        "php" => InstallPhpAsync(m),
         _ when _githubReleaseIds.Contains(m.Id) => InstallFromGitHubReleaseAsync(m),
         _ => RunOpAsync(m, "install"),
     };
+
+    // PHP has no winget package and ships many parallel versions; offer a picker and install each to its
+    // own ${ToolsDir}/php/<version> folder so versions coexist.
+    private static readonly (string Label, string Version, string Url)[] PhpVersions =
+    {
+        ("PHP 8.4.3  (VS17 x64)",  "8.4.3",  "https://windows.php.net/downloads/releases/archives/php-8.4.3-Win32-vs17-x64.zip"),
+        ("PHP 8.3.14 (VS16 x64)",  "8.3.14", "https://windows.php.net/downloads/releases/archives/php-8.3.14-Win32-vs16-x64.zip"),
+        ("PHP 8.2.26 (VS16 x64)",  "8.2.26", "https://windows.php.net/downloads/releases/archives/php-8.2.26-Win32-vs16-x64.zip"),
+        ("PHP 8.1.31 (VS16 x64)",  "8.1.31", "https://windows.php.net/downloads/releases/archives/php-8.1.31-Win32-vs16-x64.zip"),
+        ("PHP 7.4.33 (VC15 x64)",  "7.4.33", "https://windows.php.net/downloads/releases/archives/php-7.4.33-Win32-vc15-x64.zip"),
+    };
+
+    /// <summary>PHP version picker: install the chosen version to ${ToolsDir}/php/&lt;version&gt; (versions
+    /// coexist), then point PHP_HOME + PATH at it (the active version). Re-run to add or switch versions.</summary>
+    private async Task InstallPhpAsync(CatalogItem item)
+    {
+        var labels = PhpVersions.Select(v => v.Label + (IsPhpVersionInstalled(v.Version) ? "    ✓ 已装" : "")).ToList();
+        var dlg = new Views.ChoiceDialog("选择 PHP 版本",
+            "多版本可共存（各装到 ${ToolsDir}/php/<版本>）。选中的版本将成为活动版本（PHP_HOME + PATH）：",
+            labels, 0) { Owner = Application.Current.MainWindow };
+        if (dlg.ShowDialog() != true || dlg.SelectedIndex < 0) return;
+        var v = PhpVersions[dlg.SelectedIndex];
+
+        item.Install.Method = "portable";
+        item.Install.Url = v.Url;
+        item.Install.ExtractTo = $"${{ToolsDir}}/php/{v.Version}";
+        item.Install.Strip = 0;
+        item.Install.Sha256 = null;
+        item.Install.Path = new List<string> { $"${{ToolsDir}}/php/{v.Version}" };
+        item.InstallPathOverride = null;
+        await RunOpAsync(item, "install");
+
+        // Make the just-installed version the active one (overwrite PHP_HOME; ensure its dir is on PATH).
+        try
+        {
+            var dir = _resolver.Resolve($"${{ToolsDir}}/php/{v.Version}");
+            if (Directory.Exists(dir))
+            {
+                WinDeploy.Core.Util.EnvPath.SetUserVar("PHP_HOME", dir);
+                Environment.SetEnvironmentVariable("PHP_HOME", dir);
+                WinDeploy.Core.Util.EnvPath.AddToUserPath(dir);
+                item.InstallPathOverride = dir;
+                SettingsStore.SetInstallPath(item.Id, dir);
+                AuditLog.Action($"PHP：活动版本设为 {v.Version}（PHP_HOME={dir}）");
+            }
+        }
+        catch { /* best effort */ }
+    }
+
+    private bool IsPhpVersionInstalled(string version)
+    {
+        try { return Directory.Exists(_resolver.Resolve($"${{ToolsDir}}/php/{version}")); }
+        catch { return false; }
+    }
 
     /// <summary>Right-click「快速安装到默认路径」: install into a category-based root + 软件名 (tools → ${ToolsDir},
     /// ai → %LOCALAPPDATA%/ai_workspace, others → installer default), unless a path is already set.</summary>
@@ -605,7 +705,7 @@ public sealed class MainViewModel : ObservableObject
     /// a cancelled install cleans its residue, and a successful uninstall offers leftover cleanup.</summary>
     private async Task RunOpAsync(CatalogItem item, string op, bool purge = false)
     {
-        SelectedNav = NavItems.First(n => ReferenceEquals(n.Page, Progress));
+        SelectedNav = AllNavItems.First(n => ReferenceEquals(n.Page, Progress));
         var verb = Verb(op);
         var row = Progress.Enqueue(item.Id, item.Name, item.Install.Method);   // 排队 until the lock frees
 
@@ -673,7 +773,7 @@ public sealed class MainViewModel : ObservableObject
     /// lock and don't touch the active run, so they never wait behind a long install/update.</summary>
     private async Task RunQuickOpAsync(CatalogItem item, string op)
     {
-        SelectedNav = NavItems.First(n => ReferenceEquals(n.Page, Progress));
+        SelectedNav = AllNavItems.First(n => ReferenceEquals(n.Page, Progress));
         var verb = Verb(op);
         var row = Progress.AddRunningRow(item.Id, item.Name, item.Install.Method, verb);
         var ctx = QuickCtx(row);
@@ -790,17 +890,14 @@ public sealed class MainViewModel : ObservableObject
             : StepOutcome.Fail("重启失败：" + detail);
     }
 
-    // Runtime/toolchain items whose home directory should become an env var on first install.
-    private static readonly Dictionary<string, string> ToolHomeVars = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["mingw"] = "GCC_HOME", ["mingw-builds"] = "GCC_HOME", ["go"] = "GOROOT", ["jdk17"] = "JAVA_HOME",
-    };
-
-    /// <summary>On first install of mingw / go / java, set its home env var (GCC_HOME / GOROOT / JAVA_HOME)
-    /// to the install root and add its bin to PATH. Skips if the var is already set (respects the user).</summary>
+    /// <summary>On first install of a toolchain with a catalog <c>detect.envVar</c> (GCC_HOME / GOROOT /
+    /// JAVA_HOME / PHP_HOME / LUA_HOME / CATALINA_HOME …), set that env var to the install root and add its
+    /// bin to PATH. Skips if the var is already set (respects the user). Driven by the same field detection
+    /// uses, so detect ↔ auto-set stay in sync.</summary>
     private void ApplyToolEnv(CatalogItem item, EngineContext? ctx = null)
     {
-        if (!ToolHomeVars.TryGetValue(item.Id, out var varName)) return;
+        var varName = item.Detect?.EnvVar;
+        if (string.IsNullOrEmpty(varName)) return;
         if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable(varName, EnvironmentVariableTarget.User)))
             return;   // 首次安装才设置；已存在则尊重用户现有配置
 
@@ -971,7 +1068,7 @@ public sealed class MainViewModel : ObservableObject
         if (MessageBox.Show($"是否更新选中的 {items.Count} 个软件？", "更新",
                 MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
 
-        SelectedNav = NavItems.First(n => ReferenceEquals(n.Page, Progress));
+        SelectedNav = AllNavItems.First(n => ReferenceEquals(n.Page, Progress));
         _ = RunUpdatesAsync(items);
     }
 

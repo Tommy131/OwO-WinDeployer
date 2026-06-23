@@ -16,7 +16,7 @@ public sealed class InstallCenterViewModel : ObservableObject
         ["dev"] = "开发工具链", ["system"] = "系统依赖", ["ide"] = "IDE / 编辑器",
         ["ai"] = "AI 工具", ["office"] = "办公 / 通讯", ["media"] = "媒体",
         ["db-api"] = "数据库 / API", ["vm"] = "虚拟化", ["games"] = "游戏平台",
-        ["browser"] = "浏览器", ["proxy"] = "网络代理", ["dict"] = "词典", ["hwmon"] = "硬件监控",
+        ["server"] = "服务 / 后端", ["browser"] = "浏览器", ["proxy"] = "网络代理", ["dict"] = "词典", ["hwmon"] = "硬件监控",
         ["tools"] = "实用工具",
     };
 
@@ -34,6 +34,7 @@ public sealed class InstallCenterViewModel : ObservableObject
     {
         if (_developerMode == on) return;
         _developerMode = on;
+        RebuildCategoryFilters();
         ApplyFilter();
         CommandManager.InvalidateRequerySuggested();
     }
@@ -43,6 +44,7 @@ public sealed class InstallCenterViewModel : ObservableObject
 
     public ObservableCollection<CategoryGroupViewModel> Groups { get; } = new();
     public ObservableCollection<string> Profiles { get; } = new();
+    public ObservableCollection<CategoryFilterViewModel> CategoryFilters { get; } = new();
     public RelayCommand StartCommand { get; }
     public RelayCommand UpdateSelectedCommand { get; }
     public RelayCommand OpenDetailCommand { get; }
@@ -59,6 +61,8 @@ public sealed class InstallCenterViewModel : ObservableObject
     public RelayCommand RestoreCommand { get; }
     public RelayCommand RefreshCommand { get; }
     public RelayCommand ToggleUpdatesCommand { get; }
+    public RelayCommand ShowAllGroupsCommand { get; }
+    public RelayCommand HideAllGroupsCommand { get; }
     private Dictionary<string, bool>? _snapshot;
 
     /// <summary>Raised when the user clicks 刷新 (re-detect installed status + update availability).</summary>
@@ -105,6 +109,46 @@ public sealed class InstallCenterViewModel : ObservableObject
         RestoreCommand = new RelayCommand(_ => Restore(), _ => _snapshot != null);
         RefreshCommand = new RelayCommand(_ => RefreshRequested?.Invoke(), _ => !IsLoading);
         ToggleUpdatesCommand = new RelayCommand(_ => ToggleUpdates());
+        ShowAllGroupsCommand = new RelayCommand(_ => SetAllGroups(true));
+        HideAllGroupsCommand = new RelayCommand(_ => SetAllGroups(false));
+    }
+
+    /// <summary>Rebuild the category filter chips for the currently category-visible groups (dev-mode aware).</summary>
+    private void RebuildCategoryFilters()
+    {
+        foreach (var f in CategoryFilters) f.Changed -= OnCategoryFilterChanged;
+        CategoryFilters.Clear();
+        foreach (var g in Groups)
+            if (CategoryVisible(g.Key))
+            {
+                var f = new CategoryFilterViewModel(g.Key, g.Title);
+                f.Changed += OnCategoryFilterChanged;
+                CategoryFilters.Add(f);
+            }
+        OnPropertyChanged(nameof(GroupFilterLabel));
+    }
+
+    private void OnCategoryFilterChanged() { ApplyFilter(); OnPropertyChanged(nameof(GroupFilterLabel)); }
+
+    private bool CategoryFilterOn(string key)
+        => CategoryFilters.FirstOrDefault(f => f.Key == key) is not { } f || f.IsChecked;
+
+    private void SetAllGroups(bool show)
+    {
+        foreach (var f in CategoryFilters) f.SetSilently(show);
+        ApplyFilter();
+        OnPropertyChanged(nameof(GroupFilterLabel));
+    }
+
+    /// <summary>Label for the 筛选分组 dropdown — shows N/total when not all groups are shown.</summary>
+    public string GroupFilterLabel
+    {
+        get
+        {
+            var total = CategoryFilters.Count;
+            var on = CategoryFilters.Count(f => f.IsChecked);
+            return total == 0 || on == total ? "筛选分组 ▾" : $"筛选分组 ({on}/{total}) ▾";
+        }
     }
 
     private bool _hideUpdates;
@@ -171,6 +215,7 @@ public sealed class InstallCenterViewModel : ObservableObject
             foreach (var f in Directory.GetFiles(pdir, "*.json"))
                 Profiles.Add(Path.GetFileNameWithoutExtension(f));
 
+        RebuildCategoryFilters();
         ApplyFilter();   // 按开发人员模式隐藏开发类分组（RefreshCounts 在内部已调用）
     }
 
@@ -317,7 +362,7 @@ public sealed class InstallCenterViewModel : ObservableObject
                     || i.Summary.Contains(q, StringComparison.OrdinalIgnoreCase);
                 any |= i.IsVisible;
             }
-            g.IsVisible = catVisible && any;
+            g.IsVisible = catVisible && CategoryFilterOn(g.Key) && any;
         }
         RefreshCounts();
     }

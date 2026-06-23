@@ -3,11 +3,13 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="clr-namespace:WinDeploy.App.ViewModels"
              xmlns:views="clr-namespace:WinDeploy.App.Views"
+             xmlns:app="clr-namespace:WinDeploy.App"
              StartupUri="MainWindow.xaml">
   <Application.Resources>
     <ResourceDictionary>
 
       <BooleanToVisibilityConverter x:Key="BoolToVis" />
+      <app:ZeroToVisibilityConverter x:Key="ZeroToVis" />
 
       <!-- Palette — replaced wholesale by ThemeManager on theme change; all usages are DynamicResource -->
       <SolidColorBrush x:Key="PageBg" Color="#F5F5F2" />
@@ -388,6 +390,59 @@
         <Setter Property="BorderBrush" Value="{DynamicResource WarnFg}" />
       </Style>
 
+      <!-- Dropdown toggle button (looks like MiniButton; checked = accent) -->
+      <Style x:Key="MiniToggle" TargetType="ToggleButton">
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondary}" />
+        <Setter Property="Background" Value="{DynamicResource CardBg}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderSoft}" />
+        <Setter Property="Padding" Value="11,5" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+          <Setter.Value>
+            <ControlTemplate TargetType="ToggleButton">
+              <Border x:Name="B" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                      BorderThickness="1" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+              </Border>
+              <ControlTemplate.Triggers>
+                <Trigger Property="IsChecked" Value="True">
+                  <Setter TargetName="B" Property="Background" Value="{DynamicResource AccentBg}" />
+                  <Setter TargetName="B" Property="BorderBrush" Value="{DynamicResource Accent}" />
+                  <Setter Property="Foreground" Value="{DynamicResource Accent}" />
+                </Trigger>
+              </ControlTemplate.Triggers>
+            </ControlTemplate>
+          </Setter.Value>
+        </Setter>
+      </Style>
+
+      <!-- Filter chip (toggle) — theme-aware -->
+      <Style x:Key="ChipToggle" TargetType="ToggleButton">
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Margin" Value="0,0,6,4" />
+        <Setter Property="Template">
+          <Setter.Value>
+            <ControlTemplate TargetType="ToggleButton">
+              <Border x:Name="B" CornerRadius="11" Padding="10,3" BorderThickness="1"
+                      Background="{DynamicResource CardBg}" BorderBrush="{DynamicResource BorderSoft}">
+                <TextBlock x:Name="T" Text="{TemplateBinding Content}" FontSize="11.5" Foreground="{DynamicResource TextSecondary}" />
+              </Border>
+              <ControlTemplate.Triggers>
+                <Trigger Property="IsChecked" Value="True">
+                  <Setter TargetName="B" Property="Background" Value="{DynamicResource AccentBg}" />
+                  <Setter TargetName="B" Property="BorderBrush" Value="{DynamicResource Accent}" />
+                  <Setter TargetName="T" Property="Foreground" Value="{DynamicResource Accent}" />
+                </Trigger>
+                <Trigger Property="IsMouseOver" Value="True">
+                  <Setter TargetName="B" Property="BorderBrush" Value="{DynamicResource Accent}" />
+                </Trigger>
+              </ControlTemplate.Triggers>
+            </ControlTemplate>
+          </Setter.Value>
+        </Setter>
+      </Style>
+
       <!-- Themed context menu (matches the app theme instead of the OS default) -->
       <Style x:Key="ThemedContextMenu" TargetType="ContextMenu">
         <Setter Property="Background" Value="{DynamicResource CardBg}" />
@@ -495,6 +550,15 @@
       </DataTemplate>
       <DataTemplate DataType="{x:Type vm:AdvancedToolsViewModel}">
         <views:AdvancedToolsView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type vm:ServiceConfigViewModel}">
+        <views:ServiceConfigView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type vm:ServerListViewModel}">
+        <views:ServerListView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type vm:ServerDetailViewModel}">
+        <views:ServerDetailView />
       </DataTemplate>
       <DataTemplate DataType="{x:Type vm:DetailViewModel}">
         <views:DetailView />
