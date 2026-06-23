@@ -68,15 +68,16 @@ public sealed class FtpClientViewModel : ObservableObject
         DownloadCommand = new RelayCommand(_ => _ = DownloadAsync(), _ => Connected && !Busy &&
             (_selRemotes.Count > 0 ? _selRemotes.All(r => r.CanDownload) : SelectedRemote is { CanDownload: true }));
         UploadCommand = new RelayCommand(_ => _ = UploadAsync(), _ => Connected && !Busy && (_selLocals.Count > 0 || SelectedLocal is { IsUp: false }));
-        DeleteRemoteCommand = new RelayCommand(_ => _ = DeleteRemoteAsync(), _ => Connected && !Busy && SelectedRemote is { CanDelete: true });
+        DeleteRemoteCommand = new RelayCommand(_ => _ = DeleteRemoteAsync(), _ => Connected && !Busy &&
+            (_selRemotes.Count > 0 ? _selRemotes.All(r => r.CanDelete) : SelectedRemote is { CanDelete: true }));
         MkdirRemoteCommand = new RelayCommand(_ => _ = MkdirRemoteAsync(), _ => Connected && !Busy);
-        RenameRemoteCommand = new RelayCommand(_ => _ = RenameRemoteAsync(), _ => Connected && !Busy && SelectedRemote is { CanRename: true });
+        RenameRemoteCommand = new RelayCommand(_ => _ = RenameRemoteAsync(), _ => Connected && !Busy && _selRemotes.Count <= 1 && SelectedRemote is { CanRename: true });
         OpenRemoteItemCommand = new RelayCommand(_ => _ = OpenRemoteItemAsync(), _ => Connected && !Busy && SelectedRemote is { CanDownload: true });
 
         OpenLocalCommand = new RelayCommand(p => { if (p is FtpLocalRowVm r) OpenLocal(r); });
         OpenLocalItemCommand = new RelayCommand(_ => OpenLocalItem(), _ => SelectedLocal is { IsUp: false });
-        RenameLocalCommand = new RelayCommand(_ => RenameLocal(), _ => !Busy && SelectedLocal is { IsUp: false });
-        DeleteLocalCommand = new RelayCommand(_ => DeleteLocal(), _ => !Busy && SelectedLocal is { IsUp: false });
+        RenameLocalCommand = new RelayCommand(_ => RenameLocal(), _ => !Busy && _selLocals.Count <= 1 && SelectedLocal is { IsUp: false });
+        DeleteLocalCommand = new RelayCommand(_ => DeleteLocal(), _ => !Busy && (_selLocals.Count > 0 || SelectedLocal is { IsUp: false }));
         LocalUpCommand = new RelayCommand(_ => LocalUp());
         PickLocalCommand = new RelayCommand(_ => PickLocal());
 
@@ -399,18 +400,29 @@ public sealed class FtpClientViewModel : ObservableObject
 
     private async Task DeleteRemoteAsync()
     {
-        if (_client == null || SelectedRemote is not { } r) return;
-        if (MessageBox.Show($"删除远端 {(r.IsDir ? "目录" : "文件")} {r.Name}？" + (r.IsDir ? "\n（含其中所有内容，递归删除，不可恢复）" : ""), "删除",
+        if (_client == null) return;
+        var items = BatchRemote();
+        if (items.Count == 0) return;
+        var label = items.Count == 1 ? $"远端 {(items[0].IsDir ? "目录" : "文件")} {items[0].Name}" : $"{items.Count} 个远端项目";
+        var dirNote = items.Any(x => x.IsDir) ? "\n（文件夹将递归删除其中所有内容）" : "";
+        if (MessageBox.Show($"删除 {label}？{dirNote}\n此操作不可恢复。", "删除",
                 MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
         Busy = true;
+        var ok = 0;
         try
         {
-            if (r.IsDir) await _client.DeleteDirectoryAsync(r.Name, _cts!.Token);   // recursive: clears contents then RMD
-            else await _client.DeleteAsync(r.Name, _cts!.Token);
-            AuditLog.Action($"FTP 删除远端 {r.Name}");
-            Note = $"已删除 {r.Name}";
+            foreach (var r in items)
+            {
+                _cts!.Token.ThrowIfCancellationRequested();
+                if (r.IsDir) await _client.DeleteDirectoryAsync(r.Name, _cts.Token);   // recursive: clears contents then RMD
+                else await _client.DeleteAsync(r.Name, _cts.Token);
+                ok++;
+            }
+            AuditLog.Action($"FTP 删除远端 {ok} 项");
+            Note = $"已删除 {ok} 项";
         }
-        catch (Exception ex) { Note = "删除失败：" + ex.Message; }
+        catch (OperationCanceledException) { Note = $"已取消（已删除 {ok} 项）"; }
+        catch (Exception ex) { Note = $"删除失败（已删除 {ok} 项）：" + ex.Message; }
         finally { Busy = false; }
         await ListRemoteAsync();
     }
@@ -559,16 +571,24 @@ public sealed class FtpClientViewModel : ObservableObject
 
     private void DeleteLocal()
     {
-        if (SelectedLocal is not { IsUp: false } l) return;
-        if (MessageBox.Show($"删除本地{(l.IsDir ? "文件夹" : "文件")} {l.Name}？" + (l.IsDir ? "\n（含其中所有内容，不可恢复）" : ""),
-                "删除", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        var items = BatchLocal();
+        if (items.Count == 0) return;
+        var label = items.Count == 1 ? $"本地{(items[0].IsDir ? "文件夹" : "文件")} {items[0].Name}" : $"{items.Count} 个本地项目";
+        var dirNote = items.Any(x => x.IsDir) ? "\n（文件夹含其中所有内容）" : "";
+        if (MessageBox.Show($"删除 {label}？{dirNote}\n此操作不可恢复。", "删除",
+                MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        var ok = 0;
         try
         {
-            if (l.IsDir) Directory.Delete(l.Path, true); else File.Delete(l.Path);
-            Note = $"已删除 {l.Name}";
-            ListLocal();
+            foreach (var l in items)
+            {
+                if (l.IsDir) Directory.Delete(l.Path, true); else File.Delete(l.Path);
+                ok++;
+            }
+            Note = $"已删除 {ok} 项";
         }
-        catch (Exception ex) { Note = "删除失败：" + ex.Message; }
+        catch (Exception ex) { Note = $"删除失败（已删除 {ok} 项）：" + ex.Message; }
+        ListLocal();
     }
 
     /// <summary>Open a remote folder (enter it) or a remote file (download to temp, then open locally).</summary>

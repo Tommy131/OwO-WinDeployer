@@ -48,14 +48,14 @@ public partial class FtpClientView : UserControl
     private void RemoteGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
         => (DataContext as FtpClientViewModel)?.SetRemoteSelection(RemoteGrid.SelectedItems);
 
-    /// <summary>Right-clicking a row selects ONLY that row (clearing any previous selection), so the
-    /// context-menu commands act on exactly the row under the cursor. Without the clear, the grid's Extended
-    /// selection mode would accumulate a new highlighted row on every right-click.</summary>
+    /// <summary>Explorer-style right-click selection: if the row under the cursor is already part of the
+    /// (possibly multi-row) selection, keep the whole selection so the context-menu commands act on ALL
+    /// selected rows. Only when right-clicking an unselected row do we collapse to just that row.</summary>
     private void Grid_RightSelect(object sender, MouseButtonEventArgs e)
     {
         var dep = e.OriginalSource as DependencyObject;
         while (dep != null && dep is not DataGridRow) dep = VisualTreeHelper.GetParent(dep);
-        if (dep is DataGridRow row && sender is DataGrid grid)
+        if (dep is DataGridRow row && sender is DataGrid grid && !row.IsSelected)
         {
             grid.UnselectAll();
             row.IsSelected = true;
