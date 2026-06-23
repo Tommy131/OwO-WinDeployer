@@ -152,21 +152,12 @@
                     <TextBlock Text="{Binding Name}" FontSize="13.5" FontWeight="SemiBold" />
                     <TextBlock Text="{Binding Detail}" FontSize="12" Foreground="{DynamicResource TextSecondary}" Margin="0,2,0,0" />
                   </StackPanel>
-                  <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center">
-                    <!-- top-right: health + chevron -->
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                      <Border CornerRadius="6" Padding="9,3" Background="{DynamicResource OkBg}">
-                        <TextBlock Text="{Binding Health}" FontSize="12" Foreground="{DynamicResource OkFg}" />
-                      </Border>
-                      <TextBlock Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" FontSize="12"
-                                 Foreground="{DynamicResource TextTertiary}" VerticalAlignment="Center" Margin="8,0,0,0" />
-                    </StackPanel>
-                    <!-- bottom-right: interface / media type badge (NVMe / SSD / HDD / USB …) -->
-                    <Border CornerRadius="6" Padding="9,2" Margin="0,7,0,0" HorizontalAlignment="Right"
-                            Background="{DynamicResource AccentBg}">
-                      <TextBlock Text="{Binding TypeLabel}" FontSize="11" FontWeight="SemiBold"
-                                 Foreground="{DynamicResource Accent}" />
+                  <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <Border CornerRadius="6" Padding="9,3" Background="{DynamicResource OkBg}">
+                      <TextBlock Text="{Binding Health}" FontSize="12" Foreground="{DynamicResource OkFg}" />
                     </Border>
+                    <TextBlock Text="&#xE76C;" FontFamily="Segoe MDL2 Assets" FontSize="12"
+                               Foreground="{DynamicResource TextTertiary}" VerticalAlignment="Center" Margin="8,0,0,0" />
                   </StackPanel>
                 </Grid>
               </Border>

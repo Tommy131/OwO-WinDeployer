@@ -22,11 +22,10 @@ public sealed class PhysDiskRowViewModel
     public string Health { get; init; } = "";
     public bool Healthy { get; init; }
     public string? DeviceId { get; init; }
-    /// <summary>Short interface/media type for the corner badge: NVMe / SSD / HDD / USB / SD …</summary>
-    public string TypeLabel { get; init; } = "";
 
     /// <summary>Classify a physical disk into a concise type, preferring the interface (NVMe / USB) over the
-    /// raw media type, so an NVMe SSD reads "NVMe" (not "SSD") and an external drive reads "USB".</summary>
+    /// raw media type, so an NVMe SSD reads "NVMe" (not "SSD") and an external drive reads "USB". Shown in the
+    /// card's left detail line.</summary>
     public static string Classify(string? media, string? bus)
     {
         var b = (bus ?? "").Trim();
@@ -325,11 +324,10 @@ public sealed class SystemOverviewViewModel : ObservableObject
             PhysicalDisks.Add(new PhysDiskRowViewModel
             {
                 Name = p.Name,
-                Detail = $"{p.Media} · {p.SizeGb} GB",
+                Detail = $"{PhysDiskRowViewModel.Classify(p.Media, p.Bus)} · {p.SizeGb} GB",
                 Health = string.IsNullOrWhiteSpace(p.Health) ? "未知" : p.Health,
                 Healthy = string.Equals(p.Health, "Healthy", StringComparison.OrdinalIgnoreCase),
                 DeviceId = p.DeviceId,
-                TypeLabel = PhysDiskRowViewModel.Classify(p.Media, p.Bus),
             });
 
         IsLoading = false;
