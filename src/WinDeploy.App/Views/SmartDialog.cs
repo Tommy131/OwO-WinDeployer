@@ -16,7 +16,7 @@ public sealed class SmartDialog : Window
     private bool _showSerial;
     private bool _offerElevate = true;   // preserved across serial show/hide re-renders
     private readonly bool _elevated = IsElevated();
-    private const double LabelCol = 128;  // wide enough for "介质 / 完整性错误" so it never overlaps the value
+    private const double LabelCol = 148;  // wide enough for the longest label ("介质 / 完整性错误") so it never overlaps the value
 
     public SmartDialog(string title, string? deviceId)
     {
@@ -46,9 +46,9 @@ public sealed class SmartDialog : Window
         _body.Children.Add(Row("读取中 …", ""));
         content.Children.Add(_body);
 
-        // Margin right -14 / Padding right 6: the scrollbar sits near the dialog's outer edge (not inset 18px),
-        // and the body gains a little width — which also relieves the label/value crowding.
-        dock.Children.Add(new ScrollViewer { Content = content, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Margin = new Thickness(0, 0, -14, 0), Padding = new Thickness(0, 0, 6, 0) });
+        // Margin right -18 / Padding right 10: cancels the DockPanel's 18px right margin so the scrollbar sits
+        // flush at the dialog's outer edge, while the body keeps a small gap from it.
+        dock.Children.Add(new ScrollViewer { Content = content, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, Margin = new Thickness(0, 0, -18, 0), Padding = new Thickness(0, 0, 10, 0) });
 
         Content = dock;
         Loaded += async (_, _) => await LoadAsync();

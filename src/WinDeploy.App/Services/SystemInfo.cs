@@ -194,11 +194,12 @@ public static class SystemInfo
         return info;
     }
 
-    /// <summary>For an NVMe drive, read the NVMe SMART/Health log (no admin needed) and fill the counters the
-    /// ATA WMI path can't provide. No-op for non-NVMe drives or when the ATA table already supplied counters.</summary>
+    /// <summary>For an NVMe drive, read the NVMe SMART/Health log and fill the counters from it. This is the
+    /// authoritative source for NVMe and is read UNCONDITIONALLY for NVMe drives: the ATA WMI path
+    /// (MSStorageDriver_FailurePredictData) either is denied (non-admin) or — when elevated — returns NVMe
+    /// data in a non-ATA layout that parses to garbage and would wrongly set HasCounters, hiding the real log.</summary>
     private static async Task AugmentNvmeAsync(string? deviceId, SmartInfo info, CancellationToken ct)
     {
-        if (info.HasCounters) return;
         if (!(info.Bus?.Equals("NVMe", StringComparison.OrdinalIgnoreCase) ?? false)) return;
         if (!int.TryParse(deviceId, out var idx)) return;
         try
@@ -213,6 +214,10 @@ public static class SystemInfo
     {
         info.IsNvme = true;
         info.IsSsd = true;
+        // Any ATA attributes / counters parsed from the NVMe drive's FailurePredictData are meaningless
+        // (wrong layout) — drop them so they can't show a garbage table or trigger a false warning banner.
+        info.Attributes.Clear();
+        info.Reallocated = info.Pending = info.Uncorrectable = info.Crc = null;
         if (nv.TemperatureC is int t) info.Temperature = t;
         info.PowerOnHours = nv.PowerOnHours;
         info.PowerCycles = nv.PowerCycles;
