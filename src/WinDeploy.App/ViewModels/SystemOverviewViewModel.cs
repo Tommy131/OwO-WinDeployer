@@ -22,6 +22,11 @@ public sealed class PhysDiskRowViewModel
     public string Health { get; init; } = "";
     public bool Healthy { get; init; }
     public string? DeviceId { get; init; }
+    public string? Bus { get; init; }
+
+    /// <summary>True for hot-pluggable drives (USB / FireWire / card reader) — surfaces the 弹出 button so the
+    /// device can be safely removed without leaving the app.</summary>
+    public bool IsRemovable => Services.DeviceEject.IsRemovableBus(Bus);
 
     /// <summary>Classify a physical disk into a concise type, preferring the interface (NVMe / USB) over the
     /// raw media type, so an NVMe SSD reads "NVMe" (not "SSD") and an external drive reads "USB". Shown in the
@@ -61,6 +66,7 @@ public sealed class SystemOverviewViewModel : ObservableObject
     public RelayCommand RefreshCommand { get; }
     public RelayCommand ExportInventoryCommand { get; }
     public RelayCommand ShowSmartCommand { get; }
+    public RelayCommand EjectCommand { get; }
     public RelayCommand RelaunchAdminCommand { get; }
 
     private DispatcherTimer? _timer;
@@ -77,9 +83,83 @@ public sealed class SystemOverviewViewModel : ObservableObject
             if (p is PhysDiskRowViewModel r)
                 new Views.SmartDialog(r.Name, r.DeviceId) { Owner = System.Windows.Application.Current.MainWindow }.ShowDialog();
         });
+        EjectCommand = new RelayCommand(p => { if (p is PhysDiskRowViewModel r) _ = EjectAsync(r); });
         RelaunchAdminCommand = new RelayCommand(_ => RelaunchAsAdmin());
         _ = LoadAsync();
     }
+
+    /// <summary>Safely eject a removable drive, then show a themed result popup: green when removed, amber with
+    /// the reason when Windows vetoes it (device still in use). On success the device's cards are removed from the
+    /// page immediately (see <see cref="RemoveDiskFromView"/>).</summary>
+    private async Task EjectAsync(PhysDiskRowViewModel row)
+    {
+        if (!int.TryParse(row.DeviceId, out var idx))
+        {
+            ShowEjectResult(false, row.Name, "无法确定该设备对应的物理磁盘编号。");
+            return;
+        }
+
+        // Capture the disk's drive letters BEFORE ejecting — afterwards they're gone, so we couldn't look them up.
+        var letters = await Task.Run(() => DeviceEject.VolumesOnDrive(idx));
+
+        var result = await Task.Run(() => DeviceEject.Eject(idx));
+        switch (result.Status)
+        {
+            case DeviceEject.EjectStatus.Success:
+                AuditLog.Action($"已安全弹出设备：{row.Name}");
+                RemoveDiskFromView(row, letters);
+                ShowEjectResult(true, row.Name, "设备已安全弹出，现在可以放心拔出。");
+                break;
+            case DeviceEject.EjectStatus.NotFound:
+                // Already gone — just drop it from the view.
+                RemoveDiskFromView(row, letters);
+                ShowEjectResult(false, row.Name, "未找到该设备，它可能已被移除。");
+                break;
+            default:   // Busy / Failed
+                AuditLog.App($"弹出设备失败：{row.Name} — {result.Reason}");
+                // Busy means something holds the device open — offer to force-dismount and retry.
+                var allowForce = result.Status == DeviceEject.EjectStatus.Busy;
+                var dlg = new Views.EjectResultDialog(false, row.Name, result.Reason ?? "设备正在被占用，无法弹出。", allowForce)
+                { Owner = System.Windows.Application.Current.MainWindow };
+                dlg.ShowDialog();
+                if (dlg.ForceRequested) await ForceEjectAsync(row, idx, letters);
+                break;
+        }
+    }
+
+    /// <summary>Force-dismount the drive's volumes and retry the eject, after the user accepted the data-loss
+    /// risk in the busy dialog.</summary>
+    private async Task ForceEjectAsync(PhysDiskRowViewModel row, int idx, IReadOnlyList<char> letters)
+    {
+        var forced = await Task.Run(() => DeviceEject.ForceEject(idx));
+        if (forced.Status == DeviceEject.EjectStatus.Success)
+        {
+            AuditLog.Action($"已强制弹出设备：{row.Name}");
+            RemoveDiskFromView(row, letters);
+            ShowEjectResult(true, row.Name, "设备已强制弹出，现在可以放心拔出。");
+        }
+        else
+        {
+            AuditLog.App($"强制弹出设备失败：{row.Name} — {forced.Reason}");
+            ShowEjectResult(false, row.Name, forced.Reason ?? "强制弹出失败，请关闭占用该设备的程序后重试。");
+        }
+    }
+
+    /// <summary>Remove an ejected disk from the page right away — its physical-disk card and each of its drive-letter
+    /// cards — instead of reloading (the PnP removal lags, so a reload could momentarily re-list the gone device).</summary>
+    private void RemoveDiskFromView(PhysDiskRowViewModel row, IReadOnlyList<char> letters)
+    {
+        PhysicalDisks.Remove(row);
+        foreach (var letter in letters)
+        {
+            var key = letter + ":";
+            foreach (var d in Disks.Where(d => string.Equals(d.Drive, key, StringComparison.OrdinalIgnoreCase)).ToList())
+                Disks.Remove(d);
+        }
+    }
+
+    private static void ShowEjectResult(bool success, string name, string message)
+        => new Views.EjectResultDialog(success, name, message) { Owner = System.Windows.Application.Current.MainWindow }.ShowDialog();
 
     /// <summary>True when NOT elevated — surfaces the "以管理员身份运行" button (CPU 温度/功耗 需管理员).</summary>
     public bool ShowAdminHint => !Elevated;
@@ -328,6 +408,7 @@ public sealed class SystemOverviewViewModel : ObservableObject
                 Health = string.IsNullOrWhiteSpace(p.Health) ? "未知" : p.Health,
                 Healthy = string.Equals(p.Health, "Healthy", StringComparison.OrdinalIgnoreCase),
                 DeviceId = p.DeviceId,
+                Bus = p.Bus,
             });
 
         IsLoading = false;

@@ -42,7 +42,12 @@ public static class HardwareMonitor
                     IsCpuEnabled = true,
                     IsGpuEnabled = true,
                     IsMemoryEnabled = true,
-                    IsStorageEnabled = true,
+                    // Storage is intentionally DISABLED: LibreHardwareMonitor keeps an open handle on every
+                    // physical disk (incl. USB ones) to read storage SMART, and that handle — living inside our
+                    // own process — vetoes "安全弹出"/eject of removable drives (and can't be reliably released
+                    // via Close()). We read disk SMART/health ourselves (smartctl + WMI), so the only thing lost
+                    // is per-disk power readings, which most drives don't expose anyway.
+                    IsStorageEnabled = false,
                     IsMotherboardEnabled = true,
                 };
                 c.Open();

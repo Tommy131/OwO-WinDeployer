@@ -153,6 +153,13 @@
                     <TextBlock Text="{Binding Detail}" FontSize="12" Foreground="{DynamicResource TextSecondary}" Margin="0,2,0,0" />
                   </StackPanel>
                   <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <Button Style="{StaticResource MiniButton}" VerticalAlignment="Center" Margin="0,0,10,0"
+                            ToolTip="安全弹出该移动设备" Cursor="Hand"
+                            Visibility="{Binding IsRemovable, Converter={StaticResource BoolToVis}}"
+                            Command="{Binding DataContext.EjectCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            CommandParameter="{Binding}">
+                      <TextBlock Text="&#x23CF;  弹出" VerticalAlignment="Center" />
+                    </Button>
                     <Border CornerRadius="6" Padding="9,3" Background="{DynamicResource OkBg}">
                       <TextBlock Text="{Binding Health}" FontSize="12" Foreground="{DynamicResource OkFg}" />
                     </Border>
