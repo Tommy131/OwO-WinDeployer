@@ -100,6 +100,7 @@ jobs:
             Copy-Item catalog      "$stage/catalog"      -Recurse -Force
             Copy-Item assets/icons "$stage/assets/icons" -Recurse -Force
             Copy-Item configs      "$stage/configs"      -Recurse -Force
+            Copy-Item tools        "$stage/tools"        -Recurse -Force   # bundled smartctl.exe (USB SMART)
             Copy-Item LICENSE      "$stage/LICENSE"      -Force
             Copy-Item README.md    "$stage/README.md"    -Force
 
