@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using WinDeploy.Core.Engine.Installers;
+using WinDeploy.Core.I18n;
 using WinDeploy.Core.Models;
 using WinDeploy.Core.Util;
 
@@ -17,7 +18,7 @@ public static class Updater
     public static async Task<StepOutcome> UpdateAsync(CatalogItem item, EngineContext ctx)
     {
         var ins = item.Install;
-        ctx.Step("检查可用更新 …");
+        ctx.Step(Localizer.T("engine.update.checking"));
         switch (ins.Method)
         {
             case "winget" when ins.Id != null:
@@ -33,17 +34,18 @@ public static class Updater
                     if (o.Status == StepStatus.Failed) failed.Add(id);
                     else if (o.Message == Updated) changed++;
                 }
-                if (failed.Count > 0) return StepOutcome.Fail("失败: " + string.Join(", ", failed));
-                return StepOutcome.Done(changed > 0 ? $"已更新 {changed} 个组件" : UpToDate);
+                if (failed.Count > 0) return StepOutcome.Fail(Localizer.Format("engine.update.failed", string.Join(", ", failed)));
+                return StepOutcome.Done(changed > 0 ? Localizer.Format("engine.update.updatedCount", changed) : UpToDate);
             }
 
             case "git" when ins.Repo != null && ins.Dest != null:
             {
                 var dest = ctx.Path.Resolve(item.InstallPathOverride ?? ins.Dest);
                 if (!Directory.Exists(System.IO.Path.Combine(dest, ".git")))
-                    return StepOutcome.Fail("本地仓库不存在，请先安装");
+                    return StepOutcome.Fail(Localizer.T("engine.update.noRepo"));
                 var r = await Proc.RunAsync("git", new[] { "-C", dest, "pull", "--ff-only" }, ct: ctx.Ct);
-                if (!r.Ok) return StepOutcome.Fail($"git pull 退出码 {r.ExitCode}");
+                if (!r.Ok) return StepOutcome.Fail(Localizer.Format("engine.update.gitPullExit", r.ExitCode));
+                // MATCHED: git's own stdout (EN + zh-CN), not user-facing — do not localize these literals.
                 var same = r.StdOut.Contains("up to date", StringComparison.OrdinalIgnoreCase)
                            || r.StdOut.Contains("已经是最新");
                 return StepOutcome.Done(same ? UpToDate : Updated);
@@ -52,14 +54,14 @@ public static class Updater
             case "portable" when ins.Url != null && ins.ExtractTo != null:
             {
                 var o = await new PortableInstaller().RunAsync(item, ctx);
-                return o.Status == StepStatus.Ok ? StepOutcome.Done("已重新拉取最新便携包") : o;
+                return o.Status == StepStatus.Ok ? StepOutcome.Done(Localizer.T("engine.update.portableRefetched")) : o;
             }
 
             case "vscode-ext":
                 return await new VscodeExtInstaller().RunAsync(item, ctx);
 
             default:
-                return StepOutcome.Fail("该类型暂不支持更新");
+                return StepOutcome.Fail(Localizer.T("engine.update.unsupported"));
         }
     }
 
@@ -67,20 +69,22 @@ public static class Updater
     public static async Task<StepOutcome> DowngradeAsync(CatalogItem item, EngineContext ctx)
     {
         var ins = item.Install;
-        if (ins.Method != "winget" || ins.Id == null) return StepOutcome.Fail("仅 winget 支持降级");
+        if (ins.Method != "winget" || ins.Id == null) return StepOutcome.Fail(Localizer.T("engine.update.onlyWingetDowngrade"));
         var v = item.Version;
-        if (string.IsNullOrEmpty(v)) return StepOutcome.Fail("未选择目标版本");
-        ctx.Step($"降级到 {v} …");
+        if (string.IsNullOrEmpty(v)) return StepOutcome.Fail(Localizer.T("engine.update.noTargetVersion"));
+        ctx.Step(Localizer.Format("engine.update.downgradeTo", v));
         var r = await Proc.RunAsync("winget", new[]
         {
             "install", "--id", ins.Id, "-e", "--version", v, "--force",
             "--accept-source-agreements", "--accept-package-agreements", "--disable-interactivity",
         }, ct: ctx.Ct);
-        return r.Ok ? StepOutcome.Done($"已降级到 {v}") : StepOutcome.Fail($"降级退出码 {r.ExitCode}");
+        return r.Ok ? StepOutcome.Done(Localizer.Format("engine.update.downgraded", v)) : StepOutcome.Fail(Localizer.Format("engine.update.downgradeExit", r.ExitCode));
     }
 
-    private const string Updated = "已更新";
-    private const string UpToDate = "已是最新";
+    // Emitted result messages shown to the user. NOT the winget-stdout matchers below ("已是最新" etc.),
+    // which stay Chinese because they are compared against winget's localized output on a zh-CN machine.
+    private static string Updated => Localizer.T("engine.update.updated");
+    private static string UpToDate => Localizer.T("engine.update.upToDate");
 
     private static Task<ProcResult> Upgrade(string id, EngineContext ctx)
     {
@@ -99,6 +103,8 @@ public static class Updater
     private static StepOutcome Interpret(ProcResult r)
     {
         if (r.Ok) return StepOutcome.Done(Updated);
+        // MATCHED: winget's own stdout (EN + zh-CN localized). These literals are compared against external
+        // tool output — do NOT localize them or update detection breaks on Chinese Windows.
         var noUpgrade =
             r.StdOut.Contains("No applicable", StringComparison.OrdinalIgnoreCase)
             || r.StdOut.Contains("No available upgrade", StringComparison.OrdinalIgnoreCase)
@@ -110,10 +116,11 @@ public static class Updater
 
         // Stale upstream manifest (e.g. Unity Hub's non-versioned download URL) → winget rejects the
         // download. There is no supported param to bypass the hash; surface it as a source issue.
+        // MATCHED: "哈希" / "hash"+"match" are winget stdout tokens — not user-facing — leave untranslated.
         var hashMismatch = r.StdOut.Contains("哈希", StringComparison.OrdinalIgnoreCase)
             || (r.StdOut.Contains("hash", StringComparison.OrdinalIgnoreCase) && r.StdOut.Contains("match", StringComparison.OrdinalIgnoreCase));
-        if (hashMismatch) return StepOutcome.Fail("winget 源安装包哈希不匹配（上游清单过期），请前往官网手动更新");
+        if (hashMismatch) return StepOutcome.Fail(Localizer.T("engine.update.hashMismatch"));
 
-        return StepOutcome.Fail($"winget upgrade 退出码 {r.ExitCode}");
+        return StepOutcome.Fail(Localizer.Format("engine.update.wingetUpgradeExit", r.ExitCode));
     }
 }

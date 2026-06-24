@@ -3,8 +3,10 @@ using System.Net;
 using System.Net.Sockets;
 using System.Windows;
 using System.Windows.Threading;
+using WinDeploy.App;
 using WinDeploy.App.Services;
 using WinDeploy.App.Services.Ftp;
+using WinDeploy.Core.I18n;
 
 namespace WinDeploy.App.ViewModels;
 
@@ -32,7 +34,7 @@ public sealed class FtpConnRowVm : ObservableObject
 
 /// <summary>The 服务端 tab: starts/stops the FTP/FTPS listener using the saved config, and shows live status,
 /// the connection table, reachable addresses, and a rolling protocol log.</summary>
-public sealed class FtpServerViewModel : ObservableObject
+public sealed class FtpServerViewModel : LocalizedObject
 {
     private readonly FtpServer _server;
     private readonly Func<FtpServerConfig> _configProvider;
@@ -65,17 +67,17 @@ public sealed class FtpServerViewModel : ObservableObject
     public void StopServer() { if (Running) Stop(); }
     public void RestartServer() { if (Running) Stop(); Start(); }
 
-    public string StatusText => _server.Running ? "运行中" : "已停止";
+    public string StatusText => _server.Running ? Localizer.T("ftp.server.running") : Localizer.T("ftp.server.stopped");
     public string StatusBrush => _server.Running ? "OkFg" : "TextTertiary";
     public string LocalAddresses { get; }
 
-    private string _endpointText = "未启动";
+    private string _endpointText = Localizer.T("ftp.server.notStarted");
     public string EndpointText { get => _endpointText; private set => Set(ref _endpointText, value); }
 
     private string _uptimeText = "—";
     public string UptimeText { get => _uptimeText; private set => Set(ref _uptimeText, value); }
 
-    private string _connCountText = "0 个连接";
+    private string _connCountText = Localizer.Format("ftp.server.connCount", 0);
     public string ConnCountText { get => _connCountText; private set => Set(ref _connCountText, value); }
 
     private string _logText = "";
@@ -87,12 +89,12 @@ public sealed class FtpServerViewModel : ObservableObject
     {
         FtpServerConfig cfg;
         try { cfg = _configProvider(); }
-        catch (Exception ex) { Error("读取配置失败：" + ex.Message); return; }
+        catch (Exception ex) { Error(Localizer.Format("ftp.server.readConfigFailed", ex.Message)); return; }
 
         if (cfg.Users.Count == 0 && !cfg.AllowAnonymous)
         {
-            if (MessageBox.Show("当前没有任何用户，且未启用匿名访问。\n客户端将无法登录。仍要启动吗？",
-                    "启动 FTP 服务端", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+            if (Dialogs.Show(Localizer.T("ftp.server.startNoUserConfirm"),
+                    Localizer.T("ftp.server.startNoUserTitle"), MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
         }
 
         try
@@ -105,8 +107,7 @@ public sealed class FtpServerViewModel : ObservableObject
         catch (Exception ex)
         {
             AuditLog.Action("FTP 服务端启动失败：" + ex.Message);
-            Error("启动失败：" + ex.Message +
-                "\n\n常见原因：端口被占用、被防火墙拦截，或证书无效。可尝试更换端口。");
+            Error(Localizer.Format("ftp.server.startFailed", ex.Message));
         }
     }
 
@@ -126,14 +127,14 @@ public sealed class FtpServerViewModel : ObservableObject
         if (_server.Running)
         {
             var cfg = _server.Config;
-            var bits = new List<string> { $"控制端口 {cfg.Port}" };
-            if (cfg.ImplicitTls) bits.Add($"隐式 TLS {cfg.ImplicitPort}");
-            else if (cfg.TlsEnabled) bits.Add("显式 AUTH TLS");
-            else bits.Add("明文");
-            bits.Add($"被动 {cfg.PassiveMin}-{cfg.PassiveMax}");
+            var bits = new List<string> { Localizer.Format("ftp.server.endpointControl", cfg.Port) };
+            if (cfg.ImplicitTls) bits.Add(Localizer.Format("ftp.server.endpointImplicit", cfg.ImplicitPort));
+            else if (cfg.TlsEnabled) bits.Add(Localizer.T("ftp.server.endpointExplicit"));
+            else bits.Add(Localizer.T("ftp.server.endpointPlain"));
+            bits.Add(Localizer.Format("ftp.server.endpointPassive", cfg.PassiveMin, cfg.PassiveMax));
             EndpointText = string.Join(" · ", bits);
         }
-        else EndpointText = "未启动";
+        else EndpointText = Localizer.T("ftp.server.notStarted");
         RefreshConnections();
     }
 
@@ -158,7 +159,7 @@ public sealed class FtpServerViewModel : ObservableObject
         var live = _server.Connections;
         Connections.Clear();
         foreach (var c in live) Connections.Add(new FtpConnRowVm(c));
-        ConnCountText = $"{live.Count} 个连接";
+        ConnCountText = Localizer.Format("ftp.server.connCount", live.Count);
         OnPropertyChanged(nameof(NoConnections));
     }
 
@@ -173,6 +174,12 @@ public sealed class FtpServerViewModel : ObservableObject
 
     public void StopLive() => _timer?.Stop();
 
+    protected override void OnCultureChanged()
+    {
+        base.OnCultureChanged();
+        RefreshState();   // recompute cached endpoint / connection-count text in the new language
+    }
+
     private void OnTick(object? s, EventArgs e)
     {
         if (_server.Running && _server.StartedAt is DateTime t)
@@ -184,10 +191,10 @@ public sealed class FtpServerViewModel : ObservableObject
     private static string FormatUptime(TimeSpan up)
     {
         if (up.TotalSeconds < 0) up = TimeSpan.Zero;
-        if (up.TotalDays >= 1) return $"{(int)up.TotalDays} 天 {up.Hours} 小时";
-        if (up.TotalHours >= 1) return $"{(int)up.TotalHours} 小时 {up.Minutes} 分";
-        if (up.TotalMinutes >= 1) return $"{(int)up.TotalMinutes} 分 {up.Seconds} 秒";
-        return $"{(int)up.TotalSeconds} 秒";
+        if (up.TotalDays >= 1) return Localizer.Format("ftp.server.uptimeDays", (int)up.TotalDays, up.Hours);
+        if (up.TotalHours >= 1) return Localizer.Format("ftp.server.uptimeHours", (int)up.TotalHours, up.Minutes);
+        if (up.TotalMinutes >= 1) return Localizer.Format("ftp.server.uptimeMinutes", (int)up.TotalMinutes, up.Seconds);
+        return Localizer.Format("ftp.server.uptimeSeconds", (int)up.TotalSeconds);
     }
 
     private static IEnumerable<string> LocalIPv4()
@@ -205,5 +212,5 @@ public sealed class FtpServerViewModel : ObservableObject
 
     private static Dispatcher Dispatcher() => Application.Current.Dispatcher;
 
-    private static void Error(string msg) => MessageBox.Show(msg, "FTP 服务端", MessageBoxButton.OK, MessageBoxImage.Warning);
+    private static void Error(string msg) => Dialogs.Show(msg, Localizer.T("ftp.server.errorTitle"), MessageBoxButton.OK, MessageBoxImage.Warning);
 }

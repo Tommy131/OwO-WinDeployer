@@ -1,0 +1,20 @@
+{
+  "launch.arpEntry": "注册表项: {0}",
+  "launch.displayIcon": "DisplayIcon 非可启动(卸载器/图标)，从其所在目录挑选: {0}",
+  "launch.noExe": "未能定位可执行文件",
+  "launch.noExeDetail": "未能定位可执行文件，请从开始菜单启动",
+  "launch.noMatch": "未匹配",
+  "launch.pickInstallDir": "安装目录挑选 → {0}",
+  "launch.pickInstallLoc": "InstallLocation 挑选 → {0}",
+  "launch.pickRunKey": "启动项注册表 → {0}",
+  "launch.pickSpec": "安装路径(便携/自定义) → {0}",
+  "launch.pickStartMenu": "开始菜单快捷方式 → {0}",
+  "launch.started": "已启动: {0}",
+  "launch.tryStore": "尝试开始菜单 / Store 应用 …",
+  "launch.win32Fail": "Win32 启动失败: {0}，尝试 Store/MSIX …",
+  "store.entries": "Start 应用条目: {0}",
+  "store.launchFail": "Store 启动失败: {0}",
+  "update.noReleaseOrNet": "仓库暂无发布版或网络不可用",
+  "winlibs.llvm": " · 含 LLVM/Clang",
+  "winlibs.threads": "{0} 线程"
+}

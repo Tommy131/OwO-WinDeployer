@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Text;
+using WinDeploy.Core.I18n;
 
 namespace WinDeploy.App.Services;
 
@@ -47,7 +48,7 @@ public static class StoreApps
     public static string? FindAppId(string appName, Action<string>? log = null)
     {
         var apps = All();
-        log?.Invoke($"Start 应用条目: {apps.Count}");
+        log?.Invoke(Localizer.Format("store.entries", apps.Count));
         var norm = Normalize(appName);
         if (norm.Length == 0) return null;
         var hit = apps.FirstOrDefault(a =>
@@ -80,7 +81,7 @@ public static class StoreApps
             Process.Start(new ProcessStartInfo("explorer.exe", $"shell:AppsFolder\\{appId}") { UseShellExecute = true });
             return true;
         }
-        catch (Exception ex) { log?.Invoke("Store 启动失败: " + ex.Message); return false; }
+        catch (Exception ex) { log?.Invoke(Localizer.Format("store.launchFail", ex.Message)); return false; }
     }
 
     private static readonly Dictionary<string, Environment.SpecialFolder> KnownFolders = new(StringComparer.OrdinalIgnoreCase)

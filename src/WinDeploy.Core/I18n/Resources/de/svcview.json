@@ -1,0 +1,18 @@
+{
+  "svc.view.listSubtitle": "Lokale Webserver verwalten: Konfigurationsdateien, SSL-Zertifikate, Sites (vhost) und Prozess-Start/-Stopp. Zum Verwalten auf einen Server klicken.",
+  "svc.view.openInstallDir": "Installationsordner öffnen",
+  "svc.view.uptime": "Laufzeit",
+  "svc.view.configFiles": "Konfigurationsdateien",
+  "svc.view.vhosts": "Sites (vhost)",
+  "svc.view.newVhost": "+ Neue Site",
+  "svc.view.dir": "Ordner",
+  "svc.view.noVhosts": "Noch keine Sites. Auf „Neue Site“ klicken, um eine zu erstellen (ein include wird automatisch zur Hauptkonfiguration hinzugefügt).",
+  "svc.view.sslCerts": "SSL-Zertifikate",
+  "svc.view.genSelfSigned": "Selbstsigniert erzeugen",
+  "svc.view.import": "Importieren",
+  "svc.view.noCerts": "Keine Zertifikate im SSL-Ordner. Sie können „Selbstsigniert erzeugen“ oder ein vorhandenes Zertifikat / einen Schlüssel „Importieren“.",
+  "svc.view.collect": "Erfassen",
+  "svc.view.view": "Anzeigen",
+  "svc.view.clear": "Leeren",
+  "svc.view.noLogs": "Keine Protokolldateien gefunden (sie werden nach dem Start des Dienstes erstellt)."
+}

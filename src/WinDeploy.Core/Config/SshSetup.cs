@@ -1,3 +1,4 @@
+using WinDeploy.Core.I18n;
 using WinDeploy.Core.Util;
 
 namespace WinDeploy.Core.Config;
@@ -22,10 +23,10 @@ public static class SshSetup
         {
             var comment = $"{Environment.UserName}@{Environment.MachineName}";
             var r = await Proc.RunAsync("ssh-keygen", new[] { "-t", "ed25519", "-f", key, "-N", "", "-C", comment }, ct: ct);
-            results.Add(r.Ok ? ConfigResult.Ok("SSH 密钥", "已生成新 ed25519 密钥")
-                             : ConfigResult.Fail("SSH 密钥", $"ssh-keygen exit {r.ExitCode}"));
+            results.Add(r.Ok ? ConfigResult.Ok(Localizer.T("engine.ssh.keyName"), Localizer.T("engine.ssh.generated"))
+                             : ConfigResult.Fail(Localizer.T("engine.ssh.keyName"), $"ssh-keygen exit {r.ExitCode}"));
         }
-        else results.Add(ConfigResult.Skip("SSH 密钥", "已存在，跳过生成"));
+        else results.Add(ConfigResult.Skip(Localizer.T("engine.ssh.keyName"), Localizer.T("engine.ssh.keyExists")));
 
         // Apply non-secret host config + known_hosts from the repo.
         var repoSsh = Path.Combine(repoRoot, "configs", "ssh");
@@ -36,22 +37,22 @@ public static class SshSetup
             var d = Path.Combine(sshDir, f);
             if (File.Exists(d)) { try { File.Copy(d, $"{d}.bak.{DateTime.Now:yyyyMMddHHmmss}", true); } catch { } }
             File.Copy(s, d, true);
-            results.Add(ConfigResult.Ok("SSH 配置", $"套用 {f}"));
+            results.Add(ConfigResult.Ok(Localizer.T("engine.ssh.configName"), Localizer.Format("engine.ssh.applyConfig", f)));
         }
 
         // Outward action — only when explicitly requested.
         if (register)
         {
-            if (!File.Exists(pub)) results.Add(ConfigResult.Skip("SSH 登记", "无公钥"));
+            if (!File.Exists(pub)) results.Add(ConfigResult.Skip(Localizer.T("engine.ssh.registerName"), Localizer.T("engine.ssh.noPubKey")));
             else
             {
                 var gh = CommandFinder.Find("gh");
-                if (gh is null) results.Add(ConfigResult.Skip("SSH 登记", "gh 未安装"));
+                if (gh is null) results.Add(ConfigResult.Skip(Localizer.T("engine.ssh.registerName"), Localizer.T("engine.ssh.ghNotInstalled")));
                 else
                 {
                     var r = await Proc.RunAsync(gh, new[] { "ssh-key", "add", pub, "--title", Environment.MachineName }, ct: ct);
-                    results.Add(r.Ok ? ConfigResult.Ok("SSH 登记", "已登记公钥到 GitHub")
-                                     : ConfigResult.Fail("SSH 登记", $"gh 退出 {r.ExitCode}"));
+                    results.Add(r.Ok ? ConfigResult.Ok(Localizer.T("engine.ssh.registerName"), Localizer.T("engine.ssh.registered"))
+                                     : ConfigResult.Fail(Localizer.T("engine.ssh.registerName"), $"gh exit {r.ExitCode}"));
                 }
             }
         }

@@ -1,0 +1,19 @@
+{
+  "dialog.choice.ok": "Bestätigen",
+  "dialog.busy.warning": "Bitte schließen Sie die App nicht; dieses Fenster verschwindet automatisch, wenn die Aufgabe abgeschlossen ist.",
+  "dialog.close.title": "OwO! Win Deployer schließen",
+  "dialog.close.q": "Die App beenden oder zum Weiterlaufen in den Hintergrund minimieren?",
+  "dialog.close.desc": "„Im Hintergrund weiterlaufen“ legt das Fenster in den Infobereich und lässt die App weiterlaufen; zum Wiederöffnen auf das Infobereichssymbol klicken.",
+  "dialog.close.remember": "Meine Auswahl merken (in den Einstellungen änderbar)",
+  "dialog.close.tray": "In den Hintergrund minimieren",
+  "dialog.close.exit": "App beenden",
+  "dialog.devmode.title": "Entwicklermodus aktivieren",
+  "dialog.devmode.bannerTitle": "Der Entwicklermodus schaltet erweiterte Systemfunktionen frei",
+  "dialog.devmode.bannerBody": "Diese Funktionen können Systemeinstellungen direkt ändern, Prozesse und Autostart-Einträge verwalten; unsachgemäße Nutzung kann zu Systeminstabilität oder Datenverlust führen. Bitte bestätigen Sie, dass Sie die Risiken verstehen.",
+  "dialog.devmode.featuresTitle": "Die Aktivierung schaltet Folgendes frei:",
+  "dialog.devmode.feat1": "Die vollständige Softwareliste (Entwicklungs-Toolchains, IDE, KI, Datenbanken — alle Kategorien)",
+  "dialog.devmode.feat2": "Terminal · Dienstkonfiguration · FTP-Übertragung · WSL · System-Tuning · Erweiterte Tools",
+  "dialog.devmode.feat3": "Wartung · Prozessverwaltung · Autostart-Einträge · Bearbeitung von Umgebungsvariablen",
+  "dialog.devmode.footer": "Diese Einstellung kann jederzeit unter Einstellungen → Entwickleroptionen deaktiviert werden.",
+  "dialog.devmode.confirm": "Aktivieren"
+}

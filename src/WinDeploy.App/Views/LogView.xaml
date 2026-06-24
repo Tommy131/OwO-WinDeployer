@@ -9,16 +9,16 @@
     </Grid.RowDefinitions>
 
     <StackPanel Grid.Row="0">
-      <TextBlock Text="日志" FontSize="20" FontWeight="SemiBold" />
-      <TextBlock Text="全局审计记录：应用启动、安装 / 更新 / 卸载 / 启动、设置与环境变量变更等。" FontSize="13"
+      <TextBlock Text="{DynamicResource S.log.title}" FontSize="20" FontWeight="SemiBold" />
+      <TextBlock Text="{DynamicResource S.log.subtitle}" FontSize="13"
                  Foreground="{DynamicResource TextSecondary}" Margin="0,3,0,0" />
     </StackPanel>
 
     <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,0">
-      <Button Content="刷新" Style="{StaticResource MiniButton}" Command="{Binding RefreshCommand}" />
-      <Button Content="打开目录" Style="{StaticResource MiniButton}" Command="{Binding OpenFolderCommand}" Margin="8,0,0,0" />
-      <Button Content="清空" Style="{StaticResource MiniButton}" Command="{Binding ClearCommand}" Margin="8,0,0,0"
-              ToolTip="清空 app.log（不可恢复）" />
+      <Button Content="{DynamicResource S.common.refresh}" Style="{StaticResource MiniButton}" Command="{Binding RefreshCommand}" />
+      <Button Content="{DynamicResource S.log.openFolder}" Style="{StaticResource MiniButton}" Command="{Binding OpenFolderCommand}" Margin="8,0,0,0" />
+      <Button Content="{DynamicResource S.log.clear}" Style="{StaticResource MiniButton}" Command="{Binding ClearCommand}" Margin="8,0,0,0"
+              ToolTip="{DynamicResource S.log.clear.tip}" />
       <TextBlock Text="{Binding FilePath}" FontSize="11" Foreground="{DynamicResource TextTertiary}"
                  VerticalAlignment="Center" Margin="16,0,0,0" TextTrimming="CharacterEllipsis" />
     </StackPanel>

@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.ObjectModel;
 using System.Security;
 using WinDeploy.App.Services;
+using WinDeploy.Core.I18n;
 
 namespace WinDeploy.App.ViewModels;
 
@@ -64,9 +65,9 @@ public sealed class EnvVarsViewModel : ObservableObject
                 Rows.Add(new EnvVarRow { Name = name, Value = (string)(e.Value ?? "") });
                 _originalNames.Add(name);
             }
-            Note = _machine ? "系统变量 — 修改需以管理员身份运行" : "用户变量";
+            Note = _machine ? Localizer.T("env.note.machine") : Localizer.T("env.note.user");
         }
-        catch (Exception ex) { Note = "读取失败：" + ex.Message; }
+        catch (Exception ex) { Note = Localizer.Format("env.note.loadFail", ex.Message); }
     }
 
     private void Save()
@@ -86,10 +87,10 @@ public sealed class EnvVarsViewModel : ObservableObject
 
             var removed = _originalNames.Count(o => !current.Contains(o));
             _originalNames = current;
-            Note = "已保存。新开的程序 / 终端即可生效。";
+            Note = Localizer.T("env.note.saved");
             AuditLog.Action($"保存环境变量（{(_machine ? "系统" : "用户")}）：共 {current.Count} 项，移除 {removed} 项");
         }
-        catch (SecurityException) { Note = "保存失败：修改系统变量需要以管理员身份运行。"; }
-        catch (Exception ex) { Note = "保存失败：" + ex.Message; }
+        catch (SecurityException) { Note = Localizer.T("env.note.removeAdmin"); }
+        catch (Exception ex) { Note = Localizer.Format("env.note.saveFail", ex.Message); }
     }
 }

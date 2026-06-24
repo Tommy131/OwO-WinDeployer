@@ -15,6 +15,16 @@ public sealed class CatalogItem
     public string Id { get; set; } = "";
     public string Name { get; set; } = "";
     public string? Summary { get; set; }
+
+    /// <summary>Localized summaries by language code (en/de), loaded from catalog/i18n/&lt;lang&gt;.json.
+    /// zh is the canonical <see cref="Summary"/>. Not persisted to catalog.json.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public Dictionary<string, string> LocalizedSummary { get; } = new();
+
+    /// <summary>Summary in the given language: the localized override if present, else the zh <see cref="Summary"/>.</summary>
+    public string? SummaryFor(string lang)
+        => lang != "zh" && LocalizedSummary.TryGetValue(lang, out var s) && !string.IsNullOrWhiteSpace(s) ? s : Summary;
+
     public string? Icon { get; set; }
     public string? Homepage { get; set; }
     public string Category { get; set; } = "";

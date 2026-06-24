@@ -1,0 +1,19 @@
+{
+  "dialog.choice.ok": "确定 安装",
+  "dialog.busy.warning": "请勿关闭软件，任务完成后此窗口会自动消失。",
+  "dialog.close.title": "关闭 OwO! Win Deployer",
+  "dialog.close.q": "要退出程序，还是最小化到后台常驻？",
+  "dialog.close.desc": "「后台常驻」会将窗口收起到系统托盘，程序继续在后台运行；点击托盘图标即可重新打开。",
+  "dialog.close.remember": "记住我的选择（可在「设置」中修改）",
+  "dialog.close.tray": "最小化到后台",
+  "dialog.close.exit": "退出程序",
+  "dialog.devmode.title": "开启开发人员模式",
+  "dialog.devmode.bannerTitle": "开发人员模式会解锁高级系统功能",
+  "dialog.devmode.bannerBody": "这些功能可直接修改系统设置、管理进程和启动项，操作不当可能导致系统不稳定或数据丢失。请确认您了解相关风险。",
+  "dialog.devmode.featuresTitle": "开启后将解锁以下功能：",
+  "dialog.devmode.feat1": "完整软件列表（开发工具链、IDE、AI、数据库等所有分类）",
+  "dialog.devmode.feat2": "终端 · 服务配置 · FTP 传输 · WSL · 系统调优 · 高级工具",
+  "dialog.devmode.feat3": "系统维护 · 进程管理 · 启动项管理 · 环境变量编辑",
+  "dialog.devmode.footer": "此设置可随时在「设置 → 开发者选项」中关闭。",
+  "dialog.devmode.confirm": "确认开启"
+}

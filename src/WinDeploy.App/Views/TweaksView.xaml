@@ -9,13 +9,13 @@
     </Grid.RowDefinitions>
 
     <StackPanel Grid.Row="0">
-      <TextBlock Text="系统调优" FontSize="20" FontWeight="SemiBold" />
-      <TextBlock Text="常用且可逆的系统设置（资源管理器 / 外观 / 隐私）一键开关。多为当前用户(HKCU)设置，无需管理员；标注「需管理员」的除外。"
+      <TextBlock Text="{DynamicResource S.tweaks.title}" FontSize="20" FontWeight="SemiBold" />
+      <TextBlock Text="{DynamicResource S.tweaks.subtitle}"
                  FontSize="13" Foreground="{DynamicResource TextSecondary}" Margin="0,3,0,0" TextWrapping="Wrap" />
     </StackPanel>
 
     <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,0">
-      <Button Content="↻ 刷新状态" Style="{StaticResource MiniButton}" Command="{Binding RefreshCommand}" />
+      <Button Content="{DynamicResource S.tweaks.refresh}" Style="{StaticResource MiniButton}" Command="{Binding RefreshCommand}" />
     </StackPanel>
 
     <!-- Margin right -24 / Padding right 24: scrollbar flush at the page's outer edge, content unchanged. -->
@@ -35,7 +35,7 @@
                     <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
                     <Border CornerRadius="6" Padding="6,1" Margin="8,0,0,0" Background="{DynamicResource WarnBg}" VerticalAlignment="Center"
                             Visibility="{Binding NeedsAdmin, Converter={StaticResource BoolToVis}}">
-                      <TextBlock Text="需管理员" FontSize="10" Foreground="{DynamicResource WarnFg}" />
+                      <TextBlock Text="{DynamicResource S.tweaks.badge.needsAdmin}" FontSize="10" Foreground="{DynamicResource WarnFg}" />
                     </Border>
                   </StackPanel>
                   <TextBlock Text="{Binding Detail}" FontSize="11.5" Foreground="{DynamicResource TextSecondary}" Margin="0,4,0,0" TextWrapping="Wrap" />

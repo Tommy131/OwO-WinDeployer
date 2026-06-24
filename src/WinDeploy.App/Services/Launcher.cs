@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Text;
 using WinDeploy.Core;
+using WinDeploy.Core.I18n;
 using WinDeploy.Core.Models;
 using WinDeploy.Core.Util;
 
@@ -27,24 +28,24 @@ public static class Launcher
                 var dir = Path.GetDirectoryName(target);
                 if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir)) psi.WorkingDirectory = dir;
                 Process.Start(psi);
-                log?.Invoke("已启动: " + target);
+                log?.Invoke(Localizer.Format("launch.started", target));
                 detail = target;
                 return true;
             }
-            catch (Exception ex) { log?.Invoke("Win32 启动失败: " + ex.Message + "，尝试 Store/MSIX …"); }
+            catch (Exception ex) { log?.Invoke(Localizer.Format("launch.win32Fail", ex.Message)); }
         }
 
         // Start-menu fallback (MSIX apps like WhatsApp, or Win32 apps with empty ARP paths like ScreenToGif).
-        log?.Invoke("尝试开始菜单 / Store 应用 …");
+        log?.Invoke(Localizer.T("launch.tryStore"));
         var appId = StoreApps.FindAppId(item.Name, log);
         if (appId != null && StoreApps.Launch(appId, log))
         {
-            log?.Invoke("已启动: " + appId);
+            log?.Invoke(Localizer.Format("launch.started", appId));
             detail = appId;
             return true;
         }
 
-        detail = "未能定位可执行文件，请从开始菜单启动";
+        detail = Localizer.T("launch.noExeDetail");
         return false;
     }
 
@@ -53,32 +54,32 @@ public static class Launcher
     public static string? Resolve(CatalogItem item, PathResolver pr, Action<string>? log = null)
     {
         var arp = Arp.Find(item.Detect?.Arp, item.Name, IdToName(item.Install.Id));
-        log?.Invoke("注册表项: " + (arp?.DisplayName ?? "未匹配"));
+        log?.Invoke(Localizer.Format("launch.arpEntry", arp?.DisplayName ?? Localizer.T("launch.noMatch")));
 
         var icon = ValidExeFromDisplayIcon(arp?.DisplayIcon);
         if (icon != null) { log?.Invoke("DisplayIcon → " + icon); return icon; }
-        if (!string.IsNullOrWhiteSpace(arp?.DisplayIcon)) log?.Invoke("DisplayIcon 非可启动(卸载器/图标)，从其所在目录挑选: " + arp!.DisplayIcon);
+        if (!string.IsNullOrWhiteSpace(arp?.DisplayIcon)) log?.Invoke(Localizer.Format("launch.displayIcon", arp!.DisplayIcon));
 
         // DisplayIcon's folder usually holds the real exe even when the icon points at uninstall.exe/.ico.
         var dirExe = ExeFromDisplayIconDir(arp, item);
-        if (dirExe != null) { log?.Invoke("安装目录挑选 → " + dirExe); return dirExe; }
+        if (dirExe != null) { log?.Invoke(Localizer.Format("launch.pickInstallDir", dirExe)); return dirExe; }
 
         var loc = ExeFromInstallLocation(arp, item);
-        if (loc != null) { log?.Invoke("InstallLocation 挑选 → " + loc); return loc; }
+        if (loc != null) { log?.Invoke(Localizer.Format("launch.pickInstallLoc", loc)); return loc; }
 
         var spec = ExeFromInstallSpec(item, pr);
-        if (spec != null) { log?.Invoke("安装路径(便携/自定义) → " + spec); return spec; }
+        if (spec != null) { log?.Invoke(Localizer.Format("launch.pickSpec", spec)); return spec; }
 
         var lnk = FindStartMenuShortcut(item.Name);
-        if (lnk != null) { log?.Invoke("开始菜单快捷方式 → " + lnk); return lnk; }
+        if (lnk != null) { log?.Invoke(Localizer.Format("launch.pickStartMenu", lnk)); return lnk; }
 
         var det = ExeFromDetect(item, pr);
         if (det != null) { log?.Invoke("detect → " + det); return det; }
 
         var run = ExeFromRunKey(item);
-        if (run != null) { log?.Invoke("启动项注册表 → " + run); return run; }
+        if (run != null) { log?.Invoke(Localizer.Format("launch.pickRunKey", run)); return run; }
 
-        log?.Invoke("未能定位可执行文件");
+        log?.Invoke(Localizer.T("launch.noExe"));
         return null;
     }
 

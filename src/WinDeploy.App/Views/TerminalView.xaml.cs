@@ -7,6 +7,7 @@ using System.Windows.Media.Effects;
 using System.Windows.Threading;
 using WinDeploy.App.Services;
 using WinDeploy.App.ViewModels;
+using WinDeploy.Core.I18n;
 
 namespace WinDeploy.App.Views;
 
@@ -95,7 +96,7 @@ public partial class TerminalView : UserControl
             menu.Items.Add(item);
         }
         if (menu.Items.Count == 0)
-            menu.Items.Add(new MenuItem { Header = "未检测到可用的终端", IsEnabled = false, Style = TryFindResource("ThemedMenuItem") as Style });
+            menu.Items.Add(new MenuItem { Header = Localizer.T("term.menu.none"), IsEnabled = false, Style = TryFindResource("ThemedMenuItem") as Style });
         menu.IsOpen = true;
     }
 

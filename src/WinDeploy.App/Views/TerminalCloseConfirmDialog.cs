@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using WinDeploy.Core.I18n;
 
 namespace WinDeploy.App.Views;
 
@@ -10,7 +11,7 @@ public sealed class TerminalCloseConfirmDialog : Window
 {
     public TerminalCloseConfirmDialog(string sessionTitle)
     {
-        Title = "关闭终端会话";
+        Title = Localizer.T("termdlg.close.title");
         Width = 440;
         SizeToContent = SizeToContent.Height;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
@@ -47,7 +48,7 @@ public sealed class TerminalCloseConfirmDialog : Window
         Grid.SetColumn(bannerText, 1);
         bannerText.Children.Add(new TextBlock
         {
-            Text = $"确定关闭「{sessionTitle}」？",
+            Text = Localizer.Format("termdlg.close.confirm", sessionTitle),
             FontSize = 13,
             FontWeight = FontWeights.SemiBold,
             Foreground = Brush("WarnFg"),
@@ -55,7 +56,7 @@ public sealed class TerminalCloseConfirmDialog : Window
         });
         bannerText.Children.Add(new TextBlock
         {
-            Text = "断开连接后，该终端的会话状态（正在运行的进程、命令历史、当前目录等）将全部丢失，且无法恢复。",
+            Text = Localizer.T("termdlg.close.banner"),
             FontSize = 12,
             Foreground = Brush("WarnFg"),
             TextWrapping = TextWrapping.Wrap,
@@ -72,11 +73,11 @@ public sealed class TerminalCloseConfirmDialog : Window
             Orientation = Orientation.Horizontal,
             HorizontalAlignment = HorizontalAlignment.Right,
         };
-        var cancel = new Button { Content = "取消", MinWidth = 72, IsCancel = true };
+        var cancel = new Button { Content = Localizer.T("common.cancel"), MinWidth = 72, IsCancel = true };
         if (Application.Current.TryFindResource("MiniButton") is Style cancelStyle) cancel.Style = cancelStyle;
         cancel.Click += (_, _) => DialogResult = false;
 
-        var confirm = new Button { Content = "关闭会话", MinWidth = 96, Margin = new Thickness(10, 0, 0, 0), IsDefault = true };
+        var confirm = new Button { Content = Localizer.T("termdlg.close.confirmBtn"), MinWidth = 96, Margin = new Thickness(10, 0, 0, 0), IsDefault = true };
         if (Application.Current.TryFindResource("DangerButton") is Style confirmStyle) confirm.Style = confirmStyle;
         confirm.Click += (_, _) => DialogResult = true;
 

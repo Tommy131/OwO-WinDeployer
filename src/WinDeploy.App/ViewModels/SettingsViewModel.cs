@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Media;
 using WinDeploy.App.Services;
+using WinDeploy.Core.I18n;
 
 namespace WinDeploy.App.ViewModels;
 
@@ -11,6 +12,7 @@ public sealed class SettingsViewModel : ObservableObject
     public SettingsViewModel()
     {
         _s = SettingsStore.Load();
+        _lang = _s.Language ?? Localizer.Current;
         _devRoot = _s.DevRoot ?? "%USERPROFILE%/dev";
         _toolsDir = _s.ToolsDir ?? "%LOCALAPPDATA%/tools";
         _downloadDir = _s.DownloadDir ?? "%USERPROFILE%/Downloads/WinDeploy";
@@ -49,18 +51,18 @@ public sealed class SettingsViewModel : ObservableObject
 
     private async Task CheckUpdateAsync()
     {
-        UpdateNote = "正在检查更新 …";
+        UpdateNote = Localizer.T("settings.update.checking");
         var r = await SelfUpdate.CheckAsync(force: true);
         if (r.Error != null) { UpdateNote = r.Error; return; }
         if (r.Available)
         {
-            UpdateNote = $"发现新版本 v{r.Latest}";
+            UpdateNote = Localizer.Format("settings.update.found", r.Latest);
             AuditLog.Action($"检查更新：发现新版本 v{r.Latest}（当前 v{r.Current}）");
-            if (MessageBox.Show($"发现新版本 v{r.Latest}（当前 v{r.Current}）。\n\n是否前往发布页下载？",
-                    "检查更新", MessageBoxButton.YesNo, MessageBoxImage.Information) == MessageBoxResult.Yes)
+            if (Dialogs.Show(Localizer.Format("settings.update.foundBody", r.Latest, r.Current),
+                    Localizer.T("settings.update.dialogTitle"), MessageBoxButton.YesNo, MessageBoxImage.Information) == MessageBoxResult.Yes)
                 OpenUrl(r.HtmlUrl);
         }
-        else UpdateNote = $"当前已是最新版本 v{r.Current}";
+        else UpdateNote = Localizer.Format("settings.update.upToDate", r.Current);
     }
 
     private static void OpenUrl(string? url)
@@ -167,6 +169,24 @@ public sealed class SettingsViewModel : ObservableObject
     }
     public string TermCodeSpeedText => $"{TerminalFx.Speed:0.0}×";
 
+    // ── 界面语言（即时切换并持久化）────────────────────────────────────
+    private string _lang;
+    public bool IsLangZh { get => _lang == Lang.Zh; set { if (value) SetLang(Lang.Zh); } }
+    public bool IsLangEn { get => _lang == Lang.En; set { if (value) SetLang(Lang.En); } }
+    public bool IsLangDe { get => _lang == Lang.De; set { if (value) SetLang(Lang.De); } }
+
+    private void SetLang(string code)
+    {
+        if (_lang == code) return;
+        _lang = code;
+        OnPropertyChanged(nameof(IsLangZh));
+        OnPropertyChanged(nameof(IsLangEn));
+        OnPropertyChanged(nameof(IsLangDe));
+        LocalizationManager.SetLanguage(code);   // live: swaps S.* resources + raises CultureChanged
+        SettingsStore.SetLanguage(code);
+        AuditLog.Action($"切换语言：{code}");
+    }
+
     private string _theme;
     public bool IsThemeSystem { get => _theme == "system"; set { if (value) SetTheme("system"); } }
     public bool IsThemeLight { get => _theme == "light"; set { if (value) SetTheme("light"); } }
@@ -214,7 +234,7 @@ public sealed class SettingsViewModel : ObservableObject
         SettingsStore.Save(_s);
         AuditLog.Action($"更新设置 · DevRoot={_s.DevRoot} · ToolsDir={_s.ToolsDir} · 下载={_s.DownloadDir} · Repo={_s.RepoUrl} · " +
                         $"镜像={(string.IsNullOrEmpty(_s.Mirror) ? "(无)" : _s.Mirror)} · 脱敏关键词 {ParseKeywords(_s.RedactKeywords).Length} 项");
-        Note = "已保存。脱敏关键词即时生效；路径变量在下次启动生效。";
+        Note = Localizer.T("settings.saved");
         Saved?.Invoke();
     }
 

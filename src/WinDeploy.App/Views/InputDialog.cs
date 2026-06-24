@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using WinDeploy.Core.I18n;
 
 namespace WinDeploy.App.Views;
 
@@ -32,8 +33,8 @@ public sealed class InputDialog : Window
         root.Children.Add(_box);
 
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 16, 0, 0) };
-        var ok = new Button { Content = "确定", MinWidth = 80, Margin = new Thickness(0, 0, 8, 0), IsDefault = true };
-        var cancel = new Button { Content = "取消", MinWidth = 72, IsCancel = true };
+        var ok = new Button { Content = Localizer.T("common.ok"), MinWidth = 80, Margin = new Thickness(0, 0, 8, 0), IsDefault = true };
+        var cancel = new Button { Content = Localizer.T("common.cancel"), MinWidth = 72, IsCancel = true };
         if (Application.Current.TryFindResource("PrimaryButton") is Style okS) ok.Style = okS;
         if (Application.Current.TryFindResource("MiniButton") is Style caS) cancel.Style = caS;
         ok.Click += (_, _) => { if (Value.Length > 0) DialogResult = true; };

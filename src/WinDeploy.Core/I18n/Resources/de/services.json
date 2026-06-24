@@ -1,0 +1,20 @@
+{
+  "launch.arpEntry": "Registrierungseintrag: {0}",
+  "launch.displayIcon": "DisplayIcon ist nicht startbar (Deinstallationsprogramm/Symbol); Auswahl aus dessen Ordner: {0}",
+  "launch.noExe": "Ausführbare Datei konnte nicht gefunden werden",
+  "launch.noExeDetail": "Ausführbare Datei konnte nicht gefunden werden; bitte über das Startmenü starten",
+  "launch.noMatch": "keine Übereinstimmung",
+  "launch.pickInstallDir": "Aus Installationsordner gewählt → {0}",
+  "launch.pickInstallLoc": "Aus InstallLocation gewählt → {0}",
+  "launch.pickRunKey": "Autostart-Registrierung → {0}",
+  "launch.pickSpec": "Installationspfad (portabel/benutzerdefiniert) → {0}",
+  "launch.pickStartMenu": "Startmenü-Verknüpfung → {0}",
+  "launch.started": "Gestartet: {0}",
+  "launch.tryStore": "Startmenü / Store-App wird versucht…",
+  "launch.win32Fail": "Win32-Start fehlgeschlagen: {0}, Store/MSIX wird versucht…",
+  "store.entries": "Startmenü-Einträge: {0}",
+  "store.launchFail": "Store-Start fehlgeschlagen: {0}",
+  "update.noReleaseOrNet": "Keine Releases im Repository oder Netzwerk nicht verfügbar",
+  "winlibs.llvm": " · inkl. LLVM/Clang",
+  "winlibs.threads": "{0} Threads"
+}

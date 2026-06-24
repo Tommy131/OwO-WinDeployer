@@ -3,17 +3,18 @@ using System.Diagnostics;
 using System.Windows;
 using WinDeploy.App.Services;
 using WinDeploy.Core.Engine;
+using WinDeploy.Core.I18n;
 
 namespace WinDeploy.App.ViewModels;
 
 /// <summary>The "运行进度" page. Operations are serialized by the host; each task is a row created via
 /// <see cref="Enqueue"/> (shown 排队 while it waits), then driven by Start/Step/Live/Done against that
 /// row reference — so a new task never overwrites the running one. History persists; tiles are cumulative.</summary>
-public sealed class ProgressViewModel : ObservableObject
+public sealed class ProgressViewModel : LocalizedObject
 {
     private readonly Stopwatch _sw = new();
     private ProgressItemViewModel? _currentRow;
-    private string _verb = "安装";
+    private string _verb = Localizer.T("verb.install");
     private int _runTotal, _runDone, _runOk, _runFailed;
 
     public ObservableCollection<ProgressItemViewModel> Items { get; } = new();
@@ -27,7 +28,7 @@ public sealed class ProgressViewModel : ObservableObject
         foreach (var rec in records.Count > 500 ? records.Skip(records.Count - 500) : records)
         {
             var kind = rec.Status switch { "成功" => "ok", "失败" => "failed", _ => "skip" };
-            var vm = new ProgressItemViewModel(rec.Name, rec.Op) { Id = rec.Id, Status = rec.Status, Kind = kind };
+            var vm = new ProgressItemViewModel(rec.Name, rec.Op) { Id = rec.Id, Kind = kind };
             var time = string.IsNullOrEmpty(rec.StartedAt) ? "" : $"{rec.StartedAt} → {rec.EndedAt}";
             var dur = rec.DurationMs > 0 ? ProgressItemViewModel.FormatDuration(TimeSpan.FromMilliseconds(rec.DurationMs)) : "";
             vm.LoadHistorical(time, dur, rec.Steps);
@@ -39,13 +40,13 @@ public sealed class ProgressViewModel : ObservableObject
     private double _percent;
     public double Percent { get => _percent; set => Set(ref _percent, value); }
 
-    private string _overall = "准备中";
+    private string _overall = Localizer.T("progress.preparing");
     public string Overall { get => _overall; set => Set(ref _overall, value); }
 
     private string _current = "";
     public string Current { get => _current; set => Set(ref _current, value); }
 
-    public string CurrentLabel => $"正在{_verb}";
+    public string CurrentLabel => Localizer.Format("progress.currentLabel", _verb);
 
     private string _liveProgress = "";
     public string LiveProgress { get => _liveProgress; private set => Set(ref _liveProgress, value); }
@@ -78,7 +79,7 @@ public sealed class ProgressViewModel : ObservableObject
     /// <summary>Add a 排队 row immediately (before the op acquires the run lock). Returns the row.</summary>
     public ProgressItemViewModel Enqueue(string id, string name, string method)
     {
-        var vm = new ProgressItemViewModel(name, method) { Id = id, Status = "排队", Kind = "queued" };
+        var vm = new ProgressItemViewModel(name, method) { Id = id, Kind = "queued" };
         Items.Add(vm);
         RaiseCounts();
         return vm;
@@ -100,7 +101,7 @@ public sealed class ProgressViewModel : ObservableObject
     public void Start(ProgressItemViewModel row)
     {
         _currentRow = row;
-        row.Status = $"{_verb}中"; row.Kind = "running"; row.MarkStarted();
+        row.Kind = "running"; row.MarkStarted();
         Current = row.Name;
         LiveProgress = "";
         Append($"→ {_verb} {row.Name} …");
@@ -116,11 +117,11 @@ public sealed class ProgressViewModel : ObservableObject
 
     public void Done(ProgressItemViewModel row, StepStatus status, string? message)
     {
-        (row.Status, row.Kind) = status switch
+        row.Kind = status switch
         {
-            StepStatus.Ok => ("成功", "ok"),
-            StepStatus.Failed => ("失败", "failed"),
-            _ => ("已装（跳过）", "skip"),
+            StepStatus.Ok => "ok",
+            StepStatus.Failed => "failed",
+            _ => "skip",
         };
         row.MarkEnded();
         PersistRecord(row, status, message, _verb);
@@ -133,7 +134,7 @@ public sealed class ProgressViewModel : ObservableObject
             Percent = _runTotal == 0 ? 100 : Math.Round(_runDone * 100.0 / _runTotal);
             Eta = EstimateEta();
         }
-        Overall = $"进度 {_runDone} / {_runTotal}";
+        Overall = Localizer.Format("progress.progressN", _runDone, _runTotal);
         RaiseCounts();
     }
 
@@ -141,7 +142,7 @@ public sealed class ProgressViewModel : ObservableObject
     /// so process-level start/stop/restart never wait behind a long install/update.</summary>
     public ProgressItemViewModel AddRunningRow(string id, string name, string method, string verb)
     {
-        var vm = new ProgressItemViewModel(name, method) { Id = id, Status = $"{verb}中", Kind = "running" };
+        var vm = new ProgressItemViewModel(name, method) { Id = id, Kind = "running" };
         vm.MarkStarted();
         Items.Add(vm);
         Append($"→ {verb} {name} …");
@@ -152,11 +153,11 @@ public sealed class ProgressViewModel : ObservableObject
     /// <summary>Finish a quick-op row independently of the active run.</summary>
     public void FinishRow(ProgressItemViewModel row, StepStatus status, string? message, string verb)
     {
-        (row.Status, row.Kind) = status switch
+        row.Kind = status switch
         {
-            StepStatus.Ok => ("成功", "ok"),
-            StepStatus.Failed => ("失败", "failed"),
-            _ => ("跳过", "skip"),
+            StepStatus.Ok => "ok",
+            StepStatus.Failed => "failed",
+            _ => "skip",
         };
         row.MarkEnded();
         PersistRecord(row, status, message, verb);
@@ -171,19 +172,19 @@ public sealed class ProgressViewModel : ObservableObject
         _currentRow = null;
         Current = ""; Eta = ""; LiveProgress = "";
         Percent = 100;
-        Overall = $"完成 · 成功 {_runOk} · 失败 {_runFailed}";
-        Append("— 结束 —");
+        Overall = Localizer.Format("progress.doneSummary", _runOk, _runFailed);
+        Append(Localizer.T("progress.logEnd"));
         RaiseCounts();
     }
 
     private void ClearRecords()
     {
-        if (MessageBox.Show("确定清空全部运行进度记录？将同时清空 progress.jsonl 文件，不可恢复。", "清空记录",
+        if (Dialogs.Show(Localizer.T("progress.clearConfirmBody"), Localizer.T("progress.clearConfirmTitle"),
                 MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
         Items.Clear();
         _currentRow = null;
         Log = "";
-        Percent = 0; Overall = "准备中"; Current = ""; Eta = "";
+        Percent = 0; Overall = Localizer.T("progress.preparing"); Current = ""; Eta = "";
         RunHistory.Clear();
         RaiseCounts();
     }
@@ -215,8 +216,8 @@ public sealed class ProgressViewModel : ObservableObject
         var per = _sw.Elapsed.TotalSeconds / _runDone;
         var remain = TimeSpan.FromSeconds(per * (_runTotal - _runDone));
         return remain.TotalMinutes >= 1
-            ? $"约剩 {(int)remain.TotalMinutes} 分 {remain.Seconds} 秒"
-            : $"约剩 {remain.Seconds} 秒";
+            ? Localizer.Format("progress.etaMin", (int)remain.TotalMinutes, remain.Seconds)
+            : Localizer.Format("progress.etaSec", remain.Seconds);
     }
 
     private void Append(string line) => Log += line + Environment.NewLine;
@@ -227,5 +228,13 @@ public sealed class ProgressViewModel : ObservableObject
         OnPropertyChanged(nameof(FailedCount));
         OnPropertyChanged(nameof(RunningCount));
         OnPropertyChanged(nameof(QueuedCount));
+    }
+
+    /// <summary>On language switch, re-localize the idle overall line; CurrentLabel and per-row status pills
+    /// are computed and refresh via the blanket notify.</summary>
+    protected override void OnCultureChanged()
+    {
+        if (!IsRunning) Overall = Localizer.T("progress.preparing");
+        base.OnCultureChanged();
     }
 }

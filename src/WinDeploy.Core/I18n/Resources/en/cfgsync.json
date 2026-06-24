@@ -1,0 +1,17 @@
+{
+  "cfgsync.apply": "Apply config",
+  "cfgsync.envVars": "Environment variables",
+  "cfgsync.envVars.target": "User environment / PATH",
+  "cfgsync.includeAsk": "Include ask-type (e.g. LM Studio)",
+  "cfgsync.processing": "Processing …",
+  "cfgsync.ssh.generate": "Generate SSH key",
+  "cfgsync.ssh.register": "and register the public key on GitHub",
+  "cfgsync.ssh.subtitle": "Generate a local ed25519 key and apply the ssh config; the private key is never committed. The public key is registered on GitHub only when checked.",
+  "cfgsync.ssh.title": "SSH (a new key is generated per device)",
+  "cfgsync.status.done": "Done",
+  "cfgsync.status.failed": "Failed",
+  "cfgsync.status.skip": "Skipped",
+  "cfgsync.subtitle": "Apply the configs from the repository to this machine (backs up automatically before overwriting). This modifies your local environment — proceed as needed.",
+  "cfgsync.title": "Config Sync",
+  "cfgsync.toApply": "Configs to apply"
+}

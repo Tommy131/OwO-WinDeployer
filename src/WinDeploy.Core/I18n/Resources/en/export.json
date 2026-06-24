@@ -1,0 +1,10 @@
+{
+  "export.capture": "Capture local config",
+  "export.done": "Written back to configs/. Remember to git commit in the repository.",
+  "export.processing": "Processing …",
+  "export.status.failed": "Failed",
+  "export.status.ok": "Success",
+  "export.status.skip": "Skipped",
+  "export.subtitle": "Scan this machine and capture the configs of installed software back into the repository (sensitive data is redacted automatically). Click an item to expand its file path / size / preview.",
+  "export.title": "Export"
+}

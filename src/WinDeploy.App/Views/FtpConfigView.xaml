@@ -33,7 +33,7 @@
 
     <!-- action bar -->
     <DockPanel Grid.Row="0" Margin="0,0,0,10">
-      <Button DockPanel.Dock="Left" Content="保存配置" Style="{StaticResource PrimaryButton}" Command="{Binding SaveCommand}" />
+      <Button DockPanel.Dock="Left" Content="{DynamicResource S.ftp.config.save}" Style="{StaticResource PrimaryButton}" Command="{Binding SaveCommand}" />
       <TextBlock Text="{Binding Note}" FontSize="12" Foreground="{DynamicResource TextTertiary}"
                  VerticalAlignment="Center" Margin="14,0,0,0" TextWrapping="Wrap" />
     </DockPanel>
@@ -44,27 +44,27 @@
         <!-- 网络与监听 -->
         <Border Style="{StaticResource Card}" Padding="16,14" Margin="0,0,0,12">
           <StackPanel>
-            <TextBlock Text="网络与并发" Style="{StaticResource SectionTitle}" />
+            <TextBlock Text="{DynamicResource S.ftp.config.netTitle}" Style="{StaticResource SectionTitle}" />
             <UniformGrid Columns="2">
               <StackPanel Margin="0,0,16,8">
-                <TextBlock Text="控制端口（明文 / 显式 TLS）" Style="{StaticResource FieldLabel}" Margin="0,0,0,4" />
+                <TextBlock Text="{DynamicResource S.ftp.config.controlPort}" Style="{StaticResource FieldLabel}" Margin="0,0,0,4" />
                 <TextBox Style="{StaticResource NumBox}" Text="{Binding Port, UpdateSourceTrigger=PropertyChanged}" />
               </StackPanel>
               <StackPanel Margin="0,0,0,8">
-                <TextBlock Text="监听地址（0.0.0.0 = 所有网卡）" Style="{StaticResource FieldLabel}" Margin="0,0,0,4" />
+                <TextBlock Text="{DynamicResource S.ftp.config.listenAddress}" Style="{StaticResource FieldLabel}" Margin="0,0,0,4" />
                 <TextBox Width="180" HorizontalAlignment="Left" Padding="8,5" b:InputFilter.Mode="ipv4" Text="{Binding ListenAddress, UpdateSourceTrigger=PropertyChanged}" />
               </StackPanel>
               <StackPanel Margin="0,0,16,0">
-                <TextBlock Text="最大并发连接（0 = 不限）" Style="{StaticResource FieldLabel}" Margin="0,0,0,4" />
+                <TextBlock Text="{DynamicResource S.ftp.config.maxConnections}" Style="{StaticResource FieldLabel}" Margin="0,0,0,4" />
                 <TextBox Style="{StaticResource NumBox}" Text="{Binding MaxConnections, UpdateSourceTrigger=PropertyChanged}" />
               </StackPanel>
               <StackPanel Orientation="Horizontal">
                 <StackPanel Margin="0,0,16,0">
-                  <TextBlock Text="单用户上限（0=不限）" Style="{StaticResource FieldLabel}" Margin="0,0,0,4" />
+                  <TextBlock Text="{DynamicResource S.ftp.config.maxPerUser}" Style="{StaticResource FieldLabel}" Margin="0,0,0,4" />
                   <TextBox Width="90" HorizontalAlignment="Left" Padding="8,5" b:InputFilter.Mode="digits" Text="{Binding MaxConnectionsPerUser, UpdateSourceTrigger=PropertyChanged}" />
                 </StackPanel>
                 <StackPanel>
-                  <TextBlock Text="单 IP 上限（0=不限）" Style="{StaticResource FieldLabel}" Margin="0,0,0,4" />
+                  <TextBlock Text="{DynamicResource S.ftp.config.maxPerIp}" Style="{StaticResource FieldLabel}" Margin="0,0,0,4" />
                   <TextBox Width="90" HorizontalAlignment="Left" Padding="8,5" b:InputFilter.Mode="digits" Text="{Binding MaxConnectionsPerIp, UpdateSourceTrigger=PropertyChanged}" />
                 </StackPanel>
               </StackPanel>
@@ -75,16 +75,16 @@
         <!-- 被动模式 -->
         <Border Style="{StaticResource Card}" Padding="16,14" Margin="0,0,0,12">
           <StackPanel>
-            <TextBlock Text="被动模式（PASV）端口范围" Style="{StaticResource SectionTitle}" />
+            <TextBlock Text="{DynamicResource S.ftp.config.pasvTitle}" Style="{StaticResource SectionTitle}" />
             <StackPanel Orientation="Horizontal">
-              <TextBlock Text="起始" Style="{StaticResource FieldLabel}" />
+              <TextBlock Text="{DynamicResource S.ftp.config.pasvStart}" Style="{StaticResource FieldLabel}" />
               <TextBox Width="100" Padding="8,5" b:InputFilter.Mode="digits" Text="{Binding PassiveMin, UpdateSourceTrigger=PropertyChanged}" />
-              <TextBlock Text="结束" Style="{StaticResource FieldLabel}" Margin="14,0,10,0" />
+              <TextBlock Text="{DynamicResource S.ftp.config.pasvEnd}" Style="{StaticResource FieldLabel}" Margin="14,0,10,0" />
               <TextBox Width="100" Padding="8,5" b:InputFilter.Mode="digits" Text="{Binding PassiveMax, UpdateSourceTrigger=PropertyChanged}" />
-              <TextBlock Text="对外 IP（NAT 穿透，可空）" Style="{StaticResource FieldLabel}" Margin="14,0,10,0" />
+              <TextBlock Text="{DynamicResource S.ftp.config.pasvExternalIp}" Style="{StaticResource FieldLabel}" Margin="14,0,10,0" />
               <TextBox Width="150" Padding="8,5" b:InputFilter.Mode="ipv4" Text="{Binding PassiveExternalIp, UpdateSourceTrigger=PropertyChanged}" />
             </StackPanel>
-            <TextBlock Text="提示：被动端口与控制端口都需在防火墙放行。范围越大可并发的传输越多。"
+            <TextBlock Text="{DynamicResource S.ftp.config.pasvHint}"
                        FontSize="11.5" Foreground="{DynamicResource TextTertiary}" Margin="0,8,0,0" TextWrapping="Wrap" />
           </StackPanel>
         </Border>
@@ -92,36 +92,36 @@
         <!-- SSL / TLS -->
         <Border Style="{StaticResource Card}" Padding="16,14" Margin="0,0,0,12">
           <StackPanel>
-            <TextBlock Text="SSL / TLS 加密" Style="{StaticResource SectionTitle}" />
+            <TextBlock Text="{DynamicResource S.ftp.config.tlsTitle}" Style="{StaticResource SectionTitle}" />
             <StackPanel Orientation="Horizontal">
-              <RadioButton Content="不加密" GroupName="ftpTls" IsChecked="{Binding IsTlsNone}" Margin="0,0,16,0" />
-              <RadioButton Content="显式 (AUTH TLS，推荐)" GroupName="ftpTls" IsChecked="{Binding IsTlsExplicit}" Margin="0,0,16,0" />
-              <RadioButton Content="隐式 (Implicit FTPS)" GroupName="ftpTls" IsChecked="{Binding IsTlsImplicit}" />
+              <RadioButton Content="{DynamicResource S.ftp.config.tlsNone}" GroupName="ftpTls" IsChecked="{Binding IsTlsNone}" Margin="0,0,16,0" />
+              <RadioButton Content="{DynamicResource S.ftp.config.tlsExplicit}" GroupName="ftpTls" IsChecked="{Binding IsTlsExplicit}" Margin="0,0,16,0" />
+              <RadioButton Content="{DynamicResource S.ftp.config.tlsImplicit}" GroupName="ftpTls" IsChecked="{Binding IsTlsImplicit}" />
             </StackPanel>
 
             <StackPanel Visibility="{Binding TlsEnabled, Converter={StaticResource BoolToVis}}" Margin="0,10,0,0">
               <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                <CheckBox Content="要求登录前必须先 AUTH TLS（拒绝明文登录）" IsChecked="{Binding RequireTls}" />
-                <TextBlock Text="隐式端口" Style="{StaticResource FieldLabel}" Margin="20,0,8,0"
+                <CheckBox Content="{DynamicResource S.ftp.config.requireTls}" IsChecked="{Binding RequireTls}" />
+                <TextBlock Text="{DynamicResource S.ftp.config.implicitPort}" Style="{StaticResource FieldLabel}" Margin="20,0,8,0"
                            Visibility="{Binding IsTlsImplicit, Converter={StaticResource BoolToVis}}" />
                 <TextBox Width="80" Padding="8,5" b:InputFilter.Mode="digits" Text="{Binding ImplicitPort, UpdateSourceTrigger=PropertyChanged}"
                          Visibility="{Binding IsTlsImplicit, Converter={StaticResource BoolToVis}}" />
               </StackPanel>
 
-              <TextBlock Text="证书（留空 = 自动生成自签名证书）" Style="{StaticResource FieldLabel}" Margin="0,0,0,4" />
+              <TextBlock Text="{DynamicResource S.ftp.config.cert}" Style="{StaticResource FieldLabel}" Margin="0,0,0,4" />
               <DockPanel Margin="0,0,0,6">
-                <Button DockPanel.Dock="Right" Content="浏览…" Style="{StaticResource MiniButton}" Margin="8,0,0,0" Command="{Binding BrowseCertCommand}" />
+                <Button DockPanel.Dock="Right" Content="{DynamicResource S.ftp.config.browse}" Style="{StaticResource MiniButton}" Margin="8,0,0,0" Command="{Binding BrowseCertCommand}" />
                 <TextBox Padding="8,5" Text="{Binding CertPath, UpdateSourceTrigger=PropertyChanged}" />
               </DockPanel>
-              <TextBlock Text="私钥（仅当证书为 PEM 时填写；PFX 不需要）" Style="{StaticResource FieldLabel}" Margin="0,4,0,4" />
+              <TextBlock Text="{DynamicResource S.ftp.config.certKey}" Style="{StaticResource FieldLabel}" Margin="0,4,0,4" />
               <DockPanel Margin="0,0,0,6">
-                <Button DockPanel.Dock="Right" Content="浏览…" Style="{StaticResource MiniButton}" Margin="8,0,0,0" Command="{Binding BrowseKeyCommand}" />
+                <Button DockPanel.Dock="Right" Content="{DynamicResource S.ftp.config.browse}" Style="{StaticResource MiniButton}" Margin="8,0,0,0" Command="{Binding BrowseKeyCommand}" />
                 <TextBox Padding="8,5" Text="{Binding KeyPath, UpdateSourceTrigger=PropertyChanged}" />
               </DockPanel>
               <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-                <TextBlock Text="PFX 密码" Style="{StaticResource FieldLabel}" />
+                <TextBlock Text="{DynamicResource S.ftp.config.certPassword}" Style="{StaticResource FieldLabel}" />
                 <TextBox Width="180" Padding="8,5" Text="{Binding CertPassword, UpdateSourceTrigger=PropertyChanged}" />
-                <Button Content="清除证书（用自动自签名）" Style="{StaticResource MiniButton}" Margin="14,0,0,0" Command="{Binding ClearCertCommand}" />
+                <Button Content="{DynamicResource S.ftp.config.clearCert}" Style="{StaticResource MiniButton}" Margin="14,0,0,0" Command="{Binding ClearCertCommand}" />
               </StackPanel>
             </StackPanel>
           </StackPanel>
@@ -130,12 +130,12 @@
         <!-- 匿名访问 -->
         <Border Style="{StaticResource Card}" Padding="16,14" Margin="0,0,0,12">
           <StackPanel>
-            <TextBlock Text="匿名访问" Style="{StaticResource SectionTitle}" />
-            <CheckBox Content="允许匿名登录（anonymous / ftp）" IsChecked="{Binding AllowAnonymous}" />
+            <TextBlock Text="{DynamicResource S.ftp.config.anonTitle}" Style="{StaticResource SectionTitle}" />
+            <CheckBox Content="{DynamicResource S.ftp.config.allowAnon}" IsChecked="{Binding AllowAnonymous}" />
             <StackPanel Visibility="{Binding AllowAnonymous, Converter={StaticResource BoolToVis}}" Margin="0,8,0,0">
-              <TextBlock Text="匿名主目录" Style="{StaticResource FieldLabel}" Margin="0,0,0,4" />
+              <TextBlock Text="{DynamicResource S.ftp.config.anonHome}" Style="{StaticResource FieldLabel}" Margin="0,0,0,4" />
               <TextBox Padding="8,5" Text="{Binding AnonymousHome, UpdateSourceTrigger=PropertyChanged}" />
-              <CheckBox Content="允许匿名上传（默认仅可下载）" IsChecked="{Binding AnonAllowUpload}" Margin="0,8,0,0" />
+              <CheckBox Content="{DynamicResource S.ftp.config.anonAllowUpload}" IsChecked="{Binding AnonAllowUpload}" Margin="0,8,0,0" />
             </StackPanel>
           </StackPanel>
         </Border>
@@ -144,10 +144,10 @@
         <Border Style="{StaticResource Card}" Padding="16,14" Margin="0,0,0,12">
           <StackPanel>
             <DockPanel Margin="0,0,0,10">
-              <Button DockPanel.Dock="Right" Content="+ 添加用户" Style="{StaticResource OkButton}" Command="{Binding AddUserCommand}" />
-              <TextBlock Text="用户" Style="{StaticResource SectionTitle}" Margin="0" VerticalAlignment="Center" />
+              <Button DockPanel.Dock="Right" Content="{DynamicResource S.ftp.user.add}" Style="{StaticResource OkButton}" Command="{Binding AddUserCommand}" />
+              <TextBlock Text="{DynamicResource S.ftp.user.title}" Style="{StaticResource SectionTitle}" Margin="0" VerticalAlignment="Center" />
             </DockPanel>
-            <TextBlock Text="还没有用户。点击「添加用户」创建登录账户、设置主目录与权限。"
+            <TextBlock Text="{DynamicResource S.ftp.user.empty}"
                        FontSize="12.5" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"
                        Visibility="{Binding NoUsers, Converter={StaticResource BoolToVis}}" />
             <ItemsControl ItemsSource="{Binding Users}">
@@ -182,9 +182,9 @@
                         </StackPanel>
                         <TextBlock Text="{Binding Home}" FontSize="11" FontFamily="Consolas" Foreground="{DynamicResource TextTertiary}" Margin="0,3,0,0" TextTrimming="CharacterEllipsis" ToolTip="{Binding Home}" />
                       </StackPanel>
-                      <Button Grid.Column="1" Content="编辑" Style="{StaticResource MiniButton}" MinWidth="56" VerticalAlignment="Center" Margin="0,0,6,0"
+                      <Button Grid.Column="1" Content="{DynamicResource S.common.edit}" Style="{StaticResource MiniButton}" MinWidth="56" VerticalAlignment="Center" Margin="0,0,6,0"
                               Command="{Binding DataContext.EditUserCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}" />
-                      <Button Grid.Column="2" Content="删除" Style="{StaticResource DangerButton}" MinWidth="56" VerticalAlignment="Center"
+                      <Button Grid.Column="2" Content="{DynamicResource S.common.delete}" Style="{StaticResource DangerButton}" MinWidth="56" VerticalAlignment="Center"
                               Command="{Binding DataContext.RemoveUserCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}" />
                     </Grid>
                   </Border>
@@ -198,12 +198,12 @@
         <Border Style="{StaticResource Card}" Padding="16,14" Margin="0,0,0,4">
           <StackPanel>
             <DockPanel Margin="0,0,0,10">
-              <Button DockPanel.Dock="Right" Content="+ 添加分组" Style="{StaticResource OkButton}" Command="{Binding AddGroupCommand}" />
-              <TextBlock Text="分组" Style="{StaticResource SectionTitle}" Margin="0" VerticalAlignment="Center" />
+              <Button DockPanel.Dock="Right" Content="{DynamicResource S.ftp.group.add}" Style="{StaticResource OkButton}" Command="{Binding AddGroupCommand}" />
+              <TextBlock Text="{DynamicResource S.ftp.group.title}" Style="{StaticResource SectionTitle}" Margin="0" VerticalAlignment="Center" />
             </DockPanel>
-            <TextBlock Text="分组用于给多个用户统一设置默认主目录与权限。用户可选择继承所属分组的权限。"
+            <TextBlock Text="{DynamicResource S.ftp.group.intro}"
                        FontSize="11.5" Foreground="{DynamicResource TextTertiary}" TextWrapping="Wrap" Margin="0,0,0,8" />
-            <TextBlock Text="还没有分组。"
+            <TextBlock Text="{DynamicResource S.ftp.group.empty}"
                        FontSize="12.5" Foreground="{DynamicResource TextSecondary}"
                        Visibility="{Binding NoGroups, Converter={StaticResource BoolToVis}}" />
             <ItemsControl ItemsSource="{Binding Groups}">
@@ -221,9 +221,9 @@
                         <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}" />
                         <TextBlock Text="{Binding Home}" FontSize="11" FontFamily="Consolas" Foreground="{DynamicResource TextTertiary}" Margin="0,3,0,0" TextTrimming="CharacterEllipsis" ToolTip="{Binding Home}" />
                       </StackPanel>
-                      <Button Grid.Column="1" Content="编辑" Style="{StaticResource MiniButton}" MinWidth="56" VerticalAlignment="Center" Margin="0,0,6,0"
+                      <Button Grid.Column="1" Content="{DynamicResource S.common.edit}" Style="{StaticResource MiniButton}" MinWidth="56" VerticalAlignment="Center" Margin="0,0,6,0"
                               Command="{Binding DataContext.EditGroupCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}" />
-                      <Button Grid.Column="2" Content="删除" Style="{StaticResource DangerButton}" MinWidth="56" VerticalAlignment="Center"
+                      <Button Grid.Column="2" Content="{DynamicResource S.common.delete}" Style="{StaticResource DangerButton}" MinWidth="56" VerticalAlignment="Center"
                               Command="{Binding DataContext.RemoveGroupCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}" />
                     </Grid>
                   </Border>

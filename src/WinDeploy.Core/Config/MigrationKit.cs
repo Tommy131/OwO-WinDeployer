@@ -1,6 +1,7 @@
 using System.Text.Json;
 using WinDeploy.Core.Engine;
 using WinDeploy.Core.Engine.Installers;
+using WinDeploy.Core.I18n;
 using WinDeploy.Core.Models;
 
 namespace WinDeploy.Core.Config;
@@ -34,9 +35,9 @@ public static class MigrationKit
         {
             var dstConfigs = Path.Combine(kitDir, "configs");
             CopyDir(srcConfigs, dstConfigs);
-            results.Add(ConfigResult.Ok("配置目录", $"已复制 configs/ → {dstConfigs}"));
+            results.Add(ConfigResult.Ok(Localizer.T("engine.migrate.configsName"), Localizer.Format("engine.migrate.configsCopied", dstConfigs)));
         }
-        else results.Add(ConfigResult.Skip("配置目录", "仓库内无 configs/"));
+        else results.Add(ConfigResult.Skip(Localizer.T("engine.migrate.configsName"), Localizer.T("engine.migrate.noConfigsRepo")));
 
         // 2) manifest of installed catalog apps
         var installed = new List<string>();
@@ -51,19 +52,11 @@ public static class MigrationKit
             InstalledIds = installed,
         };
         File.WriteAllText(Path.Combine(kitDir, "manifest.json"), JsonSerializer.Serialize(manifest, Json));
-        results.Add(ConfigResult.Ok("软件清单", $"记录 {installed.Count} 个已装应用"));
+        results.Add(ConfigResult.Ok(Localizer.T("engine.migrate.inventoryName"), Localizer.Format("engine.migrate.inventoryRecorded", installed.Count)));
 
         // 3) restore instructions
-        var restore = $"""
-            OwO! Win Deployer 迁移工具包
-            来源机器：{manifest.Machine} · {manifest.CreatedAt}
-
-            在新机器上还原：
-              1) 拉取/克隆 owo-win-deployer 仓库
-              2) windeploy migrate import "<此目录>"      （把 configs/ 拷回仓库）
-              3) windeploy apply --only {string.Join(",", installed)}
-              4) windeploy apply-config                      （套用配置）
-            """;
+        var restore = Localizer.Format("engine.migrate.restoreText",
+            manifest.Machine, manifest.CreatedAt, string.Join(",", installed));
         File.WriteAllText(Path.Combine(kitDir, "RESTORE.txt"), restore);
         return results;
     }
@@ -77,9 +70,9 @@ public static class MigrationKit
         if (Directory.Exists(kitConfigs))
         {
             CopyDir(kitConfigs, Path.Combine(repoRoot, "configs"));
-            results.Add(ConfigResult.Ok("配置目录", "已将 configs/ 还原到仓库"));
+            results.Add(ConfigResult.Ok(Localizer.T("engine.migrate.configsName"), Localizer.T("engine.migrate.configsRestored")));
         }
-        else results.Add(ConfigResult.Skip("配置目录", "工具包内无 configs/"));
+        else results.Add(ConfigResult.Skip(Localizer.T("engine.migrate.configsName"), Localizer.T("engine.migrate.noConfigsKit")));
 
         Manifest? manifest = null;
         var mf = Path.Combine(kitDir, "manifest.json");
@@ -87,7 +80,7 @@ public static class MigrationKit
         {
             try { manifest = JsonSerializer.Deserialize<Manifest>(File.ReadAllText(mf), Json); } catch { /* ignore */ }
             if (manifest != null)
-                results.Add(ConfigResult.Ok("软件清单", $"来自 {manifest.Machine}，{manifest.InstalledIds.Count} 个应用"));
+                results.Add(ConfigResult.Ok(Localizer.T("engine.migrate.inventoryName"), Localizer.Format("engine.migrate.manifestFrom", manifest.Machine, manifest.InstalledIds.Count)));
         }
         return (results, manifest);
     }

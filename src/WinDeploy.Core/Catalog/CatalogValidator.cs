@@ -1,4 +1,5 @@
 using WinDeploy.Core.Engine;
+using WinDeploy.Core.I18n;
 using WinDeploy.Core.Models;
 
 namespace WinDeploy.Core;
@@ -20,18 +21,18 @@ public static class CatalogValidator
 
         foreach (var it in cat.Items)
         {
-            var id = string.IsNullOrWhiteSpace(it.Id) ? "(无 id)" : it.Id;
+            var id = string.IsNullOrWhiteSpace(it.Id) ? Localizer.T("engine.validate.noId") : it.Id;
 
-            if (string.IsNullOrWhiteSpace(it.Id)) issues.Add(new(IssueLevel.Error, id, "缺少 id"));
-            else if (!ids.Add(it.Id)) issues.Add(new(IssueLevel.Error, id, "id 重复"));
-            if (string.IsNullOrWhiteSpace(it.Name)) issues.Add(new(IssueLevel.Warn, id, "缺少 name"));
+            if (string.IsNullOrWhiteSpace(it.Id)) issues.Add(new(IssueLevel.Error, id, Localizer.T("engine.validate.noIdField")));
+            else if (!ids.Add(it.Id)) issues.Add(new(IssueLevel.Error, id, Localizer.T("engine.validate.dupId")));
+            if (string.IsNullOrWhiteSpace(it.Name)) issues.Add(new(IssueLevel.Warn, id, Localizer.T("engine.validate.noName")));
 
             if (!string.IsNullOrWhiteSpace(it.Category) && categories.Count > 0 && !categories.Contains(it.Category))
-                issues.Add(new(IssueLevel.Warn, id, $"分类 '{it.Category}' 不在 categories 列表中"));
+                issues.Add(new(IssueLevel.Warn, id, Localizer.Format("engine.validate.unknownCategory", it.Category)));
 
             var m = it.Install.Method;
-            if (string.IsNullOrWhiteSpace(m)) issues.Add(new(IssueLevel.Error, id, "缺少 install.method"));
-            else if (!knownMethods.Contains(m)) issues.Add(new(IssueLevel.Error, id, $"未知 install.method '{m}'"));
+            if (string.IsNullOrWhiteSpace(m)) issues.Add(new(IssueLevel.Error, id, Localizer.T("engine.validate.noMethod")));
+            else if (!knownMethods.Contains(m)) issues.Add(new(IssueLevel.Error, id, Localizer.Format("engine.validate.unknownMethod", m)));
             else ValidateMethod(it, issues, id, repoRoot);
 
             // Icon: the GUI loads assets/icons/<id>.png (by id), so check that first; also accept the
@@ -42,14 +43,14 @@ public static class CatalogValidator
                 var declared = string.IsNullOrWhiteSpace(it.Icon)
                     ? null : Path.Combine(repoRoot, it.Icon.Replace('/', Path.DirectorySeparatorChar));
                 if (!File.Exists(byId) && (declared == null || !File.Exists(declared)))
-                    issues.Add(new(IssueLevel.Warn, id, $"图标缺失：assets/icons/{it.Id}.png"));
+                    issues.Add(new(IssueLevel.Warn, id, Localizer.Format("engine.validate.iconMissing", it.Id)));
             }
 
             if (it.Config?.Source is { } cs)
             {
                 var dir = Path.Combine(repoRoot, cs.Replace('/', Path.DirectorySeparatorChar));
                 if (!Directory.Exists(dir))
-                    issues.Add(new(IssueLevel.Warn, id, $"config.source 目录不存在：{cs}"));
+                    issues.Add(new(IssueLevel.Warn, id, Localizer.Format("engine.validate.configSourceMissing", cs)));
             }
         }
 
@@ -57,7 +58,7 @@ public static class CatalogValidator
         foreach (var it in cat.Items)
             foreach (var dep in it.Depends ?? new List<string>())
                 if (!ids.Contains(dep))
-                    issues.Add(new(IssueLevel.Error, it.Id, $"depends 引用了不存在的 id '{dep}'"));
+                    issues.Add(new(IssueLevel.Error, it.Id, Localizer.Format("engine.validate.dependMissing", dep)));
 
         return issues;
     }
@@ -68,39 +69,39 @@ public static class CatalogValidator
         switch (ins.Method)
         {
             case "winget":
-                if (string.IsNullOrWhiteSpace(ins.Id)) issues.Add(new(IssueLevel.Error, id, "winget 缺少 install.id"));
+                if (string.IsNullOrWhiteSpace(ins.Id)) issues.Add(new(IssueLevel.Error, id, Localizer.T("engine.validate.wingetNoId")));
                 break;
             case "winget-bundle":
-                if (ins.Ids is not { Count: > 0 }) issues.Add(new(IssueLevel.Error, id, "winget-bundle 缺少 install.ids"));
+                if (ins.Ids is not { Count: > 0 }) issues.Add(new(IssueLevel.Error, id, Localizer.T("engine.validate.wingetBundleNoIds")));
                 break;
             case "portable":
                 if (string.IsNullOrWhiteSpace(ins.Url) || ins.Url == "…")
-                    issues.Add(new(IssueLevel.Warn, id, "portable 的 url 为空或占位（联网安装会失败）"));
+                    issues.Add(new(IssueLevel.Warn, id, Localizer.T("engine.validate.portableUrlEmpty")));
                 if (string.IsNullOrWhiteSpace(ins.ExtractTo))
-                    issues.Add(new(IssueLevel.Error, id, "portable 缺少 extractTo"));
+                    issues.Add(new(IssueLevel.Error, id, Localizer.T("engine.validate.portableNoExtractTo")));
                 if (!string.IsNullOrWhiteSpace(ins.Url) && ins.Url != "…" && (string.IsNullOrWhiteSpace(ins.Sha256) || ins.Sha256 == "…"))
-                    issues.Add(new(IssueLevel.Warn, id, "portable 缺少 sha256（无法校验完整性）"));
+                    issues.Add(new(IssueLevel.Warn, id, Localizer.T("engine.validate.portableNoSha256")));
                 break;
             case "git":
-                if (string.IsNullOrWhiteSpace(ins.Repo)) issues.Add(new(IssueLevel.Error, id, "git 缺少 repo"));
-                if (string.IsNullOrWhiteSpace(ins.Dest)) issues.Add(new(IssueLevel.Error, id, "git 缺少 dest"));
+                if (string.IsNullOrWhiteSpace(ins.Repo)) issues.Add(new(IssueLevel.Error, id, Localizer.T("engine.validate.gitNoRepo")));
+                if (string.IsNullOrWhiteSpace(ins.Dest)) issues.Add(new(IssueLevel.Error, id, Localizer.T("engine.validate.gitNoDest")));
                 break;
             case "exe":
-                if (string.IsNullOrWhiteSpace(ins.Url)) issues.Add(new(IssueLevel.Error, id, "exe 缺少 url"));
+                if (string.IsNullOrWhiteSpace(ins.Url)) issues.Add(new(IssueLevel.Error, id, Localizer.T("engine.validate.exeNoUrl")));
                 break;
             case "local":
-                if (string.IsNullOrWhiteSpace(ins.LocalPackage)) issues.Add(new(IssueLevel.Warn, id, "local 缺少 localPackage（将回退手动下载）"));
+                if (string.IsNullOrWhiteSpace(ins.LocalPackage)) issues.Add(new(IssueLevel.Warn, id, Localizer.T("engine.validate.localNoPackage")));
                 break;
             case "conda":
-                if (string.IsNullOrWhiteSpace(ins.EnvFile)) issues.Add(new(IssueLevel.Error, id, "conda 缺少 envFile"));
+                if (string.IsNullOrWhiteSpace(ins.EnvFile)) issues.Add(new(IssueLevel.Error, id, Localizer.T("engine.validate.condaNoEnvFile")));
                 else if (!File.Exists(Path.Combine(repoRoot, ins.EnvFile.Replace('/', Path.DirectorySeparatorChar))))
-                    issues.Add(new(IssueLevel.Warn, id, $"conda envFile 不存在：{ins.EnvFile}"));
+                    issues.Add(new(IssueLevel.Warn, id, Localizer.Format("engine.validate.condaEnvFileMissing", ins.EnvFile)));
                 break;
             case "vscode-ext":
-                if (string.IsNullOrWhiteSpace(ins.Extensions)) issues.Add(new(IssueLevel.Error, id, "vscode-ext 缺少 extensions"));
+                if (string.IsNullOrWhiteSpace(ins.Extensions)) issues.Add(new(IssueLevel.Error, id, Localizer.T("engine.validate.vscodeNoExtensions")));
                 break;
             case "script":
-                if (string.IsNullOrWhiteSpace(ins.Run)) issues.Add(new(IssueLevel.Error, id, "script 缺少 run"));
+                if (string.IsNullOrWhiteSpace(ins.Run)) issues.Add(new(IssueLevel.Error, id, Localizer.T("engine.validate.scriptNoRun")));
                 break;
         }
     }

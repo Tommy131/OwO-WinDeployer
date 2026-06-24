@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using WinDeploy.App.Behaviors;
 using WinDeploy.App.Services.Ftp;
+using WinDeploy.Core.I18n;
 
 namespace WinDeploy.App.Views;
 
@@ -15,8 +16,8 @@ public sealed class FtpUserDialog : Window
     private readonly PasswordBox _pw = new() { FontSize = 13.5, Padding = new Thickness(8, 6, 8, 6) };
     private readonly ComboBox _group = new();
     private readonly TextBox _home;
-    private readonly CheckBox _useGroup = new() { Content = "权限继承所属分组", Margin = new Thickness(0, 8, 0, 0) };
-    private readonly CheckBox _enabled = new() { Content = "启用该用户", Margin = new Thickness(0, 8, 0, 0), IsChecked = true };
+    private readonly CheckBox _useGroup = new() { Content = Localizer.T("ftp.user.useGroupPerms"), Margin = new Thickness(0, 8, 0, 0) };
+    private readonly CheckBox _enabled = new() { Content = Localizer.T("ftp.user.enabled"), Margin = new Thickness(0, 8, 0, 0), IsChecked = true };
     private readonly TextBox _maxConn;
     private readonly FtpPermPanel _perms = new();
 
@@ -25,7 +26,7 @@ public sealed class FtpUserDialog : Window
     public FtpUserDialog(FtpUser? existing, IReadOnlyList<string> groups)
     {
         _existing = existing;
-        Title = existing == null ? "添加用户" : $"编辑用户 · {existing.Name}";
+        Title = existing == null ? Localizer.T("ftp.user.addTitle") : Localizer.Format("ftp.user.editTitle", existing.Name);
         Width = 520;
         SizeToContent = SizeToContent.Height;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
@@ -37,24 +38,24 @@ public sealed class FtpUserDialog : Window
         _maxConn = Tb((existing?.MaxConnections ?? 0).ToString());
         InputFilter.SetMode(_maxConn, "digits");   // per-user connection cap: digits only
 
-        _group.Items.Add("（无）");
+        _group.Items.Add(Localizer.T("ftp.user.groupNone"));
         foreach (var g in groups) _group.Items.Add(g);
-        _group.SelectedItem = string.IsNullOrEmpty(existing?.Group) ? "（无）" : existing!.Group;
+        _group.SelectedItem = string.IsNullOrEmpty(existing?.Group) ? Localizer.T("ftp.user.groupNone") : existing!.Group;
         StyleCombo(_group);
 
         var root = new StackPanel { Margin = new Thickness(20) };
-        root.Children.Add(Label("用户名"));
+        root.Children.Add(Label(Localizer.T("ftp.user.nameLabel")));
         root.Children.Add(_name);
-        root.Children.Add(Label(existing == null ? "密码" : "密码（留空 = 不修改）"));
+        root.Children.Add(Label(existing == null ? Localizer.T("ftp.user.passwordLabel") : Localizer.T("ftp.user.passwordLabelKeep")));
         StylePw(_pw);
         root.Children.Add(_pw);
-        root.Children.Add(Label("所属分组"));
+        root.Children.Add(Label(Localizer.T("ftp.user.groupLabel")));
         root.Children.Add(_group);
 
-        root.Children.Add(Label("主目录（用户被限制在此目录内；留空且选了分组则继承分组主目录）"));
+        root.Children.Add(Label(Localizer.T("ftp.user.homeLabel")));
         var homeRow = new DockPanel();
-        var browse = MiniBtn("浏览…");
-        browse.Click += (_, _) => { var d = new Microsoft.Win32.OpenFolderDialog { Title = "选择主目录" }; if (d.ShowDialog() == true) _home.Text = d.FolderName; };
+        var browse = MiniBtn(Localizer.T("ftp.config.browse"));
+        browse.Click += (_, _) => { var d = new Microsoft.Win32.OpenFolderDialog { Title = Localizer.T("ftp.user.homePickTitle") }; if (d.ShowDialog() == true) _home.Text = d.FolderName; };
         DockPanel.SetDock(browse, Dock.Right);
         browse.Margin = new Thickness(8, 0, 0, 0);
         homeRow.Children.Add(browse);
@@ -71,7 +72,7 @@ public sealed class FtpUserDialog : Window
         UpdatePermEnabled();
 
         var capRow = new DockPanel { Margin = new Thickness(0, 10, 0, 0) };
-        var capLabel = new TextBlock { Text = "并发连接上限（0 = 用服务器默认）", FontSize = 12, Foreground = Brush("TextTertiary"), VerticalAlignment = VerticalAlignment.Center };
+        var capLabel = new TextBlock { Text = Localizer.T("ftp.user.capLabel"), FontSize = 12, Foreground = Brush("TextTertiary"), VerticalAlignment = VerticalAlignment.Center };
         _maxConn.Width = 80;
         DockPanel.SetDock(_maxConn, Dock.Right);
         capRow.Children.Add(_maxConn);
@@ -81,27 +82,27 @@ public sealed class FtpUserDialog : Window
         _enabled.IsChecked = existing?.Enabled ?? true;
         root.Children.Add(_enabled);
 
-        root.Children.Add(Buttons(existing == null ? "添加" : "保存"));
+        root.Children.Add(Buttons(existing == null ? Localizer.T("common.add") : Localizer.T("common.save")));
         Content = root;
         SourceInitialized += (_, _) => Services.ThemeManager.ApplyTitleBar(this);
     }
 
     private void UpdatePermEnabled()
     {
-        var inherit = _useGroup.IsChecked == true && (_group.SelectedItem as string) is not (null or "（无）");
+        var inherit = _useGroup.IsChecked == true && (_group.SelectedItem as string) is { } sel && sel != Localizer.T("ftp.user.groupNone");
         _perms.SetEnabled(!inherit);
     }
 
     private void OnOk()
     {
         var name = _name.Text.Trim();
-        if (name.Length == 0) { Warn("请填写用户名"); return; }
+        if (name.Length == 0) { Warn(Localizer.T("ftp.user.nameRequired")); return; }
         var grp = _group.SelectedItem as string;
-        grp = grp == "（无）" ? null : grp;
+        grp = grp == Localizer.T("ftp.user.groupNone") ? null : grp;
         var home = _home.Text.Trim();
-        if (home.Length == 0 && grp == null) { Warn("请填写主目录（或先选择一个带主目录的分组）"); return; }
+        if (home.Length == 0 && grp == null) { Warn(Localizer.T("ftp.user.homeRequired")); return; }
         var pw = _pw.Password;
-        if (_existing == null && pw.Length == 0) { Warn("新用户必须设置密码"); return; }
+        if (_existing == null && pw.Length == 0) { Warn(Localizer.T("ftp.user.passwordRequired")); return; }
         int.TryParse(_maxConn.Text.Trim(), out var maxConn);
 
         var u = new FtpUser
@@ -126,7 +127,7 @@ public sealed class FtpUserDialog : Window
     {
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 18, 0, 0) };
         var ok = new Button { Content = okText, MinWidth = 88, Margin = new Thickness(0, 0, 8, 0), IsDefault = true };
-        var cancel = new Button { Content = "取消", MinWidth = 72, IsCancel = true };
+        var cancel = new Button { Content = Localizer.T("common.cancel"), MinWidth = 72, IsCancel = true };
         if (Application.Current.TryFindResource("PrimaryButton") is Style okS) ok.Style = okS;
         if (Application.Current.TryFindResource("MiniButton") is Style caS) cancel.Style = caS;
         ok.Click += (_, _) => OnOk();
@@ -136,7 +137,7 @@ public sealed class FtpUserDialog : Window
         return buttons;
     }
 
-    private void Warn(string m) => MessageBox.Show(m, Title, MessageBoxButton.OK, MessageBoxImage.Warning);
+    private void Warn(string m) => Dialogs.Show(m, Title, MessageBoxButton.OK, MessageBoxImage.Warning);
 
     private static Button MiniBtn(string text)
     {

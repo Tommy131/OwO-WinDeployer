@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using WinDeploy.Core.I18n;
 using WinDeploy.Core.Util;
 
 namespace WinDeploy.Core.Engine;
@@ -77,7 +78,8 @@ public static class Inventory
     public static string ToCsv(IEnumerable<InstalledProgram> items)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("名称,版本,发布者,安装日期,大小(MB)");
+        sb.AppendLine(string.Join(",", Localizer.T("engine.inventory.colName"), Localizer.T("engine.inventory.colVersion"),
+            Localizer.T("engine.inventory.colPublisher"), Localizer.T("engine.inventory.colDate"), Localizer.T("engine.inventory.colSize")));
         foreach (var p in items)
             sb.AppendLine(string.Join(",",
                 Csv(p.Name), Csv(p.Version), Csv(p.Publisher), Csv(p.InstallDate), Mb(p.SizeKb)));
@@ -91,14 +93,15 @@ public static class Inventory
     {
         var list = items.ToList();
         var sb = new StringBuilder();
-        sb.AppendLine("<!doctype html><html lang=\"zh\"><head><meta charset=\"utf-8\">");
-        sb.AppendLine("<title>软件清单</title><style>");
+        var lang = Localizer.Current;
+        sb.AppendLine($"<!doctype html><html lang=\"{lang}\"><head><meta charset=\"utf-8\">");
+        sb.AppendLine($"<title>{H(Localizer.T("engine.inventory.htmlTitle"))}</title><style>");
         sb.AppendLine("body{font-family:Segoe UI,system-ui,sans-serif;margin:32px;color:#1b1b1a}");
         sb.AppendLine("h1{font-size:20px}table{border-collapse:collapse;width:100%;font-size:13px}");
         sb.AppendLine("th,td{border:1px solid #e6e6e1;padding:7px 10px;text-align:left}");
         sb.AppendLine("th{background:#f5f5f2}tr:nth-child(even){background:#fafaf8}</style></head><body>");
-        sb.AppendLine($"<h1>软件清单 · {Environment.MachineName} · 共 {list.Count} 项</h1>");
-        sb.AppendLine("<table><tr><th>名称</th><th>版本</th><th>发布者</th><th>安装日期</th><th>大小(MB)</th></tr>");
+        sb.AppendLine($"<h1>{H(Localizer.Format("engine.inventory.htmlHeading", Environment.MachineName, list.Count))}</h1>");
+        sb.AppendLine($"<table><tr><th>{H(Localizer.T("engine.inventory.colName"))}</th><th>{H(Localizer.T("engine.inventory.colVersion"))}</th><th>{H(Localizer.T("engine.inventory.colPublisher"))}</th><th>{H(Localizer.T("engine.inventory.colDate"))}</th><th>{H(Localizer.T("engine.inventory.colSize"))}</th></tr>");
         foreach (var p in list)
             sb.AppendLine($"<tr><td>{H(p.Name)}</td><td>{H(p.Version)}</td><td>{H(p.Publisher)}</td><td>{H(p.InstallDate)}</td><td>{Mb(p.SizeKb)}</td></tr>");
         sb.AppendLine("</table></body></html>");

@@ -1,5 +1,6 @@
 using System.IO;
 using WinDeploy.Core.Engine;
+using WinDeploy.Core.I18n;
 
 namespace WinDeploy.App.Services;
 
@@ -28,14 +29,14 @@ public static class JunkScanner
 
         var t = new List<JunkTarget>
         {
-            new() { Id = "user-temp", Name = "用户临时文件", Detail = "%TEMP%", Path = Path.GetTempPath() },
-            new() { Id = "win-temp", Name = "Windows 临时文件", Detail = @"%WINDIR%\Temp", Path = Path.Combine(Win, "Temp") },
-            new() { Id = "wu-download", Name = "Windows Update 缓存", Detail = @"SoftwareDistribution\Download", Path = Path.Combine(Win, "SoftwareDistribution", "Download") },
-            new() { Id = "thumbs", Name = "缩略图 / 图标缓存", Detail = @"Explorer 缓存", Path = Path.Combine(Local, "Microsoft", "Windows", "Explorer") },
-            new() { Id = "inet-cache", Name = "Internet 临时文件", Detail = @"INetCache", Path = Path.Combine(Local, "Microsoft", "Windows", "INetCache") },
-            new() { Id = "crash-dumps", Name = "崩溃转储", Detail = @"CrashDumps", Path = Path.Combine(Local, "CrashDumps") },
-            new() { Id = "delivery-opt", Name = "传递优化文件", Detail = @"DeliveryOptimization", Path = Path.Combine(Win, "SoftwareDistribution", "DeliveryOptimization") },
-            new() { Id = "windows-old", Name = "旧版 Windows (Windows.old)", Detail = "上次升级保留的系统", Path = Path.Combine(sysDrive, "Windows.old"), ContentsOnly = false },
+            new() { Id = "user-temp", Name = Localizer.T("maint.junk.item.user-temp"), Detail = "%TEMP%", Path = Path.GetTempPath() },
+            new() { Id = "win-temp", Name = Localizer.T("maint.junk.item.win-temp"), Detail = @"%WINDIR%\Temp", Path = Path.Combine(Win, "Temp") },
+            new() { Id = "wu-download", Name = Localizer.T("maint.junk.item.wu-download"), Detail = @"SoftwareDistribution\Download", Path = Path.Combine(Win, "SoftwareDistribution", "Download") },
+            new() { Id = "thumbs", Name = Localizer.T("maint.junk.item.thumbs"), Detail = Localizer.T("maint.junk.item.thumbs.detail"), Path = Path.Combine(Local, "Microsoft", "Windows", "Explorer") },
+            new() { Id = "inet-cache", Name = Localizer.T("maint.junk.item.inet-cache"), Detail = @"INetCache", Path = Path.Combine(Local, "Microsoft", "Windows", "INetCache") },
+            new() { Id = "crash-dumps", Name = Localizer.T("maint.junk.item.crash-dumps"), Detail = @"CrashDumps", Path = Path.Combine(Local, "CrashDumps") },
+            new() { Id = "delivery-opt", Name = Localizer.T("maint.junk.item.delivery-opt"), Detail = @"DeliveryOptimization", Path = Path.Combine(Win, "SoftwareDistribution", "DeliveryOptimization") },
+            new() { Id = "windows-old", Name = Localizer.T("maint.junk.item.windows-old"), Detail = Localizer.T("maint.junk.item.windows-old.detail"), Path = Path.Combine(sysDrive, "Windows.old"), ContentsOnly = false },
         };
         return t;
     }

@@ -1,0 +1,13 @@
+{
+  "log.clear": "Clear",
+  "log.clear.confirmBody": "Clear the entire audit log? This cannot be undone.",
+  "log.clear.confirmTitle": "Clear log",
+  "log.clear.tip": "Clear app.log (irreversible)",
+  "log.openFolder": "Open folder",
+  "log.subtitle": "Global audit trail: app launch, install / update / uninstall / start, settings and environment-variable changes, etc.",
+  "log.title": "Log",
+  "log.viewer.clear": "Clear log",
+  "log.viewer.clearConfirmBody": "Clear the log file?\n{0}\n\n(irreversible)",
+  "log.viewer.openFolder": "Open containing folder",
+  "log.viewer.titleSuffix": "{0} · Log"
+}

@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows.Media;
 using Microsoft.Win32;
+using WinDeploy.Core.I18n;
 
 namespace WinDeploy.App.Services;
 
@@ -37,7 +38,7 @@ public static class ShellCatalog
         // cmd — always present.
         var cmd = Path.Combine(system, "cmd.exe");
         var cmdExe = File.Exists(cmd) ? cmd : "cmd.exe";
-        list.Add(new("cmd", "命令提示符 (cmd)", $"\"{cmdExe}\"", ">_", cmdExe));
+        list.Add(new("cmd", Localizer.T("svc.shell.cmd"), $"\"{cmdExe}\"", ">_", cmdExe));
 
         // Git Bash — the bundled bash.exe, run as a login interactive shell.
         var bash = FindFile("bash.exe", new[]

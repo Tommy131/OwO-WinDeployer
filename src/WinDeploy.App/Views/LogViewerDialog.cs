@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using WinDeploy.App.Services;
+using WinDeploy.Core.I18n;
 
 namespace WinDeploy.App.Views;
 
@@ -14,7 +15,7 @@ public sealed class LogViewerDialog : Window
     public LogViewerDialog(string title, string path)
     {
         _path = path;
-        Title = $"{title} · 日志";
+        Title = Localizer.Format("log.viewer.titleSuffix", title);
         Width = 860;
         Height = 560;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
@@ -41,10 +42,10 @@ public sealed class LogViewerDialog : Window
         root.Children.Add(_text);
 
         var bar = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 12, 0, 0) };
-        bar.Children.Add(MakeBtn("↻ 刷新", "MiniButton", (_, _) => Reload()));
-        bar.Children.Add(MakeBtn("打开所在文件夹", "MiniButton", (_, _) => OpenFolder()));
-        bar.Children.Add(MakeBtn("清空日志", "DangerButton", (_, _) => Clear()));
-        var close = MakeBtn("关闭", "MiniButton", (_, _) => Close());
+        bar.Children.Add(MakeBtn("↻ " + Localizer.T("common.refresh"), "MiniButton", (_, _) => Reload()));
+        bar.Children.Add(MakeBtn(Localizer.T("log.viewer.openFolder"), "MiniButton", (_, _) => OpenFolder()));
+        bar.Children.Add(MakeBtn(Localizer.T("log.viewer.clear"), "DangerButton", (_, _) => Clear()));
+        var close = MakeBtn(Localizer.T("common.close"), "MiniButton", (_, _) => Close());
         close.IsCancel = true;
         bar.Children.Add(close);
         Grid.SetRow(bar, 2);
@@ -83,10 +84,10 @@ public sealed class LogViewerDialog : Window
 
     private void Clear()
     {
-        if (MessageBox.Show($"确定清空日志文件？\n{_path}\n\n（不可恢复）", "清空日志", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+        if (Dialogs.Show(Localizer.Format("log.viewer.clearConfirmBody", _path), Localizer.T("log.viewer.clear"), MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
             return;
         var (ok, msg) = ServerManager.ClearLog(_path);
-        if (!ok) MessageBox.Show(msg, "清空日志", MessageBoxButton.OK, MessageBoxImage.Warning);
+        if (!ok) Dialogs.Show(msg, Localizer.T("log.viewer.clear"), MessageBoxButton.OK, MessageBoxImage.Warning);
         Reload();
     }
 

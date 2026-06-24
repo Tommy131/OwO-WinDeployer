@@ -1,0 +1,13 @@
+{
+  "log.clear": "清空",
+  "log.clear.confirmBody": "确定清空全部审计日志？此操作不可恢复。",
+  "log.clear.confirmTitle": "清空日志",
+  "log.clear.tip": "清空 app.log（不可恢复）",
+  "log.openFolder": "打开目录",
+  "log.subtitle": "全局审计记录：应用启动、安装 / 更新 / 卸载 / 启动、设置与环境变量变更等。",
+  "log.title": "日志",
+  "log.viewer.clear": "清空日志",
+  "log.viewer.clearConfirmBody": "确定清空日志文件？\n{0}\n\n（不可恢复）",
+  "log.viewer.openFolder": "打开所在文件夹",
+  "log.viewer.titleSuffix": "{0} · 日志"
+}

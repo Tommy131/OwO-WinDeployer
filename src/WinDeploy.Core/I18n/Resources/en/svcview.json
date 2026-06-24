@@ -1,0 +1,18 @@
+{
+  "svc.view.listSubtitle": "Manage local web servers: config files, SSL certificates, sites (vhost) and process start/stop. Click a server to manage it.",
+  "svc.view.openInstallDir": "Open install folder",
+  "svc.view.uptime": "Uptime",
+  "svc.view.configFiles": "Config files",
+  "svc.view.vhosts": "Sites (vhost)",
+  "svc.view.newVhost": "+ New site",
+  "svc.view.dir": "Folder",
+  "svc.view.noVhosts": "No sites yet. Click “New site” to create one (an include is added to the main config automatically).",
+  "svc.view.sslCerts": "SSL certificates",
+  "svc.view.genSelfSigned": "Generate self-signed",
+  "svc.view.import": "Import",
+  "svc.view.noCerts": "No certificates in the SSL folder. You can “Generate self-signed” or “Import” an existing certificate / key.",
+  "svc.view.collect": "Collect",
+  "svc.view.view": "View",
+  "svc.view.clear": "Clear",
+  "svc.view.noLogs": "No log files found (they are created after the service starts)."
+}

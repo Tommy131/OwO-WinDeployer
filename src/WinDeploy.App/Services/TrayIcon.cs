@@ -1,4 +1,5 @@
 using System.Drawing;
+using WinDeploy.Core.I18n;
 using WF = System.Windows.Forms;
 
 namespace WinDeploy.App.Services;
@@ -57,7 +58,7 @@ public sealed class TrayIcon : IDisposable
     private void Rebuild(WF.ContextMenuStrip menu)
     {
         menu.Items.Clear();
-        menu.Items.Add("打开主界面", null, (_, _) => _onOpen());
+        menu.Items.Add(Localizer.T("tray.open"), null, (_, _) => _onOpen());
 
         if (_buildDynamic != null)
         {
@@ -72,7 +73,7 @@ public sealed class TrayIcon : IDisposable
         }
 
         menu.Items.Add(new WF.ToolStripSeparator());
-        menu.Items.Add("退出", null, (_, _) => _onExit());
+        menu.Items.Add(Localizer.T("tray.exit"), null, (_, _) => _onExit());
     }
 
     private static WF.ToolStripItem Convert(TrayMenuItem m)
@@ -112,8 +113,8 @@ public sealed class TrayIcon : IDisposable
         if (_tipShown) return;
         _tipShown = true;
 
-        const string title = "仍在后台运行";
-        const string body = "OwO! Win Deployer 已最小化到托盘。双击图标可重新打开，右键可快速管理终端 / 服务并退出。";
+        var title = Localizer.T("tray.minimizedTitle");
+        var body = Localizer.T("tray.minimizedBody");
         if (ToastService.TryShow(title, body)) return;
 
         try

@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Text;
+using WinDeploy.Core.I18n;
 
 namespace WinDeploy.App.Services;
 
@@ -40,7 +41,7 @@ public static class DeviceEject
             return new(EjectStatus.Success, null);
         if (cr == CR_REMOVE_VETOED || vetoType != PNP_VetoTypeUnknown)
             return new(EjectStatus.Busy, DescribeVeto(vetoType, veto.ToString()));
-        return new(EjectStatus.Failed, $"系统配置管理器返回错误（0x{cr:X8}）。");
+        return new(EjectStatus.Failed, Localizer.Format("sysov.eject.veto.cmError", cr.ToString("X8")));
     }
 
     /// <summary>Force-eject: dismount every volume on the disk — even with open handles — to drop whatever was
@@ -174,16 +175,16 @@ public static class DeviceEject
     {
         var why = vetoType switch
         {
-            PNP_VetoOutstandingOpen => "仍有程序打开着该设备上的文件或文件夹。",
-            PNP_VetoPendingClose    => "设备正在关闭中，请稍候重试。",
-            PNP_VetoWindowsApp      => "某个应用程序正在使用该设备。",
-            PNP_VetoWindowsService  => "某个 Windows 服务正在使用该设备。",
-            PNP_VetoDevice          => "设备当前正忙，无法弹出。",
-            PNP_VetoDriver          => "设备驱动程序阻止了弹出。",
-            PNP_VetoInsufficientRights => "权限不足，无法弹出该设备。",
-            _ => "设备正在被占用，无法弹出。",
+            PNP_VetoOutstandingOpen => Localizer.T("sysov.eject.veto.outstandingOpen"),
+            PNP_VetoPendingClose    => Localizer.T("sysov.eject.veto.pendingClose"),
+            PNP_VetoWindowsApp      => Localizer.T("sysov.eject.veto.windowsApp"),
+            PNP_VetoWindowsService  => Localizer.T("sysov.eject.veto.windowsService"),
+            PNP_VetoDevice          => Localizer.T("sysov.eject.veto.device"),
+            PNP_VetoDriver          => Localizer.T("sysov.eject.veto.driver"),
+            PNP_VetoInsufficientRights => Localizer.T("sysov.eject.veto.insufficientRights"),
+            _ => Localizer.T("sysov.eject.veto.default"),
         };
-        return string.IsNullOrWhiteSpace(name) ? why : $"{why}\n占用来源：{name}";
+        return string.IsNullOrWhiteSpace(name) ? why : Localizer.Format("sysov.eject.veto.source", why, name);
     }
 
     /// <summary>Whether a device node is hot-pluggable, via the runtime devnode status flag DN_REMOVABLE_DEVICE.

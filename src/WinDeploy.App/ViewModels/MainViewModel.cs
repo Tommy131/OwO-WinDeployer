@@ -7,11 +7,12 @@ using WinDeploy.Core;
 using WinDeploy.Core.Config;
 using WinDeploy.Core.Engine;
 using WinDeploy.Core.Engine.Installers;
+using WinDeploy.Core.I18n;
 using WinDeploy.Core.Models;
 
 namespace WinDeploy.App.ViewModels;
 
-public sealed class MainViewModel : ObservableObject
+public sealed class MainViewModel : LocalizedObject
 {
     private readonly InstallEngine _engine = new();
     private PathResolver _resolver = new(new Dictionary<string, string>());
@@ -48,6 +49,9 @@ public sealed class MainViewModel : ObservableObject
     public string AppName => WinDeploy.App.AppInfo.Name;
     public string WindowTitle => WinDeploy.App.AppInfo.TitleWithRole;
     public string Copyright => $"{WinDeploy.App.AppInfo.Copyright} · v{WinDeploy.App.AppInfo.Version}";
+
+    /// <summary>Window chrome that contains localized fragments (admin suffix) refreshes on language switch.</summary>
+    protected override void OnCultureChanged() => OnPropertyChanged(nameof(WindowTitle));
 
     public MainViewModel()
     {
@@ -88,8 +92,8 @@ public sealed class MainViewModel : ObservableObject
             if (!r.Available) return;   // up-to-date / offline / no release → stay quiet at startup
             await Application.Current.Dispatcher.InvokeAsync(() =>
             {
-                var msg = $"发现新版本 {WinDeploy.App.AppInfo.Name} v{r.Latest}（当前 v{r.Current}）。\n\n是否前往发布页下载更新？";
-                if (MessageBox.Show(msg, "检查更新", MessageBoxButton.YesNo, MessageBoxImage.Information) == MessageBoxResult.Yes)
+                var msg = Localizer.Format("update.selfFoundBody", WinDeploy.App.AppInfo.Name, r.Latest, r.Current);
+                if (Dialogs.Show(msg, Localizer.T("settings.update.dialogTitle"), MessageBoxButton.YesNo, MessageBoxImage.Information) == MessageBoxResult.Yes)
                 {
                     AuditLog.Action($"自更新：用户前往下载 v{r.Latest}");
                     try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(r.HtmlUrl) { UseShellExecute = true }); }
@@ -146,17 +150,17 @@ public sealed class MainViewModel : ObservableObject
     /// <summary>Run a service action from the tray (no UI navigation); report the result as a toast + audit.</summary>
     public void RunWebServiceAction(ServerInfo info, SvcAction action)
     {
-        var verb = action switch { SvcAction.Start => "启动", SvcAction.Stop => "停止", SvcAction.Reload => "重载", _ => "重启" };
+        var verb = action switch { SvcAction.Start => Localizer.T("verb.svcStart"), SvcAction.Stop => Localizer.T("verb.svcStop"), SvcAction.Reload => Localizer.T("verb.svcReload"), _ => Localizer.T("verb.restart") };
         try
         {
             var (ok, msg) = Services.ServiceConfig.Run(info, action);
             AuditLog.Action($"托盘：{verb} {info.Name} — {(ok ? "成功" : "失败")} {msg}".TrimEnd());
-            ToastService.TryShow($"{verb} {info.Name}", ok ? (string.IsNullOrWhiteSpace(msg) ? "操作成功" : msg) : "失败：" + msg);
+            ToastService.TryShow($"{verb} {info.Name}", ok ? (string.IsNullOrWhiteSpace(msg) ? Localizer.T("ops.tray.opOk") : msg) : Localizer.Format("ops.tray.opFail", msg));
         }
         catch (Exception ex)
         {
             AuditLog.Action($"托盘：{verb} {info.Name} 异常 — {ex.Message}");
-            ToastService.TryShow($"{verb} {info.Name}", "异常：" + ex.Message);
+            ToastService.TryShow($"{verb} {info.Name}", Localizer.Format("ops.tray.opError", ex.Message));
         }
     }
 
@@ -184,9 +188,9 @@ public sealed class MainViewModel : ObservableObject
             try
             {
                 var rt = await Services.ServerManager.GetRuntimeAsync(s);
-                map[s.Id] = (rt.Running, rt.Running ? $"运行中 · PID {rt.PidText}" : "已停止");
+                map[s.Id] = (rt.Running, rt.Running ? Localizer.Format("ops.web.running", rt.PidText) : Localizer.T("ops.web.stopped"));
             }
-            catch { map[s.Id] = (false, "未知"); }
+            catch { map[s.Id] = (false, Localizer.T("ops.web.unknown")); }
         }
         lock (_webStatusLock) _webStatus = map;
     }
@@ -197,31 +201,31 @@ public sealed class MainViewModel : ObservableObject
     {
         NavGroups.Clear();
 
-        var deploy = new NavGroupViewModel("", "部署");
-        deploy.Items.Add(new("", "软件安装中心", Install));
-        deploy.Items.Add(new("", "配置同步", ConfigSync));
-        deploy.Items.Add(new("", "运行进度", Progress));
-        deploy.Items.Add(new("", "导出", Export));
+        var deploy = new NavGroupViewModel("", "nav.group.deploy");
+        deploy.Items.Add(new("", "nav.installCenter", Install));
+        deploy.Items.Add(new("", "nav.configSync", ConfigSync));
+        deploy.Items.Add(new("", "nav.progress", Progress));
+        deploy.Items.Add(new("", "nav.export", Export));
 
-        var system = new NavGroupViewModel("", "系统");
-        system.Items.Add(new("", "系统概览", SystemOverview));
-        system.Items.Add(new("", "系统维护", Maintenance, advanced: true));
-        system.Items.Add(new("", "进程管理", Processes, advanced: true));
-        system.Items.Add(new("", "启动项", Startup, advanced: true));
-        system.Items.Add(new("", "环境变量", EnvVars, advanced: true));
+        var system = new NavGroupViewModel("", "nav.group.system");
+        system.Items.Add(new("", "nav.systemOverview", SystemOverview));
+        system.Items.Add(new("", "nav.maintenance", Maintenance, advanced: true));
+        system.Items.Add(new("", "nav.processes", Processes, advanced: true));
+        system.Items.Add(new("", "nav.startup", Startup, advanced: true));
+        system.Items.Add(new("", "nav.envVars", EnvVars, advanced: true));
 
-        var dev = new NavGroupViewModel("", "开发");
-        dev.Items.Add(new("", "终端", Terminal, advanced: true));
-        dev.Items.Add(new("", "服务配置", ServiceConfig, advanced: true));
-        dev.Items.Add(new("", "FTP 传输", Ftp, advanced: true));
+        var dev = new NavGroupViewModel("", "nav.group.dev");
+        dev.Items.Add(new("", "nav.terminal", Terminal, advanced: true));
+        dev.Items.Add(new("", "nav.serviceConfig", ServiceConfig, advanced: true));
+        dev.Items.Add(new("", "nav.ftp", Ftp, advanced: true));
         dev.Items.Add(new("", "Cloudflare DDNS", Cloudflare, advanced: true));
-        dev.Items.Add(new("", "WSL", Wsl, advanced: true, minBuild: OsInfo.Win10_1607));
-        dev.Items.Add(new("", "系统调优", Tweaks, advanced: true));
-        dev.Items.Add(new("", "高级工具", AdvancedTools, advanced: true));
+        dev.Items.Add(new("", "nav.wsl", Wsl, advanced: true, minBuild: OsInfo.Win10_1607));
+        dev.Items.Add(new("", "nav.tweaks", Tweaks, advanced: true));
+        dev.Items.Add(new("", "nav.advancedTools", AdvancedTools, advanced: true));
 
-        var misc = new NavGroupViewModel("", "其他");
-        misc.Items.Add(new("", "日志", Logs));
-        misc.Items.Add(new("", "设置", Settings));
+        var misc = new NavGroupViewModel("", "nav.group.misc");
+        misc.Items.Add(new("", "nav.logs", Logs));
+        misc.Items.Add(new("", "nav.settings", Settings));
 
         foreach (var g in new[] { deploy, system, dev, misc }) NavGroups.Add(g);
     }
@@ -305,13 +309,17 @@ public sealed class MainViewModel : ObservableObject
     {
         var dir = CatalogLoader.FindCatalogDir(AppContext.BaseDirectory)
                   ?? CatalogLoader.FindCatalogDir(Environment.CurrentDirectory);
-        if (dir == null) { Install.LoadError = "找不到 catalog/catalog.json"; Install.IsLoading = false; return; }
+        if (dir == null) { Install.LoadError = Localizer.T("ops.loadError.noCatalog"); Install.IsLoading = false; return; }
 
         var path = Path.Combine(dir, "catalog.json");
         _repoRoot = Path.GetDirectoryName(dir)!;
         Terminal.WorkingDir = _repoRoot;
         try { _catalog = CatalogLoader.Load(path); }
         catch (Exception ex) { Install.LoadError = ex.Message; Install.IsLoading = false; return; }
+
+        // Preload localized software summaries (en/de) so install cards switch language without a reload.
+        foreach (var lang in new[] { "en", "de" })
+            CatalogLoader.ApplyLocalizedSummaries(_catalog, dir, lang);
 
         var settings = SettingsStore.Load();
         var vars = new Dictionary<string, string>(_catalog.PathVars, StringComparer.OrdinalIgnoreCase);
@@ -426,10 +434,10 @@ public sealed class MainViewModel : ObservableObject
     private async Task RefreshIconsManualAsync()
     {
         var items = Install.Groups.SelectMany(g => g.Items).ToList();
-        Settings.IconNote = "正在联网获取 …";
-        var n = await Views.BusyDialog.RunAsync(Application.Current.MainWindow, "刷新软件图标",
-            "正在联网获取缺失的软件图标并缓存到本地…", () => FetchIconCacheAsync(items));
-        Settings.IconNote = n > 0 ? $"已补全并缓存 {n} 个图标" : "未发现需要补全的图标（均已就绪 / 本次未获取到）";
+        Settings.IconNote = Localizer.T("ops.icon.fetching");
+        var n = await Views.BusyDialog.RunAsync(Application.Current.MainWindow, Localizer.T("ops.icon.busyTitle"),
+            Localizer.T("ops.icon.busyBody"), () => FetchIconCacheAsync(items));
+        Settings.IconNote = n > 0 ? Localizer.Format("ops.icon.doneN", n) : Localizer.T("ops.icon.none");
     }
 
     /// <summary>Batch-download HD brand icons for items that have no bundled icon, cache them under
@@ -539,9 +547,9 @@ public sealed class MainViewModel : ObservableObject
     /// coexist), then point PHP_HOME + PATH at it (the active version). Re-run to add or switch versions.</summary>
     private async Task InstallPhpAsync(CatalogItem item)
     {
-        var labels = PhpVersions.Select(v => v.Label + (IsPhpVersionInstalled(v.Version) ? "    ✓ 已装" : "")).ToList();
-        var dlg = new Views.ChoiceDialog("选择 PHP 版本",
-            "多版本可共存（各装到 ${ToolsDir}/php/<版本>）。选中的版本将成为活动版本（PHP_HOME + PATH）：",
+        var labels = PhpVersions.Select(v => v.Label + (IsPhpVersionInstalled(v.Version) ? Localizer.T("ops.status.installed") : "")).ToList();
+        var dlg = new Views.ChoiceDialog(Localizer.T("ops.php.pickTitle"),
+            Localizer.T("ops.php.pickBody"),
             labels, 0) { Owner = Application.Current.MainWindow };
         if (dlg.ShowDialog() != true || dlg.SelectedIndex < 0) return;
         var v = PhpVersions[dlg.SelectedIndex];
@@ -604,9 +612,9 @@ public sealed class MainViewModel : ObservableObject
 
     private async Task ConfirmUninstallAndRun(CatalogItem item)
     {
-        var choice = MessageBox.Show(
-            $"卸载 {item.Name}？\n\n【是】彻底删除（含用户数据）\n【否】仅卸载，保留数据\n【取消】不操作",
-            "卸载", MessageBoxButton.YesNoCancel, MessageBoxImage.Warning);
+        var choice = Dialogs.Show(
+            Localizer.Format("ops.uninstall.body", item.Name),
+            Localizer.T("verb.uninstall"), MessageBoxButton.YesNoCancel, MessageBoxImage.Warning);
         if (choice == MessageBoxResult.Cancel) return;
         await RunOpAsync(item, "uninstall", purge: choice == MessageBoxResult.Yes);
     }
@@ -626,7 +634,7 @@ public sealed class MainViewModel : ObservableObject
             try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(dir) { UseShellExecute = true }); }
             catch { /* ignore */ }
         }
-        else MessageBox.Show($"未能定位 {item.Name} 的安装目录。", "打开软件目录", MessageBoxButton.OK, MessageBoxImage.Information);
+        else Dialogs.Show(Localizer.Format("ops.openDir.fail", item.Name), Localizer.T("install.ctx.openDir"), MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     /// <summary>Open the software's homepage. Every item supports this: prefer the catalog homepage, then a
@@ -635,7 +643,7 @@ public sealed class MainViewModel : ObservableObject
     private static void OpenHomepage(CatalogItem item)
     {
         var url = FirstHttpUrl(item.Homepage, item.Install?.Repo)
-                  ?? "https://www.bing.com/search?q=" + Uri.EscapeDataString((item.Name + " 官网 官方下载").Trim());
+                  ?? "https://www.bing.com/search?q=" + Uri.EscapeDataString((item.Name + Localizer.T("ops.homepageSearchSuffix")).Trim());
         try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true }); }
         catch { /* ignore */ }
     }
@@ -646,16 +654,16 @@ public sealed class MainViewModel : ObservableObject
     private async Task ConfirmRiskAndRun(CatalogItem item, string op)
     {
         var verb = Verb(op);
-        var detail = op == "stop" ? "将结束该软件的所有进程。" : op == "restart" ? "将结束并重新启动该软件。" : "";
-        if (MessageBox.Show($"确定要{verb} {item.Name}？\n\n{detail}".TrimEnd(),
+        var detail = op == "stop" ? Localizer.T("ops.risk.stopDetail") : op == "restart" ? Localizer.T("ops.risk.restartDetail") : "";
+        if (Dialogs.Show(Localizer.Format("ops.risk.body", verb, item.Name, detail).TrimEnd(),
                 verb, MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
         await RunQuickOpAsync(item, op);
     }
 
     private async Task ConfirmUpdateAndRun(CatalogItem item)
     {
-        if (MessageBox.Show($"是否检查并更新 {item.Name}？\n\n（若已是最新版本会提示「已是最新」）",
-                "更新", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+        if (Dialogs.Show(Localizer.Format("ops.update.confirmBody", item.Name),
+                Localizer.T("verb.update"), MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
         await RunOpAsync(item, "update");
     }
 
@@ -673,21 +681,21 @@ public sealed class MainViewModel : ObservableObject
         try { variants = await fetch(Environment.Is64BitOperatingSystem); }
         catch (Exception ex)
         {
-            MessageBox.Show($"获取 {title} 版本失败：{ex.Message}\n\n可前往项目发布页手动下载。",
+            Dialogs.Show(Localizer.Format("ops.toolchain.fetchFail", title, ex.Message),
                 title, MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
         if (variants.Count == 0)
         {
-            MessageBox.Show($"未找到匹配当前系统架构的 {title} 压缩包。", title, MessageBoxButton.OK, MessageBoxImage.Warning);
+            Dialogs.Show(Localizer.Format("ops.toolchain.noArch", title), title, MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
-        var labels = variants.Select(v => v.Label + (v.Recommended ? "    ✓ 推荐" : "")).ToList();
+        var labels = variants.Select(v => v.Label + (v.Recommended ? Localizer.T("ops.status.recommended") : "")).ToList();
         var rec = variants.FindIndex(v => v.Recommended);
-        var arch = Environment.Is64BitOperatingSystem ? "x86_64（64 位）" : "i686（32 位）";
-        var dlg = new Views.ChoiceDialog($"选择 {title} 编译版",
-            $"已根据系统架构筛选：{arch}\n请选择要下载安装的编译版本（推荐 posix 线程 + UCRT）：",
+        var arch = Environment.Is64BitOperatingSystem ? Localizer.T("ops.arch.x64") : Localizer.T("ops.arch.x86");
+        var dlg = new Views.ChoiceDialog(Localizer.Format("ops.toolchain.pickTitle", title),
+            Localizer.Format("ops.toolchain.pickBody", arch),
             labels, rec) { Owner = Application.Current.MainWindow };
         if (dlg.ShowDialog() != true || dlg.SelectedIndex < 0) return;
 
@@ -703,7 +711,7 @@ public sealed class MainViewModel : ObservableObject
         var repo = GitHubRepoFromUrl(item.Install.Repo) ?? GitHubRepoFromUrl(item.Homepage);
         if (repo == null)
         {
-            MessageBox.Show($"无法识别 GitHub 仓库（install.repo / homepage）：\n{item.Install.Repo ?? item.Homepage}", item.Name,
+            Dialogs.Show(Localizer.Format("ops.gh.badRepo", item.Install.Repo ?? item.Homepage ?? ""), item.Name,
                 MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
@@ -712,28 +720,28 @@ public sealed class MainViewModel : ObservableObject
         try { releases = await GitHub.ReleasesAsync(repo); }
         catch (Exception ex)
         {
-            MessageBox.Show($"获取 {item.Name} 发布列表失败：{ex.Message}\n\n可前往项目发布页手动下载。",
+            Dialogs.Show(Localizer.Format("ops.gh.relFail", item.Name, ex.Message),
                 item.Name, MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
         if (releases.Count == 0)
         {
-            MessageBox.Show($"{item.Name} 仓库 {repo} 暂无发布版。", item.Name, MessageBoxButton.OK, MessageBoxImage.Warning);
+            Dialogs.Show(Localizer.Format("ops.gh.noReleases", item.Name, repo), item.Name, MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
         var tagLabels = releases.Select(r =>
-            r.Tag + (r.Prerelease ? "  · 预发布" : "") +
+            r.Tag + (r.Prerelease ? Localizer.T("ops.gh.prerelease") : "") +
             (string.IsNullOrWhiteSpace(r.Name) || r.Name == r.Tag ? "" : "  · " + r.Name)).ToList();
-        var dlgTag = new Views.ChoiceDialog($"选择 {item.Name} 版本",
-            $"仓库 {repo} 共 {releases.Count} 个发布版（已缓存，避免频繁请求）。请选择版本：",
+        var dlgTag = new Views.ChoiceDialog(Localizer.Format("ops.gh.pickTagTitle", item.Name),
+            Localizer.Format("ops.gh.pickTagBody", repo, releases.Count),
             tagLabels, 0) { Owner = Application.Current.MainWindow };
         if (dlgTag.ShowDialog() != true || dlgTag.SelectedIndex < 0) return;
         var rel = releases[dlgTag.SelectedIndex];
 
         if (rel.Assets.Count == 0)
         {
-            MessageBox.Show($"{rel.Tag} 没有可下载的文件（仅源码）。", item.Name, MessageBoxButton.OK, MessageBoxImage.Warning);
+            Dialogs.Show(Localizer.Format("ops.gh.noAssets", rel.Tag), item.Name, MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
@@ -743,9 +751,9 @@ public sealed class MainViewModel : ObservableObject
         if (assets.Count == 0) assets = rel.Assets.ToList();
         assets = assets.OrderBy(a => WinDeploy.Core.Util.Arch.PreferScore(a.Name)).ToList();
 
-        var assetLabels = assets.Select(a => $"{a.Name}   （{Mb(a.Size)}）").ToList();
-        var dlgAsset = new Views.ChoiceDialog($"选择文件 · {rel.Tag}",
-            "请选择要下载的文件（已按当前系统平台过滤；压缩包自动解压、便携 exe 放入安装目录、Setup 直接运行）：",
+        var assetLabels = assets.Select(a => Localizer.Format("ops.assetLabel", a.Name, Mb(a.Size))).ToList();
+        var dlgAsset = new Views.ChoiceDialog(Localizer.Format("ops.gh.pickAssetTitle", rel.Tag),
+            Localizer.T("ops.gh.pickAssetBody"),
             assetLabels, 0) { Owner = Application.Current.MainWindow };
         if (dlgAsset.ShowDialog() != true || dlgAsset.SelectedIndex < 0) return;
         var asset = assets[dlgAsset.SelectedIndex];
@@ -781,8 +789,8 @@ public sealed class MainViewModel : ObservableObject
 
     private async Task ConfirmDowngradeAndRun(CatalogItem item)
     {
-        if (MessageBox.Show($"确定将 {item.Name} 降级到 {item.Version}？\n\n降级可能导致配置不兼容。",
-                "降级", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        if (Dialogs.Show(Localizer.Format("ops.downgrade.body", item.Name, item.Version ?? ""),
+                Localizer.T("verb.downgrade"), MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
         await RunOpAsync(item, "downgrade");
     }
 
@@ -793,8 +801,10 @@ public sealed class MainViewModel : ObservableObject
 
     private static string Verb(string op) => op switch
     {
-        "install" => "安装", "update" => "更新", "uninstall" => "卸载", "downgrade" => "降级",
-        "launch" => "启动", "stop" => "结束", "restart" => "重启", _ => "操作",
+        "install" => Localizer.T("verb.install"), "update" => Localizer.T("verb.update"),
+        "uninstall" => Localizer.T("verb.uninstall"), "downgrade" => Localizer.T("verb.downgrade"),
+        "launch" => Localizer.T("verb.launch"), "stop" => Localizer.T("verb.stop"),
+        "restart" => Localizer.T("verb.restart"), _ => Localizer.T("verb.generic"),
     };
 
     /// <summary>Run ONE operation, mirrored on the 运行进度 page (auto-navigated to). Cancellable;
@@ -823,16 +833,16 @@ public sealed class MainViewModel : ObservableObject
                     "update" => await Updater.UpdateAsync(item, ctx),
                     "downgrade" => await Updater.DowngradeAsync(item, ctx),
                     "uninstall" => await Uninstaller.UninstallAsync(item, _resolver, purge, ct, ctx.Report),
-                    _ => StepOutcome.Fail("未知操作"),
+                    _ => StepOutcome.Fail(Localizer.T("ops.result.unknownOp")),
                 };
             }
-            catch (OperationCanceledException) { cancelled = true; ctx.Step("用户已取消"); outcome = StepOutcome.Fail("已取消"); }
-            catch (Exception ex) { ctx.Step("出错：" + ex.Message); outcome = StepOutcome.Fail(ex.Message); }
+            catch (OperationCanceledException) { cancelled = true; ctx.Step(Localizer.T("ops.step.userCancelled")); outcome = StepOutcome.Fail(Localizer.T("ops.result.cancelled")); }
+            catch (Exception ex) { ctx.Step(Localizer.Format("ops.step.error", ex.Message)); outcome = StepOutcome.Fail(ex.Message); }
 
             if (cancelled && op == "install")
             {
                 var freed = Cleanup.RemoveInstallResidue(item, _resolver);
-                var msg = freed > 0 ? $"已取消，已清理残留 {Mb(freed)}" : "已取消（无残留）";
+                var msg = freed > 0 ? Localizer.Format("ops.cancel.cleaned", Mb(freed)) : Localizer.T("ops.cancel.noResidue");
                 ctx.Step(msg);
                 outcome = StepOutcome.Fail(msg);
             }
@@ -882,7 +892,7 @@ public sealed class MainViewModel : ObservableObject
                 "launch" => await Task.Run(() => LaunchOp(item, ctx)),
                 "stop" => await Task.Run(() => StopOp(item, ctx)),
                 "restart" => await RestartOp(item, ctx),
-                _ => StepOutcome.Fail("未知操作"),
+                _ => StepOutcome.Fail(Localizer.T("ops.result.unknownOp")),
             };
         }
         catch (Exception ex) { outcome = StepOutcome.Fail(ex.Message); }
@@ -936,13 +946,13 @@ public sealed class MainViewModel : ObservableObject
         var junk = LeftoverScanner.Scan(candidates);
         if (junk.Count == 0) return;
         var total = junk.Sum(j => j.Bytes);
-        var lines = string.Join("\n", junk.Select(j => $"· {j.Path}  （{j.SizeText}）"));
-        var msg = $"{item.Name} 卸载后仍有 {junk.Count} 处残留，约 {Mb(total)} 可释放：\n\n{lines}\n\n是否立即清理？";
-        if (MessageBox.Show(msg, "清理残留", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+        var lines = string.Join("\n", junk.Select(j => Localizer.Format("ops.leftover.line", j.Path, j.SizeText)));
+        var msg = Localizer.Format("ops.leftover.body", item.Name, junk.Count, Mb(total), lines);
+        if (Dialogs.Show(msg, Localizer.T("ops.leftover.title"), MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
             return;
         var (count, freed) = LeftoverScanner.Delete(junk);
         AuditLog.Action($"清理残留 {item.Name}：删除 {count} 处，释放 {Mb(freed)}");
-        MessageBox.Show($"已清理 {count} 处，释放 {Mb(freed)}。", "清理残留",
+        Dialogs.Show(Localizer.Format("ops.leftover.done", count, Mb(freed)), Localizer.T("ops.leftover.title"),
             MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
@@ -953,17 +963,17 @@ public sealed class MainViewModel : ObservableObject
     private StepOutcome LaunchOp(CatalogItem item, EngineContext ctx)
     {
         var ok = Launcher.TryLaunch(item, _resolver, out var detail, ctx.Step);
-        return ok ? StepOutcome.Done("已启动 " + detail) : StepOutcome.Fail(detail);
+        return ok ? StepOutcome.Done(Localizer.Format("ops.toolchain.launched", detail)) : StepOutcome.Fail(detail);
     }
 
     private StepOutcome StopOp(CatalogItem item, EngineContext ctx)
     {
         var procs = ProcessControl.Find(item, _resolver);
-        ctx.Step($"找到 {procs.Count} 个进程");
+        ctx.Step(Localizer.Format("ops.step.foundProcs", procs.Count));
         var n = 0;
         foreach (var p in procs)
-            if (ProcessControl.Kill(p.Pid)) { n++; ctx.Step($"已结束 {p.Name} (PID {p.Pid})"); }
-        return StepOutcome.Done(n > 0 ? $"已结束 {n} 个进程" : "没有正在运行的进程");
+            if (ProcessControl.Kill(p.Pid)) { n++; ctx.Step(Localizer.Format("ops.step.killed", p.Name, p.Pid)); }
+        return StepOutcome.Done(n > 0 ? Localizer.Format("ops.stop.done", n) : Localizer.T("ops.stop.none"));
     }
 
     private async Task<StepOutcome> RestartOp(CatalogItem item, EngineContext ctx)
@@ -974,7 +984,7 @@ public sealed class MainViewModel : ObservableObject
             foreach (var p in ProcessControl.Find(item, _resolver)) if (ProcessControl.Kill(p.Pid)) k++;
             return k;
         });
-        ctx.Step($"已结束 {n} 个进程");
+        ctx.Step(Localizer.Format("ops.step.killedN", n));
         await Task.Delay(600);
         var (ok, detail) = await Task.Run(() =>
         {
@@ -982,8 +992,8 @@ public sealed class MainViewModel : ObservableObject
             return (r, d);
         });
         return ok
-            ? StepOutcome.Done($"已重启（结束 {n} 个进程后启动）")
-            : StepOutcome.Fail("重启失败：" + detail);
+            ? StepOutcome.Done(Localizer.Format("ops.restart.done", n))
+            : StepOutcome.Fail(Localizer.Format("ops.restart.fail", detail));
     }
 
     /// <summary>On first install of a toolchain with a catalog <c>detect.envVar</c> (GCC_HOME / GOROOT /
@@ -998,14 +1008,14 @@ public sealed class MainViewModel : ObservableObject
             return;   // 首次安装才设置；已存在则尊重用户现有配置
 
         var home = ResolveToolHome(item);
-        if (home == null) { ctx?.Step($"未能确定 {varName} 安装路径，跳过环境变量设置"); return; }
+        if (home == null) { ctx?.Step(Localizer.Format("ops.env.noPath", varName)); return; }
 
         WinDeploy.Core.Util.EnvPath.SetUserVar(varName, home);
         Environment.SetEnvironmentVariable(varName, home);   // reflect into this process
         var bin = Path.Combine(home, "bin");
         var addedPath = Directory.Exists(bin) && WinDeploy.Core.Util.EnvPath.AddToUserPath(bin);
         AuditLog.Action($"环境变量：{varName}={home}" + (addedPath ? $"；已加入 PATH：{bin}" : ""));
-        ctx?.Step($"已设置环境变量 {varName}={home}" + (addedPath ? "（并加入 PATH）" : ""));
+        ctx?.Step(Localizer.Format("ops.env.set", varName, home) + (addedPath ? Localizer.T("ops.env.andPath") : ""));
     }
 
     /// <summary>The install root for a toolchain: the portable extract dir, else the folder above the
@@ -1118,7 +1128,7 @@ public sealed class MainViewModel : ObservableObject
         {
             var ctx = NewCtx(out var ct);
             var plan = await _engine.BuildPlanAsync(selected, _resolver);
-            Progress.BeginRun("安装", plan.Count(p => p.Status == PlanStatus.ToInstall));
+            Progress.BeginRun(Localizer.T("verb.install"), plan.Count(p => p.Status == PlanStatus.ToInstall));
 
             CatalogItem? current = null;
             var summary = await _engine.ApplyAsync(plan, ctx, dryRun: false,
@@ -1140,7 +1150,7 @@ public sealed class MainViewModel : ObservableObject
             // Persist any rows abandoned by cancellation (still 排队/运行中) so they don't linger
             // on the page unrecorded.
             foreach (var row in rows.Values.Where(r => r.Kind is "queued" or "running"))
-                dispatcher.Invoke(() => Progress.Done(row, StepStatus.Failed, "已取消"));
+                dispatcher.Invoke(() => Progress.Done(row, StepStatus.Failed, Localizer.T("ops.result.cancelled")));
 
             AuditLog.Action($"安装结束 · 成功 {summary.Ok} · 失败 {summary.Failed} · 跳过 {summary.Skipped}");
             Progress.EndRun();
@@ -1161,7 +1171,7 @@ public sealed class MainViewModel : ObservableObject
             .Where(i => i.IsSelected && i.IsInstalled && Updater.CanUpdate(i.Model))
             .Select(i => i.Model).ToList();
         if (items.Count == 0) return;
-        if (MessageBox.Show($"是否更新选中的 {items.Count} 个软件？", "更新",
+        if (Dialogs.Show(Localizer.Format("ops.update.confirmManyBody", items.Count), Localizer.T("verb.update"),
                 MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
 
         SelectedNav = AllNavItems.First(n => ReferenceEquals(n.Page, Progress));
@@ -1178,7 +1188,7 @@ public sealed class MainViewModel : ObservableObject
         try
         {
             var ctx = NewCtx(out var ct);
-            Progress.BeginRun("更新", items.Count);
+            Progress.BeginRun(Localizer.T("verb.update"), items.Count);
             var ok = 0; var failed = 0;
             foreach (var item in items)
             {
@@ -1187,7 +1197,7 @@ public sealed class MainViewModel : ObservableObject
                 dispatcher.Invoke(() => Progress.Start(row));
                 StepOutcome outcome;
                 try { outcome = await Updater.UpdateAsync(item, ctx); }
-                catch (OperationCanceledException) { outcome = StepOutcome.Fail("已取消"); }
+                catch (OperationCanceledException) { outcome = StepOutcome.Fail(Localizer.T("ops.result.cancelled")); }
                 catch (Exception ex) { outcome = StepOutcome.Fail(ex.Message); }
                 if (outcome.Status == StepStatus.Failed) failed++; else ok++;
                 AuditLog.Action($"更新 {item.Name}：{Zh(outcome.Status)} {outcome.Message}".TrimEnd());
@@ -1195,7 +1205,7 @@ public sealed class MainViewModel : ObservableObject
             }
 
             foreach (var row in rows.Values.Where(r => r.Kind is "queued" or "running"))
-                dispatcher.Invoke(() => Progress.Done(row, StepStatus.Failed, "已取消"));
+                dispatcher.Invoke(() => Progress.Done(row, StepStatus.Failed, Localizer.T("ops.result.cancelled")));
 
             Detection.ResetCache();
             Arp.Refresh();

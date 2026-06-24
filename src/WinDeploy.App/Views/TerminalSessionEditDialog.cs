@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using WinDeploy.App.ViewModels;
+using WinDeploy.Core.I18n;
 
 namespace WinDeploy.App.Views;
 
@@ -20,7 +21,7 @@ public sealed class TerminalSessionEditDialog : Window
     public TerminalSessionEditDialog(string name, string colorHex)
     {
         _colorHex = colorHex;
-        Title = "编辑终端会话";
+        Title = Localizer.T("termdlg.edit.title");
         Width = 420;
         SizeToContent = SizeToContent.Height;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
@@ -30,12 +31,12 @@ public sealed class TerminalSessionEditDialog : Window
         var root = new StackPanel { Margin = new Thickness(24, 20, 24, 20) };
 
         // ── name / remark ───────────────────────────────────────────────
-        root.Children.Add(Label("名称 / 备注"));
+        root.Children.Add(Label(Localizer.T("termdlg.edit.nameLabel")));
         _name = new TextBox { Text = name, Margin = new Thickness(0, 6, 0, 0), Padding = new Thickness(8, 6, 8, 6) };
         root.Children.Add(_name);
 
         // ── color swatches ──────────────────────────────────────────────
-        root.Children.Add(Label("颜色（快速定位）", top: 18));
+        root.Children.Add(Label(Localizer.T("termdlg.edit.colorLabel"), top: 18));
         var wrap = new WrapPanel { Margin = new Thickness(0, 8, 0, 0) };
         var colors = TerminalViewModel.Palette.ToList();
         if (!colors.Contains(_colorHex, StringComparer.OrdinalIgnoreCase)) colors.Insert(0, _colorHex);
@@ -55,10 +56,10 @@ public sealed class TerminalSessionEditDialog : Window
             HorizontalAlignment = HorizontalAlignment.Right,
             Margin = new Thickness(0, 22, 0, 0),
         };
-        var ok = new Button { Content = "保存", MinWidth = 88, IsDefault = true };
+        var ok = new Button { Content = Localizer.T("common.save"), MinWidth = 88, IsDefault = true };
         if (Application.Current.TryFindResource("PrimaryButton") is Style okStyle) ok.Style = okStyle;
         ok.Click += (_, _) => DialogResult = true;
-        var cancel = new Button { Content = "取消", MinWidth = 72, Margin = new Thickness(10, 0, 0, 0), IsCancel = true };
+        var cancel = new Button { Content = Localizer.T("common.cancel"), MinWidth = 72, Margin = new Thickness(10, 0, 0, 0), IsCancel = true };
         if (Application.Current.TryFindResource("MiniButton") is Style cancelStyle) cancel.Style = cancelStyle;
         cancel.Click += (_, _) => DialogResult = false;
         buttons.Children.Add(ok);

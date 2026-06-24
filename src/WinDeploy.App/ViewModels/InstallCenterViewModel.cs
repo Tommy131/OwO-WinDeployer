@@ -4,22 +4,14 @@ using System.Windows.Input;
 using WinDeploy.App.Services;
 using WinDeploy.Core;
 using WinDeploy.Core.Engine;
+using WinDeploy.Core.I18n;
 using WinDeploy.Core.Models;
 
 namespace WinDeploy.App.ViewModels;
 
 /// <summary>The "软件安装中心" page: grouped, icon-forward, per-item selectable software cards.</summary>
-public sealed class InstallCenterViewModel : ObservableObject
+public sealed class InstallCenterViewModel : LocalizedObject
 {
-    private static readonly Dictionary<string, string> CategoryNames = new()
-    {
-        ["dev"] = "开发工具链", ["system"] = "系统依赖", ["ide"] = "IDE / 编辑器",
-        ["ai"] = "AI 工具", ["office"] = "办公 / 通讯", ["media"] = "媒体",
-        ["db-api"] = "数据库 / API", ["vm"] = "虚拟化", ["games"] = "游戏平台",
-        ["server"] = "服务 / 后端", ["browser"] = "浏览器", ["proxy"] = "网络代理", ["dict"] = "词典", ["hwmon"] = "硬件监控",
-        ["tools"] = "实用工具",
-    };
-
     /// <summary>普通用户（非开发人员模式）可见的分类。其余分类（dev/ide/ai/db-api/vm/tools）
     /// 仅在开发人员模式下显示，且永不被全选/方案勾选，以免被悄悄安装。</summary>
     private static readonly HashSet<string> BasicCategories =
@@ -121,7 +113,7 @@ public sealed class InstallCenterViewModel : ObservableObject
         foreach (var g in Groups)
             if (CategoryVisible(g.Key))
             {
-                var f = new CategoryFilterViewModel(g.Key, g.Title);
+                var f = new CategoryFilterViewModel(g.Key);
                 f.Changed += OnCategoryFilterChanged;
                 CategoryFilters.Add(f);
             }
@@ -147,14 +139,14 @@ public sealed class InstallCenterViewModel : ObservableObject
         {
             var total = CategoryFilters.Count;
             var on = CategoryFilters.Count(f => f.IsChecked);
-            return total == 0 || on == total ? "筛选分组 ▾" : $"筛选分组 ({on}/{total}) ▾";
+            return total == 0 || on == total ? Localizer.T("install.filterGroups") : Localizer.Format("install.filterGroupsN", on, total);
         }
     }
 
     private bool _hideUpdates;
     public int UpdatableCount => Groups.Sum(g => g.Items.Count(i => i.HasUpdate));
     public bool HasUpdates => UpdatableCount > 0;
-    public string UpdateToggleLabel => _hideUpdates ? $"显示可更新 ({UpdatableCount})" : $"忽略可更新 ({UpdatableCount})";
+    public string UpdateToggleLabel => _hideUpdates ? Localizer.Format("install.showUpdates", UpdatableCount) : Localizer.Format("install.ignoreUpdates", UpdatableCount);
 
     private void ToggleUpdates()
     {
@@ -198,7 +190,7 @@ public sealed class InstallCenterViewModel : ObservableObject
         Groups.Clear();
         foreach (var grp in catalog.Items.GroupBy(i => i.Category))
         {
-            var g = new CategoryGroupViewModel(grp.Key, CategoryNames.GetValueOrDefault(grp.Key, grp.Key));
+            var g = new CategoryGroupViewModel(grp.Key);
             foreach (var item in grp)
             {
                 var vm = new AppItemViewModel(item);
@@ -220,8 +212,8 @@ public sealed class InstallCenterViewModel : ObservableObject
     }
 
     public int SelectedCount => Groups.Sum(g => g.Items.Count(i => i.IsSelected));
-    public string StartLabel => $"开始安装 ({SelectedCount})";
-    public string UpdateLabel => $"更新选中 ({UpdatableSelectedCount})";
+    public string StartLabel => Localizer.Format("install.startBtn", SelectedCount);
+    public string UpdateLabel => Localizer.Format("install.updateSelected", UpdatableSelectedCount);
 
     private string _pathNote = "";
     public string PathNote { get => _pathNote; set => Set(ref _pathNote, value); }
@@ -238,7 +230,7 @@ public sealed class InstallCenterViewModel : ObservableObject
                     i.Model.InstallPathOverride = ComposeInstallPath(baseDir, i.Model.Name);
                     n++;
                 }
-        PathNote = n > 0 ? $"已为 {n} 个选中项设置安装路径（以 {baseDir} 为根目录，按软件名分目录）" : "未选中任何软件";
+        PathNote = n > 0 ? Localizer.Format("install.pathSet", n, baseDir) : Localizer.T("install.noneSelected");
         if (n > 0) AuditLog.Action($"设置安装路径：{baseDir}（{n} 项，按软件名分目录）");
     }
 
@@ -266,7 +258,16 @@ public sealed class InstallCenterViewModel : ObservableObject
         var cleaned = new string(name.Select(c => invalid.Contains(c) ? '_' : c).ToArray()).Trim();
         return cleaned.Length == 0 ? "app" : cleaned;
     }
-    public string Subtitle => $"勾选要部署到本机的软件 · 已选 {SelectedCount} 项";
+    public string Subtitle => Localizer.Format("install.subtitle", SelectedCount);
+
+    protected override void OnCultureChanged()
+    {
+        OnPropertyChanged(nameof(StartLabel));
+        OnPropertyChanged(nameof(UpdateLabel));
+        OnPropertyChanged(nameof(Subtitle));
+        OnPropertyChanged(nameof(UpdateToggleLabel));
+        OnPropertyChanged(nameof(GroupFilterLabel));
+    }
 
     private string? _loadError;
     public string? LoadError

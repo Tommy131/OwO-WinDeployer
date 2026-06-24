@@ -1,0 +1,10 @@
+{
+  "export.capture": "采集本机配置",
+  "export.done": "已写回 configs/，记得在仓库里 git commit。",
+  "export.processing": "处理中 …",
+  "export.status.failed": "失败",
+  "export.status.ok": "成功",
+  "export.status.skip": "跳过",
+  "export.subtitle": "扫描本机、把已装软件的配置采集回仓库（敏感信息自动脱敏）。点每项可展开看文件路径 / 大小 / 概览。",
+  "export.title": "导出"
+}

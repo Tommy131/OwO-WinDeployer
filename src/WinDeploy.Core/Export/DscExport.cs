@@ -1,4 +1,5 @@
 using System.Text;
+using WinDeploy.Core.I18n;
 using WinDeploy.Core.Models;
 
 namespace WinDeploy.Core.Export;
@@ -13,7 +14,7 @@ public static class DscExport
         var list = items.ToList();
         var sb = new StringBuilder();
         sb.AppendLine("# yaml-language-server: $schema=https://aka.ms/configuration-dsc-schema/0.2");
-        sb.AppendLine("# 由 OwO! Win Deployer 导出 — 可用 `winget configure -f <此文件>` 无人值守部署");
+        sb.AppendLine(Localizer.T("engine.dsc.comment.header"));
         sb.AppendLine("properties:");
         sb.AppendLine("  configurationVersion: 0.2.0");
         sb.AppendLine("  resources:");
@@ -46,7 +47,7 @@ public static class DscExport
         if (skipped.Count > 0)
         {
             sb.AppendLine();
-            sb.AppendLine("# 以下条目非 winget 安装方式，无法用 DSC 表达，请用本工具安装：");
+            sb.AppendLine(Localizer.T("engine.dsc.comment.skipped"));
             foreach (var s in skipped) sb.AppendLine("#   - " + s);
         }
         return sb.ToString();
@@ -57,7 +58,7 @@ public static class DscExport
         sb.AppendLine("    - resource: Microsoft.WinGet.DSC/WinGetPackage");
         sb.AppendLine($"      id: {resourceId}");
         sb.AppendLine("      directives:");
-        sb.AppendLine($"        description: 安装 {Escape(desc)}");
+        sb.AppendLine($"        description: {Escape(Localizer.Format("engine.dsc.comment.install", desc))}");
         sb.AppendLine("        allowPrerelease: false");
         sb.AppendLine("      settings:");
         sb.AppendLine($"        id: {wingetId}");

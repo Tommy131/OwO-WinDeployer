@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using WinDeploy.Core.I18n;
 
 namespace WinDeploy.App.Views;
 
@@ -53,7 +54,7 @@ public sealed class BusyDialog : Window
         });
         stack.Children.Add(new TextBlock
         {
-            Text = "请勿关闭软件，任务完成后此窗口会自动消失。", FontSize = 12,
+            Text = Localizer.T("dialog.busy.warning"), FontSize = 12,
             Foreground = Brush("WarnFg"), Margin = new Thickness(0, 12, 0, 0), TextWrapping = TextWrapping.Wrap,
         });
 

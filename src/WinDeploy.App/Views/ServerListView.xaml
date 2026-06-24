@@ -9,13 +9,13 @@
     </Grid.RowDefinitions>
 
     <StackPanel Grid.Row="0">
-      <TextBlock Text="服务配置" FontSize="20" FontWeight="SemiBold" />
-      <TextBlock Text="管理本机 Web 服务端：配置文件、SSL 证书、站点 (vhost) 与进程启停。点击任一服务端进入管理。"
+      <TextBlock Text="{DynamicResource S.nav.serviceConfig}" FontSize="20" FontWeight="SemiBold" />
+      <TextBlock Text="{DynamicResource S.svc.view.listSubtitle}"
                  FontSize="13" Foreground="{DynamicResource TextSecondary}" Margin="0,3,0,0" TextWrapping="Wrap" />
     </StackPanel>
 
     <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,0">
-      <Button Content="↻ 刷新" Style="{StaticResource MiniButton}" Command="{Binding RefreshCommand}" />
+      <Button Content="{DynamicResource S.install.refresh}" Style="{StaticResource MiniButton}" Command="{Binding RefreshCommand}" />
       <TextBlock Text="{Binding Note}" FontSize="12" Foreground="{DynamicResource TextTertiary}"
                  VerticalAlignment="Center" Margin="14,0,0,0" TextWrapping="Wrap" MaxWidth="760" />
     </StackPanel>
@@ -23,7 +23,7 @@
     <!-- Margin right -24 / Padding right 24: scrollbar flush at the page's outer edge, content unchanged. -->
     <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Margin="0,14,-24,0" Padding="0,0,24,0">
       <StackPanel>
-        <TextBlock Text="未检测到受支持的 Web 服务端。请前往「软件安装中心」安装 nginx / Apache / Tomcat / PHP 后回到此页。"
+        <TextBlock Text="{DynamicResource S.svc.list.empty}"
                    FontSize="13" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"
                    Visibility="{Binding NoServers, Converter={StaticResource BoolToVis}}" />
 

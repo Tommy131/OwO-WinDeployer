@@ -3,6 +3,7 @@ using System.Security.Principal;
 using System.Windows.Threading;
 using WinDeploy.App.Services;
 using WinDeploy.Core.Engine;
+using WinDeploy.Core.I18n;
 
 namespace WinDeploy.App.ViewModels;
 
@@ -41,13 +42,26 @@ public sealed class PhysDiskRowViewModel
         if (m.Equals("HDD", StringComparison.OrdinalIgnoreCase)) return "HDD";
         if (m.Equals("SCM", StringComparison.OrdinalIgnoreCase)) return "SCM";
         if (b.Length > 0 && !b.Equals("Unknown", StringComparison.OrdinalIgnoreCase)) return b;   // SD / MMC / virtual …
-        return m.Length > 0 ? m : "未知";
+        return m.Length > 0 ? m : Localizer.T("common.unknown");
     }
 }
 
 public sealed class PowerRowViewModel
 {
+    /// <summary>Internal device-kind identifier (matches the hardware monitor's grouping key, e.g. "CPU",
+    /// "GPU", "硬盘"). Used for layout/scaling logic — not shown directly.</summary>
     public string Kind { get; init; } = "";
+
+    /// <summary>Localized badge label for <see cref="Kind"/>. CPU / GPU stay as their acronyms; the
+    /// hardware monitor's Chinese category keys map to translated labels.</summary>
+    public string KindLabel => Kind switch
+    {
+        "硬盘" => Localizer.T("sysov.power.kind.disk"),
+        "内存" => Localizer.T("sysov.power.kind.memory"),
+        "其他" => Localizer.T("sysov.power.kind.other"),
+        _ => Kind,
+    };
+
     public string Name { get; init; } = "";
     public double Watts { get; init; }
     public string WattsText { get; init; } = "";
@@ -58,7 +72,7 @@ public sealed class PowerRowViewModel
 /// <summary>The "系统概览" page: a one-glance health board — OS, CPU, RAM, drives (+ SMART), battery,
 /// Windows activation — plus live CPU/memory/power telemetry and a one-click software-inventory export.
 /// CPU/memory/power refresh on a 2-second timer while the page is visible (see <see cref="StartLive"/>).</summary>
-public sealed class SystemOverviewViewModel : ObservableObject
+public sealed class SystemOverviewViewModel : LocalizedObject
 {
     public ObservableCollection<DiskRowViewModel> Disks { get; } = new();
     public ObservableCollection<PhysDiskRowViewModel> PhysicalDisks { get; } = new();
@@ -95,7 +109,7 @@ public sealed class SystemOverviewViewModel : ObservableObject
     {
         if (!int.TryParse(row.DeviceId, out var idx))
         {
-            ShowEjectResult(false, row.Name, "无法确定该设备对应的物理磁盘编号。");
+            ShowEjectResult(false, row.Name, Localizer.T("sysov.eject.noIndex"));
             return;
         }
 
@@ -108,18 +122,18 @@ public sealed class SystemOverviewViewModel : ObservableObject
             case DeviceEject.EjectStatus.Success:
                 AuditLog.Action($"已安全弹出设备：{row.Name}");
                 RemoveDiskFromView(row, letters);
-                ShowEjectResult(true, row.Name, "设备已安全弹出，现在可以放心拔出。");
+                ShowEjectResult(true, row.Name, Localizer.T("sysov.eject.success"));
                 break;
             case DeviceEject.EjectStatus.NotFound:
                 // Already gone — just drop it from the view.
                 RemoveDiskFromView(row, letters);
-                ShowEjectResult(false, row.Name, "未找到该设备，它可能已被移除。");
+                ShowEjectResult(false, row.Name, Localizer.T("sysov.eject.notFound"));
                 break;
             default:   // Busy / Failed
                 AuditLog.App($"弹出设备失败：{row.Name} — {result.Reason}");
                 // Busy means something holds the device open — offer to force-dismount and retry.
                 var allowForce = result.Status == DeviceEject.EjectStatus.Busy;
-                var dlg = new Views.EjectResultDialog(false, row.Name, result.Reason ?? "设备正在被占用，无法弹出。", allowForce)
+                var dlg = new Views.EjectResultDialog(false, row.Name, result.Reason ?? Localizer.T("sysov.eject.busyFallback"), allowForce)
                 { Owner = System.Windows.Application.Current.MainWindow };
                 dlg.ShowDialog();
                 if (dlg.ForceRequested) await ForceEjectAsync(row, idx, letters);
@@ -136,12 +150,12 @@ public sealed class SystemOverviewViewModel : ObservableObject
         {
             AuditLog.Action($"已强制弹出设备：{row.Name}");
             RemoveDiskFromView(row, letters);
-            ShowEjectResult(true, row.Name, "设备已强制弹出，现在可以放心拔出。");
+            ShowEjectResult(true, row.Name, Localizer.T("sysov.eject.forced"));
         }
         else
         {
             AuditLog.App($"强制弹出设备失败：{row.Name} — {forced.Reason}");
-            ShowEjectResult(false, row.Name, forced.Reason ?? "强制弹出失败，请关闭占用该设备的程序后重试。");
+            ShowEjectResult(false, row.Name, forced.Reason ?? Localizer.T("sysov.eject.forceFail"));
         }
     }
 
@@ -190,7 +204,7 @@ public sealed class SystemOverviewViewModel : ObservableObject
     public string Battery { get => _battery; set => Set(ref _battery, value); }
 
     // Live telemetry
-    private string _cpuLive = "负载 —", _ramLive = "—";
+    private string _cpuLive = Localizer.T("sysov.cpu.loadDash"), _ramLive = "—";
     public string CpuLive { get => _cpuLive; set => Set(ref _cpuLive, value); }
     /// <summary>Memory breakdown line, e.g. "已用 17.4 GB · 可用 14.5 GB · 共 31.9 GB".</summary>
     public string RamLive { get => _ramLive; set => Set(ref _ramLive, value); }
@@ -214,7 +228,7 @@ public sealed class SystemOverviewViewModel : ObservableObject
     public bool HasPower { get => _hasPower; set { if (Set(ref _hasPower, value)) OnPropertyChanged(nameof(NoPower)); } }
     public bool NoPower => !_hasPower;
 
-    private string _powerNote = "正在读取功耗传感器 …";
+    private string _powerNote = Localizer.T("sysov.power.note.reading");
     public string PowerNote { get => _powerNote; set => Set(ref _powerNote, value); }
 
     private string _inventoryNote = "";
@@ -255,8 +269,8 @@ public sealed class SystemOverviewViewModel : ObservableObject
         if (hw.CpuLoad is double load)
         {
             var tempPart = hw.CpuTemp is double tc && tc > 0 ? $"  ·  {tc:0} °C"
-                         : Elevated ? "" : "  ·  需要管理员权限以获取温度";
-            CpuLive = $"负载 {load:0}%{tempPart}";
+                         : Elevated ? "" : Localizer.T("sysov.cpu.needAdminTemp");
+            CpuLive = Localizer.Format("sysov.cpu.loadTemp", load.ToString("0"), tempPart);
         }
 
         // Memory
@@ -299,8 +313,8 @@ public sealed class SystemOverviewViewModel : ObservableObject
                     Kind = p.Kind, Name = p.Name, Watts = p.Watts, WattsText = p.WattsText,
                     BarPercent = pct,
                     BarTip = exact
-                        ? $"约为功耗上限的 {pct:0}%（上限 {ceiling:0} W，来自 nvidia-smi）"
-                        : $"约为峰值功耗的 {pct:0}%（参考上限 ~{ceiling:0} W，按峰值自适应）",
+                        ? Localizer.Format("sysov.powerTip.exact", pct.ToString("0"), ceiling.ToString("0"))
+                        : Localizer.Format("sysov.powerTip.adaptive", pct.ToString("0"), ceiling.ToString("0")),
                 };
             }).ToList();
             Powers.Clear();
@@ -309,17 +323,17 @@ public sealed class SystemOverviewViewModel : ObservableObject
             TotalPowerText = $"{sum:0.0} W";
             var hasCpuPower = Powers.Any(p => p.Kind == "CPU");
             PowerNote = (!hasCpuPower && !Elevated)
-                ? "未含 CPU / 主板功耗：读取它们需以管理员身份运行（AMD 经 WinRing0 读 MSR/SMU）；GPU 功耗经 NVAPI 无需管理员。多数硬盘不提供功耗传感器。"
-                : "整机功耗为各部件功耗之和的估算值（不含主板 / 风扇等无传感器部件）。";
+                ? Localizer.T("sysov.power.note.noCpu")
+                : Localizer.T("sysov.power.note.estimate");
         }
         else
         {
-            TotalPowerText = "不可用";
+            TotalPowerText = Localizer.T("sysov.power.unavailable");
             PowerNote = HardwareMonitor.Available
                 ? (Elevated
-                    ? "未读取到功耗传感器。部分主板 / 显卡 / 笔记本不提供功耗传感器。"
-                    : "未读取到功耗传感器。CPU 封装功耗需以管理员身份运行本程序才能读取。")
-                : "硬件监控驱动未能加载（功耗 / 温度不可用）。";
+                    ? Localizer.T("sysov.power.note.noSensorAdmin")
+                    : Localizer.T("sysov.power.note.noSensorUser"))
+                : Localizer.T("sysov.power.note.noDriver");
         }
     }
 
@@ -355,7 +369,7 @@ public sealed class SystemOverviewViewModel : ObservableObject
         RamPercent = pct;
         RamPercentText = $"{pct:0}%";
         RamHigh = pct >= 90;
-        RamLive = $"已用 {usedGb:0.0} GB  ·  可用 {availGb:0.0} GB  ·  共 {totalGb:0.0} GB";
+        RamLive = Localizer.Format("sysov.mem.live", usedGb.ToString("0.0"), availGb.ToString("0.0"), totalGb.ToString("0.0"));
     }
 
     private static bool IsElevated()
@@ -368,20 +382,32 @@ public sealed class SystemOverviewViewModel : ObservableObject
         catch { return false; }
     }
 
+    private SystemSnapshot? _lastInfo;
+
     private async Task LoadAsync()
     {
         IsLoading = true;
         var s = await SystemInfo.GetAsync();
+        _lastInfo = s;
+        ApplyInfo(s);
+        IsLoading = false;
+    }
 
+    /// <summary>Compose the snapshot's localized display lines. Re-invoked on language switch so the cached
+    /// data (OS / CPU / uptime / activation / battery / disks) re-localizes without a reload.</summary>
+    private void ApplyInfo(SystemSnapshot s)
+    {
         Os = $"{s.OsCaption} · {s.Arch} · {s.OsVersion}";
-        Cpu = $"{s.CpuName}  ·  {s.Cores} 核 {s.Threads} 线程";
+        Cpu = $"{s.CpuName}  ·  " + Localizer.Format("sysov.cpu.cores", s.Cores, s.Threads);
         var usedKb = Math.Max(0, s.TotalMemKb - s.FreeMemKb);
         SetMemory(usedKb / 1024.0 / 1024, s.TotalMemKb / 1024.0 / 1024);
-        if (s.CpuLoad > 0) CpuLive = $"负载 {s.CpuLoad}%";
+        if (s.CpuLoad > 0) CpuLive = Localizer.Format("sysov.cpu.load", s.CpuLoad);
         Machine = $"{s.Manufacturer} {s.Model}".Trim() + (string.IsNullOrWhiteSpace(s.User) ? "" : $"  ·  {s.User}");
-        Uptime = s.UptimeHours >= 24 ? $"已运行 {(int)(s.UptimeHours / 24)} 天 {(int)(s.UptimeHours % 24)} 小时" : $"已运行 {s.UptimeHours:0.0} 小时";
-        Activation = s.Activation switch { 1 => "Windows 已激活", null => "激活状态未知", _ => "Windows 未激活" };
-        Battery = s.BatteryCharge is int c ? $"电池 {c}%" : "无电池（台式机 / 未检测）";
+        Uptime = s.UptimeHours >= 24
+            ? Localizer.Format("sysov.uptime.days", (int)(s.UptimeHours / 24), (int)(s.UptimeHours % 24))
+            : Localizer.Format("sysov.uptime.hours", s.UptimeHours.ToString("0.0"));
+        Activation = s.Activation switch { 1 => Localizer.T("sysov.activation.active"), null => Localizer.T("sysov.activation.unknown"), _ => Localizer.T("sysov.activation.inactive") };
+        Battery = s.BatteryCharge is int c ? Localizer.Format("sysov.battery.charge", c) : Localizer.T("sysov.battery.none");
 
         Disks.Clear();
         foreach (var d in s.Disks)
@@ -393,7 +419,7 @@ public sealed class SystemOverviewViewModel : ObservableObject
             {
                 Drive = d.Drive,
                 Label = string.IsNullOrWhiteSpace(d.Label) ? "" : d.Label,
-                Text = $"{Gb(d.FreeBytes)} 可用 / {Gb(d.SizeBytes)}",
+                Text = Localizer.Format("sysov.disk.free", Gb(d.FreeBytes), Gb(d.SizeBytes)),
                 UsedPercent = pct,
                 Low = freePct < 10,
             });
@@ -405,23 +431,28 @@ public sealed class SystemOverviewViewModel : ObservableObject
             {
                 Name = p.Name,
                 Detail = $"{PhysDiskRowViewModel.Classify(p.Media, p.Bus)} · {p.SizeGb} GB",
-                Health = string.IsNullOrWhiteSpace(p.Health) ? "未知" : p.Health,
+                Health = string.IsNullOrWhiteSpace(p.Health) ? Localizer.T("common.unknown") : p.Health,
                 Healthy = string.Equals(p.Health, "Healthy", StringComparison.OrdinalIgnoreCase),
                 DeviceId = p.DeviceId,
                 Bus = p.Bus,
             });
+    }
 
-        IsLoading = false;
+    /// <summary>On language switch, re-localize the cached snapshot (no WMI reload) plus all bound props.</summary>
+    protected override void OnCultureChanged()
+    {
+        if (_lastInfo is { } snap) ApplyInfo(snap);
+        base.OnCultureChanged();
     }
 
     private async Task ExportInventoryAsync()
     {
-        InventoryNote = "正在读取已装软件清单 …";
+        InventoryNote = Localizer.T("sysov.export.reading");
         var dlg = new Microsoft.Win32.SaveFileDialog
         {
-            Title = "导出软件清单",
-            FileName = $"软件清单-{Environment.MachineName}.html",
-            Filter = "HTML 网页 (*.html)|*.html|CSV 表格 (*.csv)|*.csv|JSON (*.json)|*.json",
+            Title = Localizer.T("sysov.export.title"),
+            FileName = Localizer.Format("sysov.export.fileName", Environment.MachineName),
+            Filter = Localizer.T("sysov.export.filter"),
         };
         if (dlg.ShowDialog() != true) { InventoryNote = ""; return; }
 
@@ -432,10 +463,10 @@ public sealed class SystemOverviewViewModel : ObservableObject
         {
             await System.IO.File.WriteAllTextAsync(dlg.FileName, text);
             AuditLog.Action($"导出软件清单：{items.Count} 项 → {dlg.FileName}");
-            InventoryNote = $"已导出 {items.Count} 项 → {dlg.FileName}";
+            InventoryNote = Localizer.Format("sysov.exported", items.Count, dlg.FileName);
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(dlg.FileName) { UseShellExecute = true });
         }
-        catch (Exception ex) { InventoryNote = "导出失败：" + ex.Message; }
+        catch (Exception ex) { InventoryNote = Localizer.Format("sysov.export.failed", ex.Message); }
     }
 
     private static string Gb(long bytes) => bytes >= 1024L * 1024 * 1024

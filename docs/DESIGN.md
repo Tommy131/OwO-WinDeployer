@@ -135,6 +135,17 @@ src/WinDeploy.sln
 
 > Core 为纯库，GUI 与 CLI 同源——便于先用 CLI 跑通引擎，再投入 GUI。
 
+### 5.2 国际化（i18n · zh / en / de）
+
+运行时可切换的多语言，复用 `ThemeManager` 已验证的 `DynamicResource` 即时刷新机制：
+
+- **译文核心**：`WinDeploy.Core.I18n.Localizer`（静态，Core/App/CLI 共享一份），从内嵌 JSON `I18n/Resources/<lang>/<area>.json`（按 area 拆分、加载时合并）读取扁平 `key → text`。`T(key)` / `Format(key, args…)`（位置式 `{0}`，InvariantCulture）；回退链 `当前语言 → en → key 本身`（缺键直接显示 key，便于发现遗漏）；`SetLanguage` 触发 `CultureChanged` 事件。
+- **WPF 即时切换**：`LocalizationManager`（镜像 `ThemeManager`）把当前语言灌入 `Application.Current.Resources["S.<key>"]`，XAML 用 `{DynamicResource S.<key>}`；带参/动态文案走 VM 属性（`LocalizedObject` 基类订阅 `CultureChanged` 并在 UI 线程刷新）。
+- **首启**：按 Windows UI 语言映射（de→de、zh→zh，其余→en），写入 `AppSettings.Language`；设置页可随时切换。CLI 用 `--lang` / `WINDEPLOY_LANG`。
+- **数据层译文**：软件描述 `summary` 走磁盘侧车 `catalog/i18n/{en,de}.json`（id→译文，zh 用 catalog.json 原文），`CatalogLoader.ApplyLocalizedSummaries` 预载、`CatalogItem.SummaryFor(lang)` 解析。
+- **边界**：①Core 中**匹配** winget/git 本地化 stdout 的中文字面量绝不本地化（已加 `// MATCHED:` 注释）；②AuditLog 正文保留中文作为诊断记录。
+- **维护**：`scripts/check-i18n.ps1` 校验 en/zh/de 键集一致、占位符对齐、catalog 侧车 id 覆盖。
+
 ---
 
 ## 6. 数据模型

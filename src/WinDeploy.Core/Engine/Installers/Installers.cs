@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
+using WinDeploy.Core.I18n;
 using WinDeploy.Core.Models;
 using WinDeploy.Core.Util;
 
@@ -40,12 +41,13 @@ internal static class WingetProgress
                 var secs = sw.Elapsed.TotalSeconds;
                 var rate = secs > 0.1 ? cur / secs : 0;
                 var eta = rate > 0 ? (tot - cur) / rate : 0;
-                live = $"下载 {Mb(cur)} / {Mb(tot)} · {cur * 100.0 / tot:0}%{(rate > 0 ? " · " + Mb(rate) + "/s" : "")} · 约剩 {Eta(eta)}";
+                var rateText = rate > 0 ? " · " + Mb(rate) + "/s" : "";
+                live = Localizer.Format("engine.download.progress", Mb(cur), Mb(tot), (cur * 100.0 / tot).ToString("0"), rateText, Eta(eta));
                 return true;
             }
         }
         var pm = Pct.Match(t);
-        if (pm.Success && !t.Any(char.IsLetter)) { live = $"进度 {pm.Groups[1].Value}%"; return true; }
+        if (pm.Success && !t.Any(char.IsLetter)) { live = Localizer.Format("engine.download.progressPct", pm.Groups[1].Value); return true; }
         return false;
     }
 
@@ -55,7 +57,9 @@ internal static class WingetProgress
         return unit.ToUpperInvariant() switch { "GB" => v * 1024 * 1024 * 1024, "MB" => v * 1024 * 1024, "KB" => v * 1024, _ => v };
     }
     private static string Mb(double b) => b >= 1024.0 * 1024 * 1024 ? $"{b / 1024 / 1024 / 1024:0.0} GB" : $"{b / 1024 / 1024:0.0} MB";
-    private static string Eta(double s) => s >= 60 ? $"{(int)(s / 60)}分{(int)(s % 60)}秒" : $"{s:0}秒";
+    private static string Eta(double s) => s >= 60
+        ? Localizer.Format("engine.download.minSec", (int)(s / 60), (int)(s % 60))
+        : Localizer.Format("engine.download.sec", ((int)s).ToString());
 }
 
 public sealed class WingetInstaller : IInstaller
@@ -75,7 +79,7 @@ public sealed class WingetInstaller : IInstaller
         if (ins.Source != null) { args.Add("--source"); args.Add(ins.Source); }
         if (item.Version != null) { args.Add("--version"); args.Add(item.Version); }
         if (item.InstallPathOverride != null) { args.Add("--location"); args.Add(ctx.Path.Resolve(item.InstallPathOverride)); }
-        ctx.Step($"winget 安装 {ins.Id}{(item.Version != null ? " " + item.Version : "")} …");
+        ctx.Step(Localizer.Format("engine.install.wingetInstall", ins.Id + (item.Version != null ? " " + item.Version : "")));
         var sw = Stopwatch.StartNew();
         string? last = null;
         var r = await Proc.RunStreamingAsync("winget", args, tok => last = WingetProgress.Handle(tok, ctx, sw, last), ct: ctx.Ct);
@@ -124,12 +128,12 @@ public sealed class PortableInstaller : IInstaller
         var tmpZip = System.IO.Path.Combine(dlDir, $"windeploy_{item.Id}{ext}");
         var tmpEx = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"windeploy_{item.Id}_x");
 
-        ctx.Step($"开始下载 {ins.Url} …");
+        ctx.Step(Localizer.Format("engine.install.downloadStart", ins.Url));
         await Download.ToFileAsync(ins.Url, tmpZip, ctx, ctx.Ct);
 
         if (ins.Sha256 is { Length: > 0 } sha && sha != "…")
         {
-            ctx.Step("校验 SHA256 …");
+            ctx.Step(Localizer.T("engine.install.sha256"));
             var actual = Convert.ToHexString(SHA256.HashData(await File.ReadAllBytesAsync(tmpZip, ctx.Ct)));
             if (!actual.Equals(sha, StringComparison.OrdinalIgnoreCase))
                 return StepOutcome.Fail($"sha256 mismatch ({actual[..12]}…)");
@@ -142,7 +146,7 @@ public sealed class PortableInstaller : IInstaller
             // A standalone portable file (e.g. a single .exe) — place it directly in the install dir.
             var fileName = System.IO.Path.GetFileName(new Uri(ins.Url).AbsolutePath);
             if (string.IsNullOrWhiteSpace(fileName)) fileName = item.Id + ext;
-            ctx.Step($"写入安装目录 {dest} …");
+            ctx.Step(Localizer.Format("engine.install.writeDir", dest));
             File.Copy(tmpZip, System.IO.Path.Combine(dest, fileName), overwrite: true);
         }
         else
@@ -151,14 +155,14 @@ public sealed class PortableInstaller : IInstaller
             if (ext == ".7z")
             {
                 var seven = Find7z();
-                if (seven == null) return StepOutcome.Fail("解压 .7z 需要 7-Zip，请先安装 7-Zip 后重试");
-                ctx.Step("用 7-Zip 解压 …");
+                if (seven == null) return StepOutcome.Fail(Localizer.T("engine.install.need7z"));
+                ctx.Step(Localizer.T("engine.install.extract7z"));
                 var ex = await Proc.RunAsync(seven, new[] { "x", "-o" + tmpEx, tmpZip, "-y" }, ct: ctx.Ct);
-                if (!ex.Ok) return StepOutcome.Fail($"7-Zip 解压失败 退出码 {ex.ExitCode}");
+                if (!ex.Ok) return StepOutcome.Fail(Localizer.Format("engine.install.extract7zFail", ex.ExitCode));
             }
             else
             {
-                ctx.Step("解压 …");
+                ctx.Step(Localizer.T("engine.install.extract"));
                 ZipFile.ExtractToDirectory(tmpZip, tmpEx);
             }
 
@@ -171,7 +175,7 @@ public sealed class PortableInstaller : IInstaller
                 else break;
             }
 
-            ctx.Step($"写入安装目录 {dest} …");
+            ctx.Step(Localizer.Format("engine.install.writeDir", dest));
             CopyDir(srcRoot, dest);
         }
 
@@ -214,12 +218,12 @@ public sealed class GitInstaller : IInstaller
         ProcResult r;
         if (Directory.Exists(System.IO.Path.Combine(dest, ".git")))
         {
-            ctx.Step($"git 拉取更新 {dest} …");
+            ctx.Step(Localizer.Format("engine.install.gitPull", dest));
             r = await Proc.RunAsync("git", new[] { "-C", dest, "pull", "--ff-only" }, ct: ctx.Ct);
         }
         else
         {
-            ctx.Step($"git 克隆 {ins.Repo} …");
+            ctx.Step(Localizer.Format("engine.install.gitClone", ins.Repo));
             var a = new List<string> { "clone", "--depth", "1" };
             if (ins.Branch != null) { a.Add("--branch"); a.Add(ins.Branch); }
             a.Add(ins.Repo);
@@ -241,15 +245,15 @@ public sealed class ExeInstaller : IInstaller
     public async Task<StepOutcome> RunAsync(CatalogItem item, EngineContext ctx)
     {
         var ins = item.Install;
-        if (ins.Url is null) return StepOutcome.Fail("exe 需要 url");
+        if (ins.Url is null) return StepOutcome.Fail(Localizer.T("engine.install.exeNoUrl"));
 
         var dlDir = ctx.DownloadDir ?? System.IO.Path.GetTempPath();
         Directory.CreateDirectory(dlDir);
         var tmp = System.IO.Path.Combine(dlDir, $"{item.Id}-installer.exe");
-        ctx.Step($"下载安装包 {ins.Url} …");
+        ctx.Step(Localizer.Format("engine.install.downloadInstaller", ins.Url));
         await Download.ToFileAsync(ins.Url, tmp, ctx, ctx.Ct);
 
-        ctx.Step("运行安装程序 …");
+        ctx.Step(Localizer.T("engine.install.runInstaller"));
         var args = string.IsNullOrWhiteSpace(ins.Args)
             ? Array.Empty<string>()
             : ins.Args.Split(' ', StringSplitOptions.RemoveEmptyEntries);
@@ -257,7 +261,7 @@ public sealed class ExeInstaller : IInstaller
 
         // Keep the installer in the configured download dir; only clean the temp copy.
         if (ctx.DownloadDir == null) try { File.Delete(tmp); } catch { /* best effort */ }
-        return r.Ok ? StepOutcome.Done() : StepOutcome.Fail($"安装程序退出码 {r.ExitCode}");
+        return r.Ok ? StepOutcome.Done() : StepOutcome.Fail(Localizer.Format("engine.install.exeExit", r.ExitCode));
     }
 }
 
@@ -272,15 +276,15 @@ public sealed class LocalInstaller : IInstaller
     {
         var ins = item.Install;
         if (string.IsNullOrWhiteSpace(ins.LocalPackage))
-            return StepOutcome.Skip("未配置本地安装包，请前往官网手动下载");
+            return StepOutcome.Skip(Localizer.T("engine.install.localManual"));
 
         var pkg = FindPackage(ctx, ins.LocalPackage);
         if (pkg == null)
         {
-            ctx.Step("未发现本地安装包，请前往官网手动下载");
-            return StepOutcome.Skip("未发现本地安装包，请前往官网手动下载");
+            ctx.Step(Localizer.T("engine.install.noLocalPkg"));
+            return StepOutcome.Skip(Localizer.T("engine.install.noLocalPkg"));
         }
-        ctx.Step($"发现本地安装包：{System.IO.Path.GetFileName(pkg)}");
+        ctx.Step(Localizer.Format("engine.install.foundLocalPkg", System.IO.Path.GetFileName(pkg)));
 
         var installer = pkg;
         var lower = pkg.ToLowerInvariant();
@@ -291,36 +295,36 @@ public sealed class LocalInstaller : IInstaller
             if (lower.EndsWith(".7z"))
             {
                 var seven = PortableInstaller.Find7z();
-                if (seven == null) return StepOutcome.Fail("解压 .7z 需要 7-Zip，请先安装 7-Zip 后重试");
-                ctx.Step("用 7-Zip 解压安装包 …");
+                if (seven == null) return StepOutcome.Fail(Localizer.T("engine.install.need7z"));
+                ctx.Step(Localizer.T("engine.install.extractPkg7z"));
                 var ex = await Proc.RunAsync(seven, new[] { "x", "-o" + tmpEx, pkg, "-y" }, ct: ctx.Ct);
-                if (!ex.Ok) return StepOutcome.Fail($"7-Zip 解压失败 退出码 {ex.ExitCode}");
+                if (!ex.Ok) return StepOutcome.Fail(Localizer.Format("engine.install.extract7zFail", ex.ExitCode));
             }
             else
             {
-                ctx.Step("解压安装包 …");
+                ctx.Step(Localizer.T("engine.install.extractPkg"));
                 ZipFile.ExtractToDirectory(pkg, tmpEx);
             }
             installer = FindInstallerExe(tmpEx) ?? "";
-            if (installer.Length == 0) return StepOutcome.Fail("解压后未找到安装程序 .exe");
-            ctx.Step($"安装程序：{System.IO.Path.GetFileName(installer)}");
+            if (installer.Length == 0) return StepOutcome.Fail(Localizer.T("engine.install.localNoExe"));
+            ctx.Step(Localizer.Format("engine.install.installer", System.IO.Path.GetFileName(installer)));
         }
         else if (!lower.EndsWith(".exe") && !lower.EndsWith(".msi"))
         {
-            return StepOutcome.Fail($"不支持的本地安装包类型：{System.IO.Path.GetExtension(pkg)}");
+            return StepOutcome.Fail(Localizer.Format("engine.install.localUnsupported", System.IO.Path.GetExtension(pkg)));
         }
 
-        ctx.Step("运行安装程序（如出现 UAC 提示请允许）…");
+        ctx.Step(Localizer.T("engine.install.runInstallerUac"));
         try
         {
             var psi = new ProcessStartInfo(installer) { UseShellExecute = true };   // honor installer's UAC manifest
             if (!string.IsNullOrWhiteSpace(ins.Args)) psi.Arguments = ins.Args;
             var p = Process.Start(psi);
-            if (p == null) return StepOutcome.Fail("无法启动安装程序");
+            if (p == null) return StepOutcome.Fail(Localizer.T("engine.install.localStartFail"));
             await p.WaitForExitAsync(ctx.Ct);
-            return p.ExitCode == 0 ? StepOutcome.Done("已运行本地安装包") : StepOutcome.Fail($"安装程序退出码 {p.ExitCode}");
+            return p.ExitCode == 0 ? StepOutcome.Done(Localizer.T("engine.install.localPkgRan")) : StepOutcome.Fail(Localizer.Format("engine.install.exeExit", p.ExitCode));
         }
-        catch (Exception ex) { return StepOutcome.Fail("运行安装程序失败：" + ex.Message); }
+        catch (Exception ex) { return StepOutcome.Fail(Localizer.Format("engine.install.runInstallerFail", ex.Message)); }
     }
 
     /// <summary>Resolve a repo-relative glob ("assets/packages/VMware-*.7z") to the newest matching file.</summary>
@@ -347,8 +351,8 @@ public sealed class ManualInstaller : IInstaller
 
     public Task<StepOutcome> RunAsync(CatalogItem item, EngineContext ctx)
     {
-        ctx.Step("需从官网手动下载安装");
-        return Task.FromResult(StepOutcome.Skip("请前往官网手动下载"));
+        ctx.Step(Localizer.T("engine.install.manual"));
+        return Task.FromResult(StepOutcome.Skip(Localizer.T("engine.install.manualSkip")));
     }
 }
 
@@ -360,8 +364,8 @@ public sealed class GithubReleaseInstaller : IInstaller
 
     public Task<StepOutcome> RunAsync(CatalogItem item, EngineContext ctx)
     {
-        ctx.Step("请在软件详情页选择发布版本与文件后安装");
-        return Task.FromResult(StepOutcome.Skip("请在详情页选择版本下载安装"));
+        ctx.Step(Localizer.T("engine.install.ghRelease"));
+        return Task.FromResult(StepOutcome.Skip(Localizer.T("engine.install.ghReleaseSkip")));
     }
 }
 

@@ -11,6 +11,11 @@ public abstract class ObservableObject : INotifyPropertyChanged
     protected void OnPropertyChanged([CallerMemberName] string? name = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
+    /// <summary>Force every binding on this object to re-read (PropertyChanged with an empty name). Used by a
+    /// parent to refresh its child row view-models on a language switch, so the children don't each have to
+    /// subscribe to the static culture-changed event (which would leak on high-churn lists).</summary>
+    public void RaiseAllPropertiesChanged() => OnPropertyChanged(string.Empty);
+
     protected bool Set<T>(ref T field, T value, [CallerMemberName] string? name = null)
     {
         if (EqualityComparer<T>.Default.Equals(field, value)) return false;

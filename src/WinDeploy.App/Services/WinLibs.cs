@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using WinDeploy.Core.I18n;
 using WinDeploy.Core.Util;
 
 namespace WinDeploy.App.Services;
@@ -51,7 +52,7 @@ public static class WinLibs
         var llvm = name.Contains("llvm", StringComparison.OrdinalIgnoreCase) || name.Contains("clang", StringComparison.OrdinalIgnoreCase);
         var gcc = Regex.Match(name, @"(\d+\.\d+\.\d+)") is { Success: true } m ? m.Groups[1].Value : "?";
 
-        var label = $"{threads} 线程 · {runtime}{(exc.Length > 0 ? " · " + exc : "")}{(llvm ? " · 含 LLVM/Clang" : "")} · GCC {gcc}";
+        var label = $"{Localizer.Format("winlibs.threads", threads)} · {runtime}{(exc.Length > 0 ? " · " + exc : "")}{(llvm ? Localizer.T("winlibs.llvm") : "")} · GCC {gcc}";
         var recommended = threads == "posix" && runtime == "UCRT" && !llvm;
         return new WinLibsVariant(label, url, recommended);
     }

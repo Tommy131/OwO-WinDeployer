@@ -1,19 +1,21 @@
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
+using WinDeploy.App;
 using WinDeploy.App.Services;
 using WinDeploy.App.Services.Ftp;
+using WinDeploy.Core.I18n;
 
 namespace WinDeploy.App.ViewModels;
 
-public sealed class FtpRemoteRowVm
+public sealed class FtpRemoteRowVm : ObservableObject
 {
     public FtpRemoteEntry Model { get; }
     public FtpRemoteRowVm(FtpRemoteEntry m) { Model = m; }
     public string Name => Model.Name;
     public bool IsDir => Model.IsDir;
     public string Icon => Model.IsDir ? "" : "";       // folder / document (Segoe MDL2)
-    public string TypeText => Model.IsDir ? "文件夹" : "文件";
+    public string TypeText => Model.IsDir ? Localizer.T("ftp.client.typeDir") : Localizer.T("ftp.client.typeFile");
     public string SizeText => Model.IsDir ? "" : Human(Model.Size);
     public string ModifiedText => Model.Modified?.ToString("yyyy-MM-dd HH:mm") ?? "";
 
@@ -28,7 +30,7 @@ public sealed class FtpRemoteRowVm
         : b >= 1024 * 1024 ? $"{b / 1024.0 / 1024:0.0} MB" : b >= 1024 ? $"{b / 1024.0:0.0} KB" : $"{b} B";
 }
 
-public sealed class FtpLocalRowVm
+public sealed class FtpLocalRowVm : ObservableObject
 {
     public FtpLocalRowVm(string path, bool isDir, bool isUp = false)
     {
@@ -45,14 +47,14 @@ public sealed class FtpLocalRowVm
     public long Size { get; }
     public DateTime Modified { get; }
     public string Icon => IsUp ? "" : IsDir ? "" : "";
-    public string TypeText => IsUp ? "上级" : IsDir ? "文件夹" : "文件";
+    public string TypeText => IsUp ? Localizer.T("ftp.client.typeUp") : IsDir ? Localizer.T("ftp.client.typeDir") : Localizer.T("ftp.client.typeFile");
     public string SizeText => IsDir ? "" : FtpRemoteRowVm.Human(Size);
     public string ModifiedText => IsUp ? "" : Modified.ToString("yyyy-MM-dd HH:mm");
 }
 
 /// <summary>The 客户端 tab: connect to a remote FTP/FTPS server and transfer files between a local folder
 /// (left) and the remote directory (right).</summary>
-public sealed class FtpClientViewModel : ObservableObject
+public sealed class FtpClientViewModel : LocalizedObject
 {
     private FtpClient? _client;
     private CancellationTokenSource? _cts;
@@ -108,10 +110,10 @@ public sealed class FtpClientViewModel : ObservableObject
     // ── state ────────────────────────────────────────────────────────────────
     private bool _connected; public bool Connected { get => _connected; private set { if (Set(ref _connected, value)) { OnPropertyChanged(nameof(StatusBrush)); OnPropertyChanged(nameof(StatusText)); Requery(); } } }
     private bool _busy; public bool Busy { get => _busy; private set { if (Set(ref _busy, value)) { OnPropertyChanged(nameof(StatusText)); Requery(); } } }
-    public string StatusText => _connected ? $"已连接 {Host}" : _busy ? "连接中…" : "未连接";
+    public string StatusText => _connected ? Localizer.Format("ftp.client.connected", Host) : _busy ? Localizer.T("ftp.client.connecting") : Localizer.T("ftp.client.notConnected");
     public string StatusBrush => _connected ? "OkFg" : "TextTertiary";
 
-    private string _note = "填写远端服务器信息并连接。支持明文 FTP、显式 FTPS (AUTH TLS)、隐式 FTPS。";
+    private string _note = Localizer.T("ftp.client.note");
     public string Note { get => _note; set => Set(ref _note, value); }
 
     private string _logText = "";
@@ -179,9 +181,9 @@ public sealed class FtpClientViewModel : ObservableObject
     // ── connection ───────────────────────────────────────────────────────────
     private async Task ConnectAsync()
     {
-        if (string.IsNullOrWhiteSpace(Host)) { Note = "请填写主机地址。"; return; }
+        if (string.IsNullOrWhiteSpace(Host)) { Note = Localizer.T("ftp.client.requireHost"); return; }
         Busy = true;
-        Note = "正在连接 …";
+        Note = Localizer.T("ftp.client.connectingNote");
         var client = new FtpClient();
         client.Log += AppendLog;
         _cts = new CancellationTokenSource();
@@ -199,7 +201,7 @@ public sealed class FtpClientViewModel : ObservableObject
             OnPropertyChanged(nameof(NoRemote));
             Connected = true;
             AuditLog.Action($"FTP 客户端连接 {Host}:{Port} · TLS {_tlsMode}");
-            Note = $"已连接到 {Host}。";
+            Note = Localizer.Format("ftp.client.connectedNote", Host);
         }
         catch (Exception ex)
         {
@@ -208,8 +210,8 @@ public sealed class FtpClientViewModel : ObservableObject
             Connected = false;
             RemoteEntries.Clear();
             OnPropertyChanged(nameof(NoRemote));
-            Note = "连接失败：" + (ex is OperationCanceledException ? "连接超时或被取消" : ex.Message)
-                   + "（请检查主机、端口与加密方式是否与服务器一致）";
+            Note = Localizer.Format("ftp.client.connectFailed",
+                ex is OperationCanceledException ? Localizer.T("ftp.client.connectFailedCanceled") : ex.Message);
         }
         finally { Busy = false; }
     }
@@ -223,7 +225,7 @@ public sealed class FtpClientViewModel : ObservableObject
         Connected = false;
         RemoteEntries.Clear();
         OnPropertyChanged(nameof(NoRemote));
-        Note = "已断开连接。";
+        Note = Localizer.T("ftp.client.disconnected");
     }
 
     public bool NoRemote => RemoteEntries.Count == 0;
@@ -241,7 +243,7 @@ public sealed class FtpClientViewModel : ObservableObject
             RemoteDir = _client.CurrentDir;
             OnPropertyChanged(nameof(NoRemote));
         }
-        catch (Exception ex) { Note = "列目录失败：" + ex.Message; }
+        catch (Exception ex) { Note = Localizer.Format("ftp.client.listFailed", ex.Message); }
         finally { Busy = false; }
     }
 
@@ -251,7 +253,7 @@ public sealed class FtpClientViewModel : ObservableObject
         if (!row.IsDir) { await DownloadAsync(); return; }
         Busy = true;
         try { await _client.ChangeDirAsync(row.Name, _cts!.Token); }
-        catch (Exception ex) { Note = "进入目录失败：" + ex.Message; Busy = false; return; }
+        catch (Exception ex) { Note = Localizer.Format("ftp.client.enterDirFailed", ex.Message); Busy = false; return; }
         Busy = false;
         await ListRemoteAsync();
     }
@@ -261,7 +263,7 @@ public sealed class FtpClientViewModel : ObservableObject
         if (_client == null) return;
         Busy = true;
         try { await _client.UpAsync(_cts!.Token); }
-        catch (Exception ex) { Note = "返回上级失败：" + ex.Message; Busy = false; return; }
+        catch (Exception ex) { Note = Localizer.Format("ftp.client.upFailed", ex.Message); Busy = false; return; }
         Busy = false;
         await ListRemoteAsync();
     }
@@ -274,24 +276,24 @@ public sealed class FtpClientViewModel : ObservableObject
         if (items.Count == 0) return;
         Busy = true;
         var counter = NewCounter();
-        var onFile = new Progress<string>(name => TransferTitle = $"下载 {items.Count} 项 · {name}");
+        var onFile = new Progress<string>(name => TransferTitle = Localizer.Format("ftp.client.downloadProgress", items.Count, name));
         try
         {
             long total = 0;   // pre-scan sizes for an accurate ETA (folders summed recursively)
             foreach (var r in items) total += r.IsDir ? await _client.RemoteDirSizeAsync(r.Name, _cts!.Token) : r.Model.Size;
-            BeginTransfer($"下载 {items.Count} 项", total);
+            BeginTransfer(Localizer.Format("ftp.client.batchDownload", items.Count), total);
             foreach (var r in items)
             {
                 _cts!.Token.ThrowIfCancellationRequested();
                 if (r.IsDir) await _client.DownloadDirectoryAsync(r.Name, LocalDir, onFile, counter, _cts.Token);
-                else { TransferTitle = $"下载 · {r.Name}"; await _client.DownloadAsync(r.Name, Path.Combine(LocalDir, r.Name), counter, _cts.Token); }
+                else { TransferTitle = Localizer.Format("ftp.client.downloadOne", r.Name); await _client.DownloadAsync(r.Name, Path.Combine(LocalDir, r.Name), counter, _cts.Token); }
             }
             AuditLog.Action($"FTP 下载 {items.Count} 项 → {LocalDir}");
-            Note = $"已下载 {items.Count} 项 → {LocalDir}";
+            Note = Localizer.Format("ftp.client.downloaded", items.Count, LocalDir);
             ListLocal();
         }
-        catch (OperationCanceledException) { Note = "下载已取消。"; }
-        catch (Exception ex) { Note = "下载失败：" + ex.Message; }
+        catch (OperationCanceledException) { Note = Localizer.T("ftp.client.downloadCanceled"); }
+        catch (Exception ex) { Note = Localizer.Format("ftp.client.downloadFailed", ex.Message); }
         finally { EndTransfer(); Busy = false; }
     }
 
@@ -302,24 +304,24 @@ public sealed class FtpClientViewModel : ObservableObject
         if (items.Count == 0) return;
         Busy = true;
         var counter = NewCounter();
-        var onFile = new Progress<string>(name => TransferTitle = $"上传 {items.Count} 项 · {name}");
+        var onFile = new Progress<string>(name => TransferTitle = Localizer.Format("ftp.client.uploadProgress", items.Count, name));
         try
         {
             long total = 0;
             foreach (var l in items) total += LocalSize(l);
-            BeginTransfer($"上传 {items.Count} 项", total);
+            BeginTransfer(Localizer.Format("ftp.client.batchUpload", items.Count), total);
             foreach (var l in items)
             {
                 _cts!.Token.ThrowIfCancellationRequested();
                 if (l.IsDir) await _client.UploadDirectoryAsync(l.Path, l.Name, onFile, counter, _cts.Token);
-                else { TransferTitle = $"上传 · {l.Name}"; await _client.UploadAsync(l.Path, l.Name, counter, _cts.Token); }
+                else { TransferTitle = Localizer.Format("ftp.client.uploadOne", l.Name); await _client.UploadAsync(l.Path, l.Name, counter, _cts.Token); }
             }
             AuditLog.Action($"FTP 上传 {items.Count} 项 → {RemoteDir}");
-            Note = $"已上传 {items.Count} 项 → {RemoteDir}";
+            Note = Localizer.Format("ftp.client.uploaded", items.Count, RemoteDir);
             await ListRemoteAsync();
         }
-        catch (OperationCanceledException) { Note = "上传已取消。"; }
-        catch (Exception ex) { Note = "上传失败：" + ex.Message; }
+        catch (OperationCanceledException) { Note = Localizer.T("ftp.client.uploadCanceled"); }
+        catch (Exception ex) { Note = Localizer.Format("ftp.client.uploadFailed", ex.Message); }
         finally { EndTransfer(); Busy = false; }
     }
 
@@ -356,7 +358,7 @@ public sealed class FtpClientViewModel : ObservableObject
     private void BeginTransfer(string title, long total)
     {
         _xferTotal = total; _lastBytes = 0; _lastMs = _xferSw.ElapsedMilliseconds;
-        TransferTitle = title; SpeedText = "—"; EtaText = total > 0 ? "计算中…" : "—"; ProgressValue = 0;
+        TransferTitle = title; SpeedText = "—"; EtaText = total > 0 ? Localizer.T("ftp.client.etaCalculating") : "—"; ProgressValue = 0;
         Transferring = true;
         _xferTimer ??= new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
         _xferTimer.Tick -= OnXferTick; _xferTimer.Tick += OnXferTick; _xferTimer.Start();
@@ -381,7 +383,7 @@ public sealed class FtpClientViewModel : ObservableObject
         if (_xferTotal > 0)
         {
             ProgressValue = Math.Min(100, done * 100.0 / _xferTotal);
-            EtaText = speed > 1 ? HumanTime((_xferTotal - done) / speed) : "计算中…";
+            EtaText = speed > 1 ? HumanTime((_xferTotal - done) / speed) : Localizer.T("ftp.client.etaCalculating");
         }
         _lastBytes = done; _lastMs = nowMs;
     }
@@ -392,10 +394,10 @@ public sealed class FtpClientViewModel : ObservableObject
     private static string HumanTime(double sec)
     {
         if (double.IsNaN(sec) || double.IsInfinity(sec) || sec < 0) return "—";
-        if (sec < 1) return "约 1 秒";
-        if (sec < 60) return $"约 {(int)Math.Round(sec)} 秒";
-        if (sec < 3600) return $"约 {(int)(sec / 60)} 分 {(int)(sec % 60)} 秒";
-        return $"约 {(int)(sec / 3600)} 小时 {(int)(sec % 3600 / 60)} 分";
+        if (sec < 1) return Localizer.T("ftp.time.aboutOneSecond");
+        if (sec < 60) return Localizer.Format("ftp.time.aboutSeconds", (int)Math.Round(sec));
+        if (sec < 3600) return Localizer.Format("ftp.time.aboutMinutes", (int)(sec / 60), (int)(sec % 60));
+        return Localizer.Format("ftp.time.aboutHours", (int)(sec / 3600), (int)(sec % 3600 / 60));
     }
 
     private async Task DeleteRemoteAsync()
@@ -403,9 +405,11 @@ public sealed class FtpClientViewModel : ObservableObject
         if (_client == null) return;
         var items = BatchRemote();
         if (items.Count == 0) return;
-        var label = items.Count == 1 ? $"远端 {(items[0].IsDir ? "目录" : "文件")} {items[0].Name}" : $"{items.Count} 个远端项目";
-        var dirNote = items.Any(x => x.IsDir) ? "\n（文件夹将递归删除其中所有内容）" : "";
-        if (MessageBox.Show($"删除 {label}？{dirNote}\n此操作不可恢复。", "删除",
+        var label = items.Count == 1
+            ? Localizer.Format("ftp.client.deleteRemoteLabelOne", items[0].IsDir ? Localizer.T("ftp.client.typeDir") : Localizer.T("ftp.client.typeFile"), items[0].Name)
+            : Localizer.Format("ftp.client.deleteRemoteLabelMany", items.Count);
+        var dirNote = items.Any(x => x.IsDir) ? Localizer.T("ftp.client.deleteDirNote") : "";
+        if (Dialogs.Show(Localizer.Format("ftp.client.deleteConfirm", label, dirNote), Localizer.T("ftp.client.deleteTitle"),
                 MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
         Busy = true;
         var ok = 0;
@@ -419,10 +423,10 @@ public sealed class FtpClientViewModel : ObservableObject
                 ok++;
             }
             AuditLog.Action($"FTP 删除远端 {ok} 项");
-            Note = $"已删除 {ok} 项";
+            Note = Localizer.Format("ftp.client.deleted", ok);
         }
-        catch (OperationCanceledException) { Note = $"已取消（已删除 {ok} 项）"; }
-        catch (Exception ex) { Note = $"删除失败（已删除 {ok} 项）：" + ex.Message; }
+        catch (OperationCanceledException) { Note = Localizer.Format("ftp.client.deleteCanceled", ok); }
+        catch (Exception ex) { Note = Localizer.Format("ftp.client.deleteFailed", ok, ex.Message); }
         finally { Busy = false; }
         await ListRemoteAsync();
     }
@@ -430,11 +434,11 @@ public sealed class FtpClientViewModel : ObservableObject
     private async Task MkdirRemoteAsync()
     {
         if (_client == null) return;
-        var dlg = new Views.InputDialog("新建远端目录", "目录名：", "new_folder") { Owner = Application.Current.MainWindow };
+        var dlg = new Views.InputDialog(Localizer.T("ftp.client.mkdirRemoteTitle"), Localizer.T("ftp.client.mkdirRemotePrompt"), Localizer.T("ftp.client.mkdirRemoteDefault")) { Owner = Application.Current.MainWindow };
         if (dlg.ShowDialog() != true) return;
         Busy = true;
-        try { await _client.MakeDirAsync(dlg.Value, _cts!.Token); Note = $"已创建目录 {dlg.Value}"; }
-        catch (Exception ex) { Note = "创建失败：" + ex.Message; }
+        try { await _client.MakeDirAsync(dlg.Value, _cts!.Token); Note = Localizer.Format("ftp.client.mkdirDone", dlg.Value); }
+        catch (Exception ex) { Note = Localizer.Format("ftp.client.mkdirFailed", ex.Message); }
         finally { Busy = false; }
         await ListRemoteAsync();
     }
@@ -442,11 +446,11 @@ public sealed class FtpClientViewModel : ObservableObject
     private async Task RenameRemoteAsync()
     {
         if (_client == null || SelectedRemote is not { } r) return;
-        var dlg = new Views.InputDialog("重命名", $"将 {r.Name} 重命名为：", r.Name, r.Name) { Owner = Application.Current.MainWindow };
+        var dlg = new Views.InputDialog(Localizer.T("ftp.client.renameTitle"), Localizer.Format("ftp.client.renamePrompt", r.Name), r.Name, r.Name) { Owner = Application.Current.MainWindow };
         if (dlg.ShowDialog() != true || dlg.Value == r.Name) return;
         Busy = true;
-        try { await _client.RenameAsync(r.Name, dlg.Value, _cts!.Token); Note = $"已重命名为 {dlg.Value}"; }
-        catch (Exception ex) { Note = "重命名失败：" + ex.Message; }
+        try { await _client.RenameAsync(r.Name, dlg.Value, _cts!.Token); Note = Localizer.Format("ftp.client.renamed", dlg.Value); }
+        catch (Exception ex) { Note = Localizer.Format("ftp.client.renameFailed", ex.Message); }
         finally { Busy = false; }
         await ListRemoteAsync();
     }
@@ -464,7 +468,7 @@ public sealed class FtpClientViewModel : ObservableObject
             foreach (var f in Directory.GetFiles(LocalDir).OrderBy(x => x, StringComparer.OrdinalIgnoreCase))
                 LocalEntries.Add(new FtpLocalRowVm(f, false));
         }
-        catch (Exception ex) { Note = "读取本地目录失败：" + ex.Message; }
+        catch (Exception ex) { Note = Localizer.Format("ftp.client.localDirReadFailed", ex.Message); }
     }
 
     private void OpenLocal(FtpLocalRowVm row)
@@ -481,7 +485,7 @@ public sealed class FtpClientViewModel : ObservableObject
 
     private void PickLocal()
     {
-        var d = new Microsoft.Win32.OpenFolderDialog { Title = "选择本地目录", InitialDirectory = LocalDir };
+        var d = new Microsoft.Win32.OpenFolderDialog { Title = Localizer.T("ftp.client.pickLocalTitle"), InitialDirectory = LocalDir };
         if (d.ShowDialog() == true) { LocalDir = d.FolderName; ListLocal(); }
     }
 
@@ -504,14 +508,14 @@ public sealed class FtpClientViewModel : ObservableObject
         UserName = p.UserName;
         Password = Dpapi.Unprotect(p.PasswordEnc);
         PasswordFilled?.Invoke(Password);
-        Note = $"已载入凭据「{p.Name}」，点击「连接」登录。";
+        Note = Localizer.Format("ftp.client.profileApplied", p.Name);
     }
 
     private void SaveProfile()
     {
-        if (string.IsNullOrWhiteSpace(Host)) { Note = "请先填写主机后再保存凭据。"; return; }
-        var def = SelectedProfile?.Name ?? $"{(string.IsNullOrEmpty(UserName) ? "anonymous" : UserName)}@{Host}:{Port}";
-        var dlg = new Views.InputDialog("保存凭据", "为该登录起个名字（同名将覆盖）：", def, def) { Owner = Application.Current.MainWindow };
+        if (string.IsNullOrWhiteSpace(Host)) { Note = Localizer.T("ftp.client.profileNeedHost"); return; }
+        var def = SelectedProfile?.Name ?? Localizer.Format("ftp.client.profileDefaultName", string.IsNullOrEmpty(UserName) ? Localizer.T("ftp.client.anonymous") : UserName, Host, Port);
+        var dlg = new Views.InputDialog(Localizer.T("ftp.client.profileSaveTitle"), Localizer.T("ftp.client.profileSavePrompt"), def, def) { Owner = Application.Current.MainWindow };
         if (dlg.ShowDialog() != true || dlg.Value.Length == 0) return;
         var name = dlg.Value;
         var prof = Profiles.FirstOrDefault(x => x.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
@@ -529,20 +533,20 @@ public sealed class FtpClientViewModel : ObservableObject
         OnPropertyChanged(nameof(HasProfiles));
         Requery();
         AuditLog.Action($"FTP 凭据保存：{name}");
-        Note = $"已保存凭据「{name}」（密码以当前 Windows 账户加密存储）。";
+        Note = Localizer.Format("ftp.client.profileSaved", name);
     }
 
     private void DeleteProfile()
     {
         if (SelectedProfile is not { } p) return;
-        if (MessageBox.Show($"删除已保存凭据「{p.Name}」？", "删除凭据", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        if (Dialogs.Show(Localizer.Format("ftp.client.profileDeleteConfirm", p.Name), Localizer.T("ftp.client.profileDeleteTitle"), MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
         Profiles.Remove(p);
         _selectedProfile = null; OnPropertyChanged(nameof(SelectedProfile));
         OnPropertyChanged(nameof(HasProfiles));
         Requery();
         FtpClientStore.Save(Profiles);
         AuditLog.Action($"FTP 凭据删除：{p.Name}");
-        Note = $"已删除凭据「{p.Name}」。";
+        Note = Localizer.Format("ftp.client.profileDeleted", p.Name);
     }
 
     // ── context-menu actions (local & remote, file or folder) ──────────────────
@@ -551,31 +555,33 @@ public sealed class FtpClientViewModel : ObservableObject
     {
         if (SelectedLocal is not { IsUp: false } l) return;
         try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(l.Path) { UseShellExecute = true }); }
-        catch (Exception ex) { Note = "打开失败：" + ex.Message; }
+        catch (Exception ex) { Note = Localizer.Format("ftp.client.openFailed", ex.Message); }
     }
 
     private void RenameLocal()
     {
         if (SelectedLocal is not { IsUp: false } l) return;
-        var dlg = new Views.InputDialog("重命名", $"将 {l.Name} 重命名为：", l.Name, l.Name) { Owner = Application.Current.MainWindow };
+        var dlg = new Views.InputDialog(Localizer.T("ftp.client.renameTitle"), Localizer.Format("ftp.client.renamePrompt", l.Name), l.Name, l.Name) { Owner = Application.Current.MainWindow };
         if (dlg.ShowDialog() != true || dlg.Value.Length == 0 || dlg.Value == l.Name) return;
         try
         {
             var dest = Path.Combine(Path.GetDirectoryName(l.Path)!, dlg.Value);
             if (l.IsDir) Directory.Move(l.Path, dest); else File.Move(l.Path, dest);
-            Note = $"已重命名为 {dlg.Value}";
+            Note = Localizer.Format("ftp.client.renamed", dlg.Value);
             ListLocal();
         }
-        catch (Exception ex) { Note = "重命名失败：" + ex.Message; }
+        catch (Exception ex) { Note = Localizer.Format("ftp.client.renameFailed", ex.Message); }
     }
 
     private void DeleteLocal()
     {
         var items = BatchLocal();
         if (items.Count == 0) return;
-        var label = items.Count == 1 ? $"本地{(items[0].IsDir ? "文件夹" : "文件")} {items[0].Name}" : $"{items.Count} 个本地项目";
-        var dirNote = items.Any(x => x.IsDir) ? "\n（文件夹含其中所有内容）" : "";
-        if (MessageBox.Show($"删除 {label}？{dirNote}\n此操作不可恢复。", "删除",
+        var label = items.Count == 1
+            ? Localizer.Format("ftp.client.localDeleteLabelOne", items[0].IsDir ? Localizer.T("ftp.client.typeDir") : Localizer.T("ftp.client.typeFile"), items[0].Name)
+            : Localizer.Format("ftp.client.localDeleteLabelMany", items.Count);
+        var dirNote = items.Any(x => x.IsDir) ? Localizer.T("ftp.client.localDeleteDirNote") : "";
+        if (Dialogs.Show(Localizer.Format("ftp.client.deleteConfirm", label, dirNote), Localizer.T("ftp.client.deleteTitle"),
                 MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
         var ok = 0;
         try
@@ -585,9 +591,9 @@ public sealed class FtpClientViewModel : ObservableObject
                 if (l.IsDir) Directory.Delete(l.Path, true); else File.Delete(l.Path);
                 ok++;
             }
-            Note = $"已删除 {ok} 项";
+            Note = Localizer.Format("ftp.client.deleted", ok);
         }
-        catch (Exception ex) { Note = $"删除失败（已删除 {ok} 项）：" + ex.Message; }
+        catch (Exception ex) { Note = Localizer.Format("ftp.client.deleteFailed", ok, ex.Message); }
         ListLocal();
     }
 
@@ -602,12 +608,12 @@ public sealed class FtpClientViewModel : ObservableObject
             var dir = Path.Combine(Path.GetTempPath(), "WinDeployFtp");
             Directory.CreateDirectory(dir);
             var tmp = Path.Combine(dir, r.Name);
-            Note = $"正在下载并打开 {r.Name} …";
+            Note = Localizer.Format("ftp.client.openingRemote", r.Name);
             await _client.DownloadAsync(r.Name, tmp, null, _cts!.Token);
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(tmp) { UseShellExecute = true });
-            Note = $"已下载并用关联程序打开 {r.Name}";
+            Note = Localizer.Format("ftp.client.openedRemote", r.Name);
         }
-        catch (Exception ex) { Note = "打开失败：" + ex.Message; }
+        catch (Exception ex) { Note = Localizer.Format("ftp.client.openFailed", ex.Message); }
         finally { Busy = false; }
     }
 
@@ -618,4 +624,11 @@ public sealed class FtpClientViewModel : ObservableObject
         });
 
     private static void Requery() => System.Windows.Input.CommandManager.InvalidateRequerySuggested();
+
+    protected override void OnCultureChanged()
+    {
+        base.OnCultureChanged();
+        foreach (var r in RemoteEntries) r.RaiseAllPropertiesChanged();
+        foreach (var l in LocalEntries) l.RaiseAllPropertiesChanged();
+    }
 }

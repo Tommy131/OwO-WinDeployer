@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Windows;
 using WinDeploy.App.Services;
+using WinDeploy.Core.I18n;
 
 namespace WinDeploy.App.ViewModels;
 
@@ -28,7 +29,7 @@ public sealed class JunkRowViewModel : ObservableObject
 
 /// <summary>The "系统维护" page: one-click Windows repair commands (SFC/DISM/chkdsk/network/…),
 /// a junk/cache cleaner, and a recent-error / crash log triage — the repair technician's bench.</summary>
-public sealed class MaintenanceViewModel : ObservableObject
+public sealed class MaintenanceViewModel : LocalizedObject
 {
     public ObservableCollection<RepairRowViewModel> Repairs { get; } = new();
     public ObservableCollection<JunkRowViewModel> Junk { get; } = new();
@@ -48,26 +49,33 @@ public sealed class MaintenanceViewModel : ObservableObject
         RefreshEventsCommand = new RelayCommand(_ => _ = LoadEventsAsync(), _ => !IsLoadingEvents);
     }
 
+    protected override void OnCultureChanged()
+    {
+        base.OnCultureChanged();
+        // Re-localize live list rows (Name / Detail resolve through the localizer by id).
+        foreach (var row in Junk) row.RaiseAllPropertiesChanged();
+    }
+
     // ── Repair ────────────────────────────────────────────────────────────
     private void RunRepair(RepairRowViewModel r)
     {
-        if (r.Risky && MessageBox.Show($"{r.Title}\n\n{r.Detail}\n\n该操作可能短暂影响桌面 / 系统，确定继续？",
-                "系统维护", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        if (r.Risky && Dialogs.Show(Localizer.Format("maint.repair.riskyConfirm", r.Title, r.Detail),
+                Localizer.T("maint.titleBox"), MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
         var (ok, msg) = RepairCommands.Run(r.Action);
-        if (!ok) MessageBox.Show(msg, r.Title, MessageBoxButton.OK, MessageBoxImage.Warning);
+        if (!ok) Dialogs.Show(msg, r.Title, MessageBoxButton.OK, MessageBoxImage.Warning);
     }
 
     // ── Junk cleaner ──────────────────────────────────────────────────────
     private bool _isScanning;
     public bool IsScanning { get => _isScanning; set => Set(ref _isScanning, value); }
 
-    private string _junkNote = "点击「扫描」统计可清理的缓存与临时文件";
+    private string _junkNote = Localizer.T("maint.junk.note");
     public string JunkNote { get => _junkNote; set => Set(ref _junkNote, value); }
 
     private async Task ScanJunkAsync()
     {
         IsScanning = true;
-        JunkNote = "正在扫描 …";
+        JunkNote = Localizer.T("maint.junk.scanning");
         var targets = JunkScanner.BuildTargets();
         var found = await Task.Run(() => JunkScanner.Scan(targets));
         Junk.Clear();
@@ -79,7 +87,7 @@ public sealed class MaintenanceViewModel : ObservableObject
         }
         IsScanning = false;
         UpdateJunkNote();
-        if (Junk.Count == 0) JunkNote = "未发现可清理的明显垃圾文件";
+        if (Junk.Count == 0) JunkNote = Localizer.T("maint.junk.empty");
     }
 
     private void UpdateJunkNote()
@@ -87,7 +95,7 @@ public sealed class MaintenanceViewModel : ObservableObject
         if (Junk.Count == 0) return;
         var sel = Junk.Where(j => j.IsSelected).ToList();
         var bytes = sel.Sum(j => j.Target.Bytes);
-        JunkNote = $"已选 {sel.Count} 项 · 约可释放 {Size(bytes)}";
+        JunkNote = Localizer.Format("maint.junk.selected", sel.Count, Size(bytes));
     }
 
     private async Task CleanJunkAsync()
@@ -95,18 +103,18 @@ public sealed class MaintenanceViewModel : ObservableObject
         var sel = Junk.Where(j => j.IsSelected).Select(j => j.Target).ToList();
         if (sel.Count == 0) return;
         var bytes = sel.Sum(t => t.Bytes);
-        if (MessageBox.Show($"确定清理选中的 {sel.Count} 项，约 {Size(bytes)}？\n\n正在使用的文件会自动跳过。",
-                "清理垃圾", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+        if (Dialogs.Show(Localizer.Format("maint.clean.confirm", sel.Count, Size(bytes)),
+                Localizer.T("maint.clean.confirmTitle"), MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
 
         // Run the (potentially slow) delete off the UI thread, behind a non-closable busy dialog so the
         // window can't be killed mid-clean and never looks frozen.
         var owner = Application.Current.MainWindow;
-        var (count, freed) = await Views.BusyDialog.RunAsync(owner, "正在清理垃圾",
-            $"正在清理选中的 {sel.Count} 项缓存与临时文件，正在使用的文件会自动跳过。",
+        var (count, freed) = await Views.BusyDialog.RunAsync(owner, Localizer.T("maint.clean.busyTitle"),
+            Localizer.Format("maint.clean.busyBody", sel.Count),
             () => Task.Run(() => JunkScanner.Clean(sel)));
 
         AuditLog.Action($"垃圾清理：处理 {count} 处，释放 {Size(freed)}");
-        MessageBox.Show($"已清理 {count} 处，释放 {Size(freed)}。", "清理垃圾", MessageBoxButton.OK, MessageBoxImage.Information);
+        Dialogs.Show(Localizer.Format("maint.clean.done", count, Size(freed)), Localizer.T("maint.clean.confirmTitle"), MessageBoxButton.OK, MessageBoxImage.Information);
         await ScanJunkAsync();
     }
 
@@ -114,21 +122,21 @@ public sealed class MaintenanceViewModel : ObservableObject
     private bool _isLoadingEvents;
     public bool IsLoadingEvents { get => _isLoadingEvents; set => Set(ref _isLoadingEvents, value); }
 
-    private string _eventNote = "点击「刷新」查看最近 7 天的严重 / 错误事件";
+    private string _eventNote = Localizer.T("maint.event.note");
     public string EventNote { get => _eventNote; set => Set(ref _eventNote, value); }
 
     private async Task LoadEventsAsync()
     {
         IsLoadingEvents = true;
-        EventNote = "正在读取事件日志 …";
+        EventNote = Localizer.T("maint.event.reading");
         var rows = await EventLogReader.RecentAsync();
         Events.Clear();
         foreach (var e in rows) Events.Add(e);
         IsLoadingEvents = false;
         var crashes = rows.Count(r => r.IsCrash);
         EventNote = rows.Count == 0
-            ? "近 7 天无严重 / 错误事件"
-            : $"近 7 天 {rows.Count} 条严重/错误事件" + (crashes > 0 ? $" · 含 {crashes} 次异常关机/崩溃" : "");
+            ? Localizer.T("maint.event.none")
+            : Localizer.Format("maint.event.summary", rows.Count) + (crashes > 0 ? Localizer.Format("maint.event.summaryCrash", crashes) : "");
     }
 
     private static string Size(long bytes) => bytes >= 1024L * 1024 * 1024

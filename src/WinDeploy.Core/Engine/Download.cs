@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using WinDeploy.Core.Engine.Installers;
+using WinDeploy.Core.I18n;
 
 namespace WinDeploy.Core.Engine;
 
@@ -44,9 +45,9 @@ public static class Download
         {
             var pct = read * 100.0 / total;
             var eta = rate > 0 ? (total - read) / rate : 0;
-            return $"下载 {Mb(read)} / {Mb(total)} · {pct:0}%{rateText} · 约剩 {Eta(eta)}";
+            return Localizer.Format("engine.download.progress", Mb(read), Mb(total), pct.ToString("0"), rateText, Eta(eta));
         }
-        return $"已下载 {Mb(read)}{rateText}";
+        return Localizer.Format("engine.download.downloaded", Mb(read) + rateText);
     }
 
     private static string Mb(double bytes) => bytes >= 1024.0 * 1024 * 1024
@@ -54,5 +55,7 @@ public static class Download
         : $"{bytes / 1024 / 1024:0.0} MB";
 
     private static string Eta(double seconds) =>
-        seconds >= 60 ? $"{(int)(seconds / 60)}分{(int)(seconds % 60)}秒" : $"{seconds:0}秒";
+        seconds >= 60
+            ? Localizer.Format("engine.download.minSec", (int)(seconds / 60), (int)(seconds % 60))
+            : Localizer.Format("engine.download.sec", ((int)seconds).ToString());
 }

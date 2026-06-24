@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
 using Microsoft.Win32;
+using WinDeploy.Core.I18n;
 using WinDeploy.Core.Util;
 
 namespace WinDeploy.App.Services;
@@ -50,7 +51,7 @@ public static class Wsl
         try
         {
             Process.Start(new ProcessStartInfo("OptionalFeatures.exe") { UseShellExecute = true });
-            return (true, "已打开「启用或关闭 Windows 功能」");
+            return (true, Localizer.T("wsl.msg.featureOpened"));
         }
         catch (Exception ex) { return (false, ex.Message); }
     }
@@ -126,7 +127,7 @@ public static class Wsl
         try
         {
             var r = await Proc.RunAsync("wsl", new[] { "--export", name, tarPath }, ct: ct);
-            return r.Ok ? (true, $"已导出 → {tarPath}") : (false, $"导出失败（退出码 {r.ExitCode}）");
+            return r.Ok ? (true, Localizer.Format("wsl.msg.exported", tarPath)) : (false, Localizer.Format("wsl.msg.exportFailed", r.ExitCode));
         }
         catch (Exception ex) { return (false, ex.Message); }
     }
@@ -143,9 +144,9 @@ public static class Wsl
             var psi = new ProcessStartInfo("cmd.exe") { Arguments = $"/k wsl {args}", UseShellExecute = true };
             if (elevate) psi.Verb = "runas";
             Process.Start(psi);
-            return (true, "已在新窗口中执行");
+            return (true, Localizer.T("wsl.msg.ranInNewWindow"));
         }
-        catch (Win32Exception) { return (false, "已取消管理员授权或启动失败"); }
+        catch (Win32Exception) { return (false, Localizer.T("svc.run.cancelled")); }
         catch (Exception ex) { return (false, ex.Message); }
     }
 }

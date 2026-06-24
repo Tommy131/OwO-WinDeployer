@@ -1,12 +1,13 @@
 using System.Diagnostics;
 using System.Windows;
 using WinDeploy.App.Services;
+using WinDeploy.Core.I18n;
 
 namespace WinDeploy.App.ViewModels;
 
 /// <summary>The "日志" page: shows the global audit log, follows new entries live,
 /// and can open the log folder or clear the file.</summary>
-public sealed class LogViewModel : ObservableObject
+public sealed class LogViewModel : LocalizedObject
 {
     public RelayCommand RefreshCommand { get; }
     public RelayCommand OpenFolderCommand { get; }
@@ -30,7 +31,7 @@ public sealed class LogViewModel : ObservableObject
 
     private void ClearWithConfirm()
     {
-        if (MessageBox.Show("确定清空全部审计日志？此操作不可恢复。", "清空日志",
+        if (Dialogs.Show(Localizer.T("log.clear.confirmBody"), Localizer.T("log.clear.confirmTitle"),
                 MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
         AuditLog.Clear();
         Refresh();

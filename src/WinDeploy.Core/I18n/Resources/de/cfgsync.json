@@ -1,0 +1,17 @@
+{
+  "cfgsync.apply": "Konfiguration anwenden",
+  "cfgsync.envVars": "Umgebungsvariablen",
+  "cfgsync.envVars.target": "Benutzerumgebung / PATH",
+  "cfgsync.includeAsk": "Ask-Typ einschließen (z. B. LM Studio)",
+  "cfgsync.processing": "Wird verarbeitet …",
+  "cfgsync.ssh.generate": "SSH-Schlüssel erzeugen",
+  "cfgsync.ssh.register": "und den öffentlichen Schlüssel bei GitHub registrieren",
+  "cfgsync.ssh.subtitle": "Erzeugt einen lokalen ed25519-Schlüssel und wendet die ssh-Konfiguration an; der private Schlüssel wird nie eingecheckt. Der öffentliche Schlüssel wird nur bei Auswahl bei GitHub registriert.",
+  "cfgsync.ssh.title": "SSH (pro Gerät wird ein neuer Schlüssel erzeugt)",
+  "cfgsync.status.done": "Fertig",
+  "cfgsync.status.failed": "Fehlgeschlagen",
+  "cfgsync.status.skip": "Übersprungen",
+  "cfgsync.subtitle": "Wendet die Konfigurationen aus dem Repository auf diesen Rechner an (vor dem Überschreiben automatische Sicherung). Dies verändert Ihre lokale Umgebung — gehen Sie nach Bedarf vor.",
+  "cfgsync.title": "Konfig-Sync",
+  "cfgsync.toApply": "Anzuwendende Konfigurationen"
+}

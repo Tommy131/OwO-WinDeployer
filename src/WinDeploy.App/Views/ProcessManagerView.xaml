@@ -9,20 +9,20 @@
     </Grid.RowDefinitions>
 
     <StackPanel Grid.Row="0">
-      <TextBlock Text="进程管理" FontSize="20" FontWeight="SemiBold" />
-      <TextBlock Text="实时（每 2 秒）显示进程的 CPU 占用与内存，支持展开/折叠、结束单个/全部进程。「显示全部进程」按用户进程 / 系统进程分区（类任务管理器）；右键进程可结束任务 / 打开文件位置 / 属性。" FontSize="13"
+      <TextBlock Text="{DynamicResource S.proc.title}" FontSize="20" FontWeight="SemiBold" />
+      <TextBlock Text="{DynamicResource S.proc.subtitle}" FontSize="13"
                  Foreground="{DynamicResource TextSecondary}" Margin="0,3,0,0" TextWrapping="Wrap" />
     </StackPanel>
 
     <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,0">
-      <Button Content="↻ 刷新" Style="{StaticResource MiniButton}" Command="{Binding RefreshCommand}"
-              ToolTip="重新解析并扫描进程" />
+      <Button Content="{DynamicResource S.proc.refresh}" Style="{StaticResource MiniButton}" Command="{Binding RefreshCommand}"
+              ToolTip="{DynamicResource S.proc.refresh.tip}" />
       <Button Content="{Binding ToggleAllLabel}" Style="{StaticResource InfoButton}" Command="{Binding ToggleAllCommand}" Margin="8,0,0,0"
-              ToolTip="在「全部进程」与「仅软件库进程」之间切换" />
+              ToolTip="{DynamicResource S.proc.toggle.tip}" />
       <Button Content="{Binding ExpandAllLabel}" Style="{StaticResource MiniButton}" Command="{Binding ExpandCollapseAllCommand}" Margin="8,0,0,0"
-              ToolTip="一键展开 / 折叠所有进程组的子进程" />
-      <Button Content="打开任务管理器" Style="{StaticResource MiniButton}" Command="{Binding OpenTaskManagerCommand}" Margin="8,0,0,0"
-              ToolTip="打开 Windows 任务管理器" />
+              ToolTip="{DynamicResource S.proc.expandAll.tip}" />
+      <Button Content="{DynamicResource S.proc.openTaskMgr}" Style="{StaticResource MiniButton}" Command="{Binding OpenTaskManagerCommand}" Margin="8,0,0,0"
+              ToolTip="{DynamicResource S.proc.openTaskMgr.tip}" />
       <TextBlock Text="{Binding Summary}" FontSize="12" Foreground="{DynamicResource TextTertiary}"
                  VerticalAlignment="Center" Margin="16,0,0,0" />
     </StackPanel>
@@ -42,7 +42,7 @@
                 <!-- group header -->
                 <Grid>
                   <!-- 点击整个标题（图标 / 名称）展开 / 折叠；右键可对主进程结束 / 重启 / 打开位置 / 属性 -->
-                  <Border Background="Transparent" Cursor="Hand" HorizontalAlignment="Left" ToolTip="左键展开 / 折叠子进程；右键可结束全部 / 重启 / 打开文件位置 / 属性"
+                  <Border Background="Transparent" Cursor="Hand" HorizontalAlignment="Left" ToolTip="{DynamicResource S.proc.headerTip}"
                           Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=UserControl}}">
                     <Border.InputBindings>
                       <MouseBinding MouseAction="LeftClick" Command="{Binding ToggleCommand}" />
@@ -54,24 +54,24 @@
                           <MenuItem.Icon><TextBlock Text="&#xE70D;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource TextSecondary}" /></MenuItem.Icon>
                         </MenuItem>
                         <Separator Style="{StaticResource ThemedSeparator}" />
-                        <MenuItem Header="重启" Style="{StaticResource ThemedMenuItem}"
+                        <MenuItem Header="{DynamicResource S.proc.menu.restart}" Style="{StaticResource ThemedMenuItem}"
                                   Visibility="{Binding IsCatalog, Converter={StaticResource BoolToVis}}"
                                   Command="{Binding PlacementTarget.Tag.RestartCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                   CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
                           <MenuItem.Icon><TextBlock Text="&#xE72C;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource Accent}" /></MenuItem.Icon>
                         </MenuItem>
-                        <MenuItem Header="结束全部进程" Style="{StaticResource ThemedMenuItem}"
+                        <MenuItem Header="{DynamicResource S.proc.menu.endAll}" Style="{StaticResource ThemedMenuItem}"
                                   Command="{Binding PlacementTarget.Tag.EndAllCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                   CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
                           <MenuItem.Icon><TextBlock Text="&#xE71A;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource FailFg}" /></MenuItem.Icon>
                         </MenuItem>
                         <Separator Style="{StaticResource ThemedSeparator}" />
-                        <MenuItem Header="打开文件位置" Style="{StaticResource ThemedMenuItem}"
+                        <MenuItem Header="{DynamicResource S.proc.menu.openLocation}" Style="{StaticResource ThemedMenuItem}"
                                   Command="{Binding PlacementTarget.Tag.OpenGroupFileLocationCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                   CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
                           <MenuItem.Icon><TextBlock Text="&#xE8B7;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource TextSecondary}" /></MenuItem.Icon>
                         </MenuItem>
-                        <MenuItem Header="属性" Style="{StaticResource ThemedMenuItem}"
+                        <MenuItem Header="{DynamicResource S.proc.menu.properties}" Style="{StaticResource ThemedMenuItem}"
                                   Command="{Binding PlacementTarget.Tag.ShowGroupPropertiesCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                   CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
                           <MenuItem.Icon><TextBlock Text="&#xE946;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource TextSecondary}" /></MenuItem.Icon>
@@ -98,11 +98,11 @@
                     </StackPanel>
                   </Border>
                   <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button Content="↻ 重启" Style="{StaticResource InfoButton}"
+                    <Button Content="{DynamicResource S.proc.restart}" Style="{StaticResource InfoButton}"
                             Visibility="{Binding IsCatalog, Converter={StaticResource BoolToVis}}"
                             Command="{Binding DataContext.RestartCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                             CommandParameter="{Binding}" />
-                    <Button Content="■ 结束全部" Style="{StaticResource DangerButton}" Margin="8,0,0,0"
+                    <Button Content="{DynamicResource S.proc.endAll}" Style="{StaticResource DangerButton}" Margin="8,0,0,0"
                             Command="{Binding DataContext.EndAllCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                             CommandParameter="{Binding}" />
                   </StackPanel>
@@ -118,10 +118,10 @@
                       <ColumnDefinition Width="92" />
                       <ColumnDefinition Width="64" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" Text="进程" FontSize="11" Foreground="{DynamicResource TextTertiary}" />
+                    <TextBlock Grid.Column="0" Text="{DynamicResource S.proc.col.proc}" FontSize="11" Foreground="{DynamicResource TextTertiary}" />
                     <TextBlock Grid.Column="1" Text="PID" FontSize="11" Foreground="{DynamicResource TextTertiary}" />
                     <TextBlock Grid.Column="2" Text="CPU" FontSize="11" Foreground="{DynamicResource TextTertiary}" />
-                    <TextBlock Grid.Column="3" Text="内存" FontSize="11" Foreground="{DynamicResource TextTertiary}" />
+                    <TextBlock Grid.Column="3" Text="{DynamicResource S.proc.col.mem}" FontSize="11" Foreground="{DynamicResource TextTertiary}" />
                   </Grid>
                   <ItemsControl ItemsSource="{Binding Processes}">
                     <ItemsControl.ItemTemplate>
@@ -139,17 +139,17 @@
                           </Grid.ColumnDefinitions>
                           <Grid.ContextMenu>
                             <ContextMenu Style="{StaticResource ThemedContextMenu}">
-                              <MenuItem Header="结束任务" Style="{StaticResource ThemedMenuItem}"
+                              <MenuItem Header="{DynamicResource S.proc.menu.endTask}" Style="{StaticResource ThemedMenuItem}"
                                         Command="{Binding PlacementTarget.Tag.EndProcessCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                         CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
                                 <MenuItem.Icon><TextBlock Text="&#xE71A;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource FailFg}" /></MenuItem.Icon>
                               </MenuItem>
-                              <MenuItem Header="打开文件位置" Style="{StaticResource ThemedMenuItem}"
+                              <MenuItem Header="{DynamicResource S.proc.menu.openLocation}" Style="{StaticResource ThemedMenuItem}"
                                         Command="{Binding PlacementTarget.Tag.OpenFileLocationCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                         CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
                                 <MenuItem.Icon><TextBlock Text="&#xE8B7;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource TextSecondary}" /></MenuItem.Icon>
                               </MenuItem>
-                              <MenuItem Header="属性" Style="{StaticResource ThemedMenuItem}"
+                              <MenuItem Header="{DynamicResource S.proc.menu.properties}" Style="{StaticResource ThemedMenuItem}"
                                         Command="{Binding PlacementTarget.Tag.ShowPropertiesCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                         CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
                                 <MenuItem.Icon><TextBlock Text="&#xE946;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource TextSecondary}" /></MenuItem.Icon>
@@ -160,7 +160,7 @@
                           <TextBlock Grid.Column="1" Text="{Binding Pid}" FontSize="12" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" />
                           <TextBlock Grid.Column="2" Text="{Binding CpuText}" FontSize="12" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" />
                           <TextBlock Grid.Column="3" Text="{Binding MemText}" FontSize="12" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" />
-                          <Button Grid.Column="4" Content="结束" Style="{StaticResource DangerButton}"
+                          <Button Grid.Column="4" Content="{DynamicResource S.proc.row.endBtn}" Style="{StaticResource DangerButton}"
                                   Command="{Binding DataContext.EndProcessCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                   CommandParameter="{Binding}" />
                         </Grid>

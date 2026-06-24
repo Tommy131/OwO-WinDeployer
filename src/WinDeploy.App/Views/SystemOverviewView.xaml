@@ -9,18 +9,18 @@
     </Grid.RowDefinitions>
 
     <StackPanel Grid.Row="0">
-      <TextBlock Text="系统概览" FontSize="20" FontWeight="SemiBold" />
-      <TextBlock Text="本机硬件 / 系统健康实时一览：CPU、内存、功耗、磁盘（含 SMART）、电池、激活状态（每 2 秒刷新）。" FontSize="13"
+      <TextBlock Text="{DynamicResource S.sysov.title}" FontSize="20" FontWeight="SemiBold" />
+      <TextBlock Text="{DynamicResource S.sysov.subtitle}" FontSize="13"
                  Foreground="{DynamicResource TextSecondary}" Margin="0,3,0,0" TextWrapping="Wrap" />
     </StackPanel>
 
     <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,0">
-      <Button Content="↻ 刷新" Style="{StaticResource MiniButton}" Command="{Binding RefreshCommand}" />
-      <Button Content="导出软件清单" Style="{StaticResource InfoButton}" Margin="8,0,0,0" Command="{Binding ExportInventoryCommand}" />
-      <Button Content="🛡 以管理员身份运行" Style="{StaticResource WarnButton}" Margin="8,0,0,0"
+      <Button Content="{DynamicResource S.sysov.refresh}" Style="{StaticResource MiniButton}" Command="{Binding RefreshCommand}" />
+      <Button Content="{DynamicResource S.sysov.exportInventory}" Style="{StaticResource InfoButton}" Margin="8,0,0,0" Command="{Binding ExportInventoryCommand}" />
+      <Button Content="{DynamicResource S.sysov.adminRun}" Style="{StaticResource WarnButton}" Margin="8,0,0,0"
               Command="{Binding RelaunchAdminCommand}"
               Visibility="{Binding ShowAdminHint, Converter={StaticResource BoolToVis}}"
-              ToolTip="以管理员重启后才能读取 CPU 温度与 CPU/主板功耗（AMD MSR/SMU 经 WinRing0 驱动，需管理员）" />
+              ToolTip="{DynamicResource S.sysov.adminRun.tip}" />
       <TextBlock Text="{Binding InventoryNote}" FontSize="12" Foreground="{DynamicResource TextTertiary}"
                  VerticalAlignment="Center" Margin="14,0,0,0" TextTrimming="CharacterEllipsis" />
     </StackPanel>
@@ -40,15 +40,15 @@
                 <ColumnDefinition Width="*" />
               </Grid.ColumnDefinitions>
               <StackPanel Grid.Column="0">
-                <TextBlock Text="处理器" FontSize="11" Foreground="{DynamicResource TextTertiary}" />
+                <TextBlock Text="{DynamicResource S.sysov.proc}" FontSize="11" Foreground="{DynamicResource TextTertiary}" />
                 <TextBlock Text="{Binding Cpu}" FontSize="13" TextWrapping="Wrap" Margin="0,2,12,2" />
                 <TextBlock Text="{Binding CpuLive}" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource Accent}" Margin="0,0,12,10" />
                 <Grid Margin="0,0,12,0">
-                  <TextBlock Text="内存" FontSize="11" Foreground="{DynamicResource TextTertiary}" VerticalAlignment="Center" />
+                  <TextBlock Text="{DynamicResource S.sysov.mem.label}" FontSize="11" Foreground="{DynamicResource TextTertiary}" VerticalAlignment="Center" />
                   <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                     <Border CornerRadius="6" Padding="6,1" Margin="0,0,8,0" Background="{DynamicResource FailBg}" VerticalAlignment="Center"
                             Visibility="{Binding RamHigh, Converter={StaticResource BoolToVis}}">
-                      <TextBlock Text="占用偏高" FontSize="10" Foreground="{DynamicResource FailFg}" />
+                      <TextBlock Text="{DynamicResource S.sysov.mem.high}" FontSize="10" Foreground="{DynamicResource FailFg}" />
                     </Border>
                     <TextBlock Text="{Binding RamPercentText}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource Accent}" />
                   </StackPanel>
@@ -58,9 +58,9 @@
                 <TextBlock Text="{Binding RamLive}" FontSize="12" Foreground="{DynamicResource TextSecondary}" Margin="0,0,12,10" TextWrapping="Wrap" />
               </StackPanel>
               <StackPanel Grid.Column="1">
-                <TextBlock Text="运行时间" FontSize="11" Foreground="{DynamicResource TextTertiary}" />
+                <TextBlock Text="{DynamicResource S.sysov.runtime}" FontSize="11" Foreground="{DynamicResource TextTertiary}" />
                 <TextBlock Text="{Binding Uptime}" FontSize="13" Margin="0,2,0,10" />
-                <TextBlock Text="激活 / 电池" FontSize="11" Foreground="{DynamicResource TextTertiary}" />
+                <TextBlock Text="{DynamicResource S.sysov.power.activationBattery}" FontSize="11" Foreground="{DynamicResource TextTertiary}" />
                 <TextBlock FontSize="13" Margin="0,2,0,10">
                   <Run Text="{Binding Activation}" /><Run Text="  ·  " /><Run Text="{Binding Battery}" />
                 </TextBlock>
@@ -71,11 +71,11 @@
 
         <!-- Power monitoring -->
         <Grid Margin="2,18,0,8">
-          <TextBlock Text="系统功耗 · 实时" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
+          <TextBlock Text="{DynamicResource S.sysov.power.live}" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
           <Border CornerRadius="8" Padding="12,4" HorizontalAlignment="Right" Background="{DynamicResource AccentBg}"
                   Visibility="{Binding HasPower, Converter={StaticResource BoolToVis}}">
             <StackPanel Orientation="Horizontal">
-              <TextBlock Text="整机功耗" FontSize="11.5" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" Margin="0,0,8,0" />
+              <TextBlock Text="{DynamicResource S.sysov.power.total}" FontSize="11.5" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" Margin="0,0,8,0" />
               <TextBlock Text="{Binding TotalPowerText}" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource Accent}" />
             </StackPanel>
           </Border>
@@ -92,7 +92,7 @@
                       <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <Border Grid.Column="0" CornerRadius="6" Padding="7,2" Background="{DynamicResource AccentBg}" HorizontalAlignment="Left" VerticalAlignment="Center">
-                      <TextBlock Text="{Binding Kind}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource Accent}" HorizontalAlignment="Center" />
+                      <TextBlock Text="{Binding KindLabel}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource Accent}" HorizontalAlignment="Center" />
                     </Border>
                     <StackPanel Grid.Column="1" Margin="10,0,12,0" VerticalAlignment="Center">
                       <TextBlock Text="{Binding Name}" FontSize="12" Foreground="{DynamicResource TextSecondary}" TextTrimming="CharacterEllipsis" />
@@ -110,7 +110,7 @@
         </Border>
 
         <!-- Drives -->
-        <TextBlock Text="磁盘空间" FontSize="14" FontWeight="SemiBold" Margin="2,18,0,8" />
+        <TextBlock Text="{DynamicResource S.sysov.disks.title}" FontSize="14" FontWeight="SemiBold" Margin="2,18,0,8" />
         <ItemsControl ItemsSource="{Binding Disks}">
           <ItemsControl.ItemTemplate>
             <DataTemplate>
@@ -122,7 +122,7 @@
                       <TextBlock Text="{Binding Label}" FontSize="12" Foreground="{DynamicResource TextSecondary}" Margin="8,0,0,0" VerticalAlignment="Center" />
                       <Border CornerRadius="6" Padding="6,1" Margin="8,0,0,0" Background="{DynamicResource FailBg}" VerticalAlignment="Center"
                               Visibility="{Binding Low, Converter={StaticResource BoolToVis}}">
-                        <TextBlock Text="空间偏低" FontSize="10" Foreground="{DynamicResource FailFg}" />
+                        <TextBlock Text="{DynamicResource S.sysov.disk.low}" FontSize="10" Foreground="{DynamicResource FailFg}" />
                       </Border>
                     </StackPanel>
                     <TextBlock Text="{Binding Text}" FontSize="12" Foreground="{DynamicResource TextSecondary}" HorizontalAlignment="Right" />
@@ -136,12 +136,12 @@
         </ItemsControl>
 
         <!-- Physical disks / SMART (点击磁盘查看 SMART 详情) -->
-        <TextBlock Text="物理磁盘健康 (SMART) · 点击磁盘查看详情" FontSize="14" FontWeight="SemiBold" Margin="2,14,0,8" />
+        <TextBlock Text="{DynamicResource S.sysov.smart.title}" FontSize="14" FontWeight="SemiBold" Margin="2,14,0,8" />
         <ItemsControl ItemsSource="{Binding PhysicalDisks}">
           <ItemsControl.ItemTemplate>
             <DataTemplate>
               <Border Style="{StaticResource Card}" Padding="14,10" Margin="0,0,0,8" Cursor="Hand"
-                      ToolTip="点击查看该磁盘的 SMART / 可靠性数据">
+                      ToolTip="{DynamicResource S.sysov.smart.tip}">
                 <Border.InputBindings>
                   <MouseBinding MouseAction="LeftClick"
                                 Command="{Binding DataContext.ShowSmartCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
@@ -154,11 +154,11 @@
                   </StackPanel>
                   <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                     <Button Style="{StaticResource MiniButton}" VerticalAlignment="Center" Margin="0,0,10,0"
-                            ToolTip="安全弹出该移动设备" Cursor="Hand"
+                            ToolTip="{DynamicResource S.sysov.eject.tip}" Cursor="Hand"
                             Visibility="{Binding IsRemovable, Converter={StaticResource BoolToVis}}"
                             Command="{Binding DataContext.EjectCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                             CommandParameter="{Binding}">
-                      <TextBlock Text="&#x23CF;  弹出" VerticalAlignment="Center" />
+                      <TextBlock VerticalAlignment="Center"><Run Text="&#x23CF;  " /><Run Text="{DynamicResource S.sysov.eject}" /></TextBlock>
                     </Button>
                     <Border CornerRadius="6" Padding="9,3" Background="{DynamicResource OkBg}">
                       <TextBlock Text="{Binding Health}" FontSize="12" Foreground="{DynamicResource OkFg}" />

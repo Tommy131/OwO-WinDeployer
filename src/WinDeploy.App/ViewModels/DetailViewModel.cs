@@ -7,6 +7,7 @@ using System.Windows.Threading;
 using WinDeploy.App.Services;
 using WinDeploy.Core;
 using WinDeploy.Core.Engine;
+using WinDeploy.Core.I18n;
 using WinDeploy.Core.Models;
 
 namespace WinDeploy.App.ViewModels;
@@ -14,7 +15,7 @@ namespace WinDeploy.App.ViewModels;
 /// <summary>Software detail page: catalog / ARP / winget metadata, a selectable install version &amp;
 /// path, and the install location. Operations (install / update / uninstall / launch / stop / restart)
 /// are raised as events so the host routes them through the 运行进度 page.</summary>
-public sealed class DetailViewModel : ObservableObject
+public sealed class DetailViewModel : LocalizedObject
 {
     private readonly PathResolver _resolver;
 
@@ -62,15 +63,15 @@ public sealed class DetailViewModel : ObservableObject
         Source = ins.Method switch
         {
             "winget" => "winget",
-            "winget-bundle" => "winget（合集）",
-            "portable" => "便携包（zip）",
-            "git" => "Git 仓库",
-            "exe" => "官方安装包",
-            "local" => "本地安装包",
-            "github-release" => "GitHub 发布版",
-            "conda" => "conda 环境",
-            "vscode-ext" => "VS Code 扩展",
-            "script" => "脚本",
+            "winget-bundle" => Localizer.T("detail.source.wingetBundle"),
+            "portable" => Localizer.T("detail.source.portable"),
+            "git" => Localizer.T("detail.source.git"),
+            "exe" => Localizer.T("detail.source.exe"),
+            "local" => Localizer.T("detail.source.local"),
+            "github-release" => Localizer.T("detail.source.githubRelease"),
+            "conda" => Localizer.T("detail.source.conda"),
+            "vscode-ext" => Localizer.T("detail.source.vscodeExt"),
+            "script" => Localizer.T("detail.source.script"),
             _ => ins.Method,
         };
         PackageId = ins.Id ?? (ins.Ids is { Count: > 0 } ? string.Join(", ", ins.Ids) : "—");
@@ -100,7 +101,7 @@ public sealed class DetailViewModel : ObservableObject
         if (item.IsInstalled) _ = CheckRunningAsync();
     }
 
-    private const string Latest = "最新";
+    private static string Latest => Localizer.T("detail.version.latest");
     private readonly string _defaultPath;
 
     public ImageSource? IconImage => Item.IconImage;
@@ -112,7 +113,9 @@ public sealed class DetailViewModel : ObservableObject
     public string Name => Item.Name;
     public string Summary => Item.Summary;
     public bool IsInstalled => Item.IsInstalled;
-    public string StatusText => Item.IsInstalled ? "已安装" : "未安装";
+    public string StatusText => Item.IsInstalled
+        ? Localizer.T("detail.status.installed")
+        : Localizer.T("detail.status.notInstalled");
 
     /// <summary>Dev toolchains (go / node / jdk / mingw / ffmpeg…) often need PATH/JAVA_HOME etc.</summary>
     public bool ShowEnvButton => Item.Model.Category is "dev" or "ide";
@@ -210,8 +213,8 @@ public sealed class DetailViewModel : ObservableObject
 
     public bool CanSetPath { get; }
     public string PathHint => Item.Model.Install.Method == "winget"
-        ? "留空 = 默认位置；填写则用 winget --location（部分软件支持）"
-        : "便携包 / git 的解压目录，可改";
+        ? Localizer.T("detail.pathHint.winget")
+        : Localizer.T("detail.pathHint.portable");
 
     private string _installPath;
     public string InstallPath
@@ -239,7 +242,7 @@ public sealed class DetailViewModel : ObservableObject
         get => _version;
         private set { if (Set(ref _version, value)) { OnPropertyChanged(nameof(InstalledNote)); RaiseButtons(); } }
     }
-    public string InstalledNote => IsInstalled && _version != "—" ? $"当前已装 {_version}" : "";
+    public string InstalledNote => IsInstalled && _version != "—" ? Localizer.Format("detail.installedNote", _version) : "";
 
     private string _size = "—";
     public string Size { get => _size; private set => Set(ref _size, value); }
@@ -286,9 +289,9 @@ public sealed class DetailViewModel : ObservableObject
 
     private void RequestUninstall()
     {
-        var choice = MessageBox.Show(
-            $"卸载 {Name}？\n\n【是】彻底删除（含用户数据）\n【否】仅卸载，保留数据\n【取消】不操作",
-            "卸载", MessageBoxButton.YesNoCancel, MessageBoxImage.Warning);
+        var choice = Dialogs.Show(
+            Localizer.Format("detail.uninstall.confirmBody", Name),
+            Localizer.T("detail.uninstall.confirmTitle"), MessageBoxButton.YesNoCancel, MessageBoxImage.Warning);
         if (choice == MessageBoxResult.Cancel) return;
         UninstallRequested?.Invoke(Item.Model, choice == MessageBoxResult.Yes);
     }

@@ -7,6 +7,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using WinDeploy.App.Services;
 using WinDeploy.Core;
+using WinDeploy.Core.I18n;
 using WinDeploy.Core.Models;
 
 namespace WinDeploy.App.ViewModels;
@@ -84,9 +85,9 @@ public sealed class AppProcGroupViewModel : ObservableObject
     }
     public string ExpandGlyph => _isExpanded ? "▼" : "▶";
     /// <summary>Header right-click label for the toggle item — mirrors <see cref="ExpandGlyph"/>.</summary>
-    public string ExpandMenuLabel => _isExpanded ? "折叠子进程" : "展开子进程";
+    public string ExpandMenuLabel => _isExpanded ? Localizer.T("proc.group.collapse") : Localizer.T("proc.group.expand");
 
-    public string CountText => $"{Processes.Count} 个进程";
+    public string CountText => Localizer.Format("proc.count", Processes.Count);
     public void RaiseCount() => OnPropertyChanged(nameof(CountText));
 
     /// <summary>True when this group's processes all run outside the interactive session (services / SYSTEM)
@@ -134,7 +135,7 @@ public sealed class AppProcGroupViewModel : ObservableObject
 /// <summary>The "进程管理" page: a task-manager scoped to the catalog. Per-software icon + expandable
 /// process tree, live (2 s) memory / CPU%, end one / end all / restart, and a shortcut to Windows
 /// Task Manager. End-all / restart route through the run-progress page; single ends are immediate.</summary>
-public sealed class ProcessManagerViewModel : ObservableObject
+public sealed class ProcessManagerViewModel : LocalizedObject
 {
     private Catalog? _catalog;
     private PathResolver _resolver = new(new Dictionary<string, string>());
@@ -166,10 +167,10 @@ public sealed class ProcessManagerViewModel : ObservableObject
     private bool _showAll;
     /// <summary>When true, show every running process (grouped by name); else only catalog-software processes.</summary>
     public bool ShowAll { get => _showAll; private set { if (Set(ref _showAll, value)) OnPropertyChanged(nameof(ToggleAllLabel)); } }
-    public string ToggleAllLabel => _showAll ? "仅显示软件库进程" : "显示全部进程";
+    public string ToggleAllLabel => _showAll ? Localizer.T("proc.toggle.lib") : Localizer.T("proc.toggle.all");
 
     private bool _allExpanded = true;
-    public string ExpandAllLabel => _allExpanded ? "折叠全部子进程" : "展开全部子进程";
+    public string ExpandAllLabel => _allExpanded ? Localizer.T("proc.expandAll.collapse") : Localizer.T("proc.expandAll.expand");
 
     public ProcessManagerViewModel()
     {
@@ -201,6 +202,19 @@ public sealed class ProcessManagerViewModel : ObservableObject
         });
     }
 
+    protected override void OnCultureChanged()
+    {
+        base.OnCultureChanged();
+        OnPropertyChanged(nameof(ToggleAllLabel));
+        OnPropertyChanged(nameof(ExpandAllLabel));
+        // Re-localize live group / process rows (count text, expand label, section divider).
+        foreach (var g in Groups)
+        {
+            g.RaiseAllPropertiesChanged();
+            foreach (var p in g.Processes) p.RaiseAllPropertiesChanged();
+        }
+    }
+
     public void Initialize(Catalog catalog, PathResolver resolver, string repoRoot)
     {
         _catalog = catalog;
@@ -208,7 +222,7 @@ public sealed class ProcessManagerViewModel : ObservableObject
         _repoRoot = repoRoot;
     }
 
-    private string _summary = "正在扫描进程 …";
+    private string _summary = Localizer.T("proc.scanning");
     public string Summary { get => _summary; private set => Set(ref _summary, value); }
     public bool IsEmpty => Groups.Count == 0;
 
@@ -333,9 +347,9 @@ public sealed class ProcessManagerViewModel : ObservableObject
 
         var procCount = Groups.Sum(x => x.Processes.Count);
         Summary = _showAll
-            ? $"全部进程：用户 {Groups.Count(g => !g.IsSystemGroup)} · 系统 {Groups.Count(g => g.IsSystemGroup)} · 共 {procCount} 个进程 · 每 2 秒刷新"
-            : (Groups.Count == 0 ? "未发现软件列表中的软件正在运行（点「显示全部进程」查看所有进程）"
-                                 : $"{Groups.Count} 个软件运行中 · 共 {procCount} 个进程 · 每 2 秒刷新");
+            ? Localizer.Format("proc.summary.all", Groups.Count(g => !g.IsSystemGroup), Groups.Count(g => g.IsSystemGroup), procCount)
+            : (Groups.Count == 0 ? Localizer.T("proc.summary.allEmpty")
+                                 : Localizer.Format("proc.summary.lib", Groups.Count, procCount));
         OnPropertyChanged(nameof(IsEmpty));
     }
 
@@ -361,8 +375,8 @@ public sealed class ProcessManagerViewModel : ObservableObject
         bool userHeader = false, sysHeader = false;
         foreach (var g in Groups)
         {
-            if (!g.IsSystemGroup && !userHeader) { g.SetSection(true, "用户进程"); userHeader = true; }
-            else if (g.IsSystemGroup && !sysHeader) { g.SetSection(true, "系统进程"); sysHeader = true; }
+            if (!g.IsSystemGroup && !userHeader) { g.SetSection(true, Localizer.T("proc.section.user")); userHeader = true; }
+            else if (g.IsSystemGroup && !sysHeader) { g.SetSection(true, Localizer.T("proc.section.system")); sysHeader = true; }
             else g.SetSection(false, "");
         }
     }
@@ -371,7 +385,7 @@ public sealed class ProcessManagerViewModel : ObservableObject
     {
         if (g.Model is { } m) { OperationRequested?.Invoke(m, "stop"); return; }
         if (g.Processes.Count == 0) return;
-        if (MessageBox.Show($"确定结束「{g.Name}」的全部 {g.Processes.Count} 个进程？", "结束全部进程",
+        if (Dialogs.Show(Localizer.Format("proc.endAll.confirm", g.Name, g.Processes.Count), Localizer.T("proc.endAll.title"),
                 MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
         var n = 0;
         foreach (var r in g.Processes.ToList()) if (ProcessControl.Kill(r.Pid)) n++;
@@ -385,7 +399,7 @@ public sealed class ProcessManagerViewModel : ObservableObject
 
     private void EndOne(ProcRowViewModel r)
     {
-        if (MessageBox.Show($"确定结束进程 {r.Name}（PID {r.Pid}）？", "结束进程",
+        if (Dialogs.Show(Localizer.Format("proc.endOne.confirm", r.Name, r.Pid), Localizer.T("proc.endOne.title"),
                 MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
         var ok = ProcessControl.Kill(r.Pid);
         AuditLog.Action($"结束进程 {r.Name} (PID {r.Pid})：{(ok ? "成功" : "失败")}");

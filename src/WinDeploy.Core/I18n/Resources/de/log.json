@@ -1,0 +1,13 @@
+{
+  "log.clear": "Leeren",
+  "log.clear.confirmBody": "Das gesamte Audit-Protokoll leeren? Dies kann nicht rückgängig gemacht werden.",
+  "log.clear.confirmTitle": "Protokoll leeren",
+  "log.clear.tip": "app.log leeren (nicht wiederherstellbar)",
+  "log.openFolder": "Ordner öffnen",
+  "log.subtitle": "Globales Audit-Protokoll: App-Start, Installation / Update / Deinstallation / Start, Einstellungs- und Umgebungsvariablen-Änderungen usw.",
+  "log.title": "Protokoll",
+  "log.viewer.clear": "Protokoll leeren",
+  "log.viewer.clearConfirmBody": "Protokolldatei leeren?\n{0}\n\n(nicht wiederherstellbar)",
+  "log.viewer.openFolder": "Enthaltenden Ordner öffnen",
+  "log.viewer.titleSuffix": "{0} · Protokoll"
+}

@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Windows;
 using WinDeploy.App.Services;
+using WinDeploy.Core.I18n;
 
 namespace WinDeploy.App.ViewModels;
 
@@ -9,22 +10,23 @@ public sealed class TweakRowViewModel : ObservableObject
     public RegTweak T { get; }
     public TweakRowViewModel(RegTweak t) { T = t; RefreshState(); }
 
-    public string Title => T.Title;
-    public string Detail => T.Detail;
+    // T.Title / T.Detail hold localization keys (tweaks.item.<id>.title|detail) — resolve them here.
+    public string Title => Localizer.T(T.Title);
+    public string Detail => Localizer.T(T.Detail);
     public bool NeedsAdmin => T.NeedsAdmin;
 
     private bool? _on;
     public bool? On { get => _on; private set { if (Set(ref _on, value)) { OnPropertyChanged(nameof(StateText)); OnPropertyChanged(nameof(ToggleLabel)); OnPropertyChanged(nameof(IsOn)); } } }
     public bool IsOn => _on == true;
-    public string StateText => _on switch { true => "已开启", false => "已关闭", _ => "默认 / 未设置" };
-    public string ToggleLabel => _on == true ? "关闭" : "开启";
+    public string StateText => _on switch { true => Localizer.T("tweaks.state.on"), false => Localizer.T("tweaks.state.off"), _ => Localizer.T("tweaks.state.default") };
+    public string ToggleLabel => _on == true ? Localizer.T("tweaks.toggle.off") : Localizer.T("tweaks.toggle.on");
 
     public void RefreshState() => On = RegTweaks.IsOn(T);
 }
 
 /// <summary>The "系统调优" page (开发人员模式): curated reversible Windows tweaks (Explorer / appearance /
 /// privacy) with one-click on/off and live state. Dev-only.</summary>
-public sealed class TweaksViewModel : ObservableObject
+public sealed class TweaksViewModel : LocalizedObject
 {
     public ObservableCollection<TweakRowViewModel> Tweaks { get; } = new();
     public RelayCommand ToggleCommand { get; }
@@ -39,22 +41,28 @@ public sealed class TweaksViewModel : ObservableObject
         RefreshCommand = new RelayCommand(_ => { foreach (var r in Tweaks) r.RefreshState(); });
     }
 
+    protected override void OnCultureChanged()
+    {
+        base.OnCultureChanged();
+        foreach (var r in Tweaks) r.RaiseAllPropertiesChanged();
+    }
+
     private void Toggle(TweakRowViewModel r)
     {
         var target = !(r.On == true);
         var (ok, msg) = RegTweaks.Set(r.T, target);
         if (!ok)
         {
-            MessageBox.Show($"操作失败：{msg}" + (r.NeedsAdmin ? "\n\n该项需以管理员身份运行 WinDeploy。" : ""),
-                "系统调优", MessageBoxButton.OK, MessageBoxImage.Warning);
+            Dialogs.Show(Localizer.Format("tweaks.toggle.failed", msg) + (r.NeedsAdmin ? Localizer.T("tweaks.toggle.needAdminHint") : ""),
+                Localizer.T("tweaks.title"), MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
         r.RefreshState();
         AuditLog.Action($"系统调优：{r.Title} → {(target ? "开启" : "关闭")}");
 
-        if (r.T.RestartExplorer && MessageBox.Show(
-                $"「{r.Title}」已更改，需重启资源管理器才能生效。\n\n现在重启？（桌面会短暂闪烁）",
-                "系统调优", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+        if (r.T.RestartExplorer && Dialogs.Show(
+                Localizer.Format("tweaks.restartExplorer.confirm", r.Title),
+                Localizer.T("tweaks.title"), MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
             RegTweaks.RestartExplorer();
     }
 }

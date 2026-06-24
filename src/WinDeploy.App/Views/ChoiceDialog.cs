@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using WinDeploy.Core.I18n;
 
 namespace WinDeploy.App.Views;
 
@@ -47,8 +48,8 @@ public sealed class ChoiceDialog : Window
         grid.Children.Add(_list);
 
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 14, 0, 0) };
-        var ok = new Button { Content = "确定 安装", MinWidth = 96, Margin = new Thickness(0, 0, 8, 0), IsDefault = true };
-        var cancel = new Button { Content = "取消", MinWidth = 72, IsCancel = true };
+        var ok = new Button { Content = Localizer.T("dialog.choice.ok"), MinWidth = 96, Margin = new Thickness(0, 0, 8, 0), IsDefault = true };
+        var cancel = new Button { Content = Localizer.T("common.cancel"), MinWidth = 72, IsCancel = true };
         if (Application.Current.TryFindResource("PrimaryButton") is Style okStyle) ok.Style = okStyle;
         if (Application.Current.TryFindResource("MiniButton") is Style cancelStyle) cancel.Style = cancelStyle;
         ok.Click += (_, _) => DialogResult = true;

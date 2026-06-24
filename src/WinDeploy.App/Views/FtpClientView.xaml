@@ -23,7 +23,7 @@
       <StackPanel>
         <!-- saved credentials (site manager) -->
         <StackPanel Orientation="Horizontal" Margin="0,0,0,10" VerticalAlignment="Center">
-          <TextBlock Text="已保存凭据" Style="{StaticResource Lbl}" VerticalAlignment="Center" Margin="0,0,8,0" />
+          <TextBlock Text="{DynamicResource S.ftp.client.profileLabel}" Style="{StaticResource Lbl}" VerticalAlignment="Center" Margin="0,0,8,0" />
           <ComboBox Width="240" Height="30" VerticalAlignment="Center" ItemsSource="{Binding Profiles}"
                     SelectedItem="{Binding SelectedProfile}" TextSearch.TextPath="Name">
             <ComboBox.ItemTemplate>
@@ -32,36 +32,36 @@
               </DataTemplate>
             </ComboBox.ItemTemplate>
           </ComboBox>
-          <Button Content="保存当前" Style="{StaticResource MiniButton}" Margin="8,0,0,0" Command="{Binding SaveProfileCommand}" />
-          <Button Content="删除" Style="{StaticResource DangerButton}" Margin="6,0,0,0" Command="{Binding DeleteProfileCommand}" />
-          <TextBlock Text="选择后点「连接」即可快速登录（密码以当前 Windows 账户加密保存）" FontSize="11"
+          <Button Content="{DynamicResource S.ftp.client.saveCurrent}" Style="{StaticResource MiniButton}" Margin="8,0,0,0" Command="{Binding SaveProfileCommand}" />
+          <Button Content="{DynamicResource S.common.delete}" Style="{StaticResource DangerButton}" Margin="6,0,0,0" Command="{Binding DeleteProfileCommand}" />
+          <TextBlock Text="{DynamicResource S.ftp.client.profileTip}" FontSize="11"
                      Foreground="{DynamicResource TextTertiary}" VerticalAlignment="Center" Margin="10,0,0,0" />
         </StackPanel>
         <StackPanel Orientation="Horizontal">
           <StackPanel Margin="0,0,12,0">
-            <TextBlock Text="主机" Style="{StaticResource Lbl}" />
+            <TextBlock Text="{DynamicResource S.ftp.client.host}" Style="{StaticResource Lbl}" />
             <TextBox Width="220" Padding="8,5" b:InputFilter.Mode="host" Text="{Binding Host, UpdateSourceTrigger=PropertyChanged}" />
           </StackPanel>
           <StackPanel Margin="0,0,12,0">
-            <TextBlock Text="端口" Style="{StaticResource Lbl}" />
+            <TextBlock Text="{DynamicResource S.ftp.client.port}" Style="{StaticResource Lbl}" />
             <TextBox Width="70" Padding="8,5" b:InputFilter.Mode="digits" Text="{Binding Port, UpdateSourceTrigger=PropertyChanged}" />
           </StackPanel>
           <StackPanel Margin="0,0,12,0">
-            <TextBlock Text="用户名" Style="{StaticResource Lbl}" />
+            <TextBlock Text="{DynamicResource S.ftp.client.userName}" Style="{StaticResource Lbl}" />
             <TextBox Width="140" Padding="8,5" Text="{Binding UserName, UpdateSourceTrigger=PropertyChanged}" />
           </StackPanel>
           <StackPanel>
-            <TextBlock Text="密码" Style="{StaticResource Lbl}" />
+            <TextBlock Text="{DynamicResource S.ftp.client.password}" Style="{StaticResource Lbl}" />
             <PasswordBox x:Name="PwBox" Width="140" Padding="8,5"
                          Background="{DynamicResource CardBg}" Foreground="{DynamicResource TextPrimary}" BorderBrush="{DynamicResource BorderStrong}" />
           </StackPanel>
         </StackPanel>
         <StackPanel Orientation="Horizontal" Margin="0,10,0,0" VerticalAlignment="Center">
-          <RadioButton Content="明文" GroupName="cliTls" IsChecked="{Binding IsTlsNone}" Margin="0,0,14,0" />
-          <RadioButton Content="显式 TLS" GroupName="cliTls" IsChecked="{Binding IsTlsExplicit}" Margin="0,0,14,0" />
-          <RadioButton Content="隐式 TLS" GroupName="cliTls" IsChecked="{Binding IsTlsImplicit}" Margin="0,0,20,0" />
-          <Button Content="连接" Style="{StaticResource OkButton}" Margin="0,0,8,0" Command="{Binding ConnectCommand}" />
-          <Button Content="断开" Style="{StaticResource DangerButton}" Command="{Binding DisconnectCommand}" />
+          <RadioButton Content="{DynamicResource S.ftp.client.plaintext}" GroupName="cliTls" IsChecked="{Binding IsTlsNone}" Margin="0,0,14,0" />
+          <RadioButton Content="{DynamicResource S.ftp.client.tlsExplicit}" GroupName="cliTls" IsChecked="{Binding IsTlsExplicit}" Margin="0,0,14,0" />
+          <RadioButton Content="{DynamicResource S.ftp.client.tlsImplicit}" GroupName="cliTls" IsChecked="{Binding IsTlsImplicit}" Margin="0,0,20,0" />
+          <Button Content="{DynamicResource S.ftp.client.connect}" Style="{StaticResource OkButton}" Margin="0,0,8,0" Command="{Binding ConnectCommand}" />
+          <Button Content="{DynamicResource S.ftp.client.disconnect}" Style="{StaticResource DangerButton}" Command="{Binding DisconnectCommand}" />
           <TextBlock Text="{Binding StatusText}" FontSize="12.5" FontWeight="SemiBold" Margin="16,0,0,0" VerticalAlignment="Center">
             <TextBlock.Style>
               <Style TargetType="TextBlock">
@@ -94,12 +94,12 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
           </Grid.RowDefinitions>
-          <TextBlock Grid.Row="0" Text="本地" FontWeight="SemiBold" FontSize="13" Margin="12,10,12,2" />
+          <TextBlock Grid.Row="0" Text="{DynamicResource S.ftp.client.local}" FontWeight="SemiBold" FontSize="13" Margin="12,10,12,2" />
           <DockPanel Grid.Row="1" Margin="10,0,10,6">
-            <Button DockPanel.Dock="Left" Content="↑ 上级" Style="{StaticResource MiniButton}" Margin="0,0,6,0" Command="{Binding LocalUpCommand}" />
-            <Button DockPanel.Dock="Left" Content="选择目录" Style="{StaticResource MiniButton}" Margin="0,0,6,0" Command="{Binding PickLocalCommand}" />
-            <Button DockPanel.Dock="Right" Content="上传 →" Style="{StaticResource InfoButton}" Command="{Binding UploadCommand}"
-                    ToolTip="上传选中的文件/文件夹到远端（可多选批量，按住 Ctrl/Shift 多选；文件夹递归上传）" />
+            <Button DockPanel.Dock="Left" Content="{DynamicResource S.ftp.client.up}" Style="{StaticResource MiniButton}" Margin="0,0,6,0" Command="{Binding LocalUpCommand}" />
+            <Button DockPanel.Dock="Left" Content="{DynamicResource S.ftp.client.pickDir}" Style="{StaticResource MiniButton}" Margin="0,0,6,0" Command="{Binding PickLocalCommand}" />
+            <Button DockPanel.Dock="Right" Content="{DynamicResource S.ftp.client.upload}" Style="{StaticResource InfoButton}" Command="{Binding UploadCommand}"
+                    ToolTip="{DynamicResource S.ftp.client.uploadTip}" />
             <TextBlock Text="{Binding LocalDir}" FontSize="11" FontFamily="Consolas" Foreground="{DynamicResource TextTertiary}"
                        VerticalAlignment="Center" Margin="6,0,8,0" TextTrimming="CharacterEllipsis" ToolTip="{Binding LocalDir}" />
           </DockPanel>
@@ -110,20 +110,20 @@
                     SelectionMode="Extended" SelectionChanged="LocalGrid_SelectionChanged">
             <DataGrid.ContextMenu>
               <ContextMenu Style="{StaticResource ThemedContextMenu}">
-                <MenuItem Header="打开" Style="{StaticResource ThemedMenuItem}"
+                <MenuItem Header="{DynamicResource S.ftp.client.open}" Style="{StaticResource ThemedMenuItem}"
                           Command="{Binding PlacementTarget.DataContext.OpenLocalItemCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
                   <MenuItem.Icon><TextBlock Text="&#xE8E5;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource TextSecondary}" /></MenuItem.Icon>
                 </MenuItem>
-                <MenuItem Header="上传到远端" Style="{StaticResource ThemedMenuItem}"
+                <MenuItem Header="{DynamicResource S.ftp.client.uploadToRemote}" Style="{StaticResource ThemedMenuItem}"
                           Command="{Binding PlacementTarget.DataContext.UploadCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
                   <MenuItem.Icon><TextBlock Text="&#xE898;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource Accent}" /></MenuItem.Icon>
                 </MenuItem>
                 <Separator Style="{StaticResource ThemedSeparator}" />
-                <MenuItem Header="重命名" Style="{StaticResource ThemedMenuItem}"
+                <MenuItem Header="{DynamicResource S.common.rename}" Style="{StaticResource ThemedMenuItem}"
                           Command="{Binding PlacementTarget.DataContext.RenameLocalCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
                   <MenuItem.Icon><TextBlock Text="&#xE8AC;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource TextSecondary}" /></MenuItem.Icon>
                 </MenuItem>
-                <MenuItem Header="删除" Style="{StaticResource ThemedMenuItem}"
+                <MenuItem Header="{DynamicResource S.common.delete}" Style="{StaticResource ThemedMenuItem}"
                           Command="{Binding PlacementTarget.DataContext.DeleteLocalCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
                   <MenuItem.Icon><TextBlock Text="&#xE74D;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource FailFg}" /></MenuItem.Icon>
                 </MenuItem>
@@ -137,9 +137,9 @@
                   </DataTemplate>
                 </DataGridTemplateColumn.CellTemplate>
               </DataGridTemplateColumn>
-              <DataGridTextColumn Header="名称" Binding="{Binding Name}" Width="*" />
-              <DataGridTextColumn Header="大小" Binding="{Binding SizeText}" Width="Auto" />
-              <DataGridTextColumn Header="修改时间" Binding="{Binding ModifiedText}" Width="Auto" />
+              <DataGridTextColumn Header="{DynamicResource S.ftp.col.name}" Binding="{Binding Name}" Width="*" />
+              <DataGridTextColumn Header="{DynamicResource S.ftp.col.size}" Binding="{Binding SizeText}" Width="Auto" />
+              <DataGridTextColumn Header="{DynamicResource S.ftp.col.modified}" Binding="{Binding ModifiedText}" Width="Auto" />
             </DataGrid.Columns>
           </DataGrid>
         </Grid>
@@ -153,20 +153,20 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
           </Grid.RowDefinitions>
-          <TextBlock Grid.Row="0" Text="远端" FontWeight="SemiBold" FontSize="13" Margin="12,10,12,2" />
+          <TextBlock Grid.Row="0" Text="{DynamicResource S.ftp.client.remote}" FontWeight="SemiBold" FontSize="13" Margin="12,10,12,2" />
           <DockPanel Grid.Row="1" Margin="10,0,10,6">
-            <Button DockPanel.Dock="Left" Content="↑ 上级" Style="{StaticResource MiniButton}" Margin="0,0,6,0" Command="{Binding RemoteUpCommand}" />
+            <Button DockPanel.Dock="Left" Content="{DynamicResource S.ftp.client.up}" Style="{StaticResource MiniButton}" Margin="0,0,6,0" Command="{Binding RemoteUpCommand}" />
             <Button DockPanel.Dock="Left" Content="↻" Style="{StaticResource MiniButton}" Margin="0,0,6,0" Command="{Binding RefreshRemoteCommand}" />
-            <Button DockPanel.Dock="Left" Content="新建目录" Style="{StaticResource MiniButton}" Margin="0,0,6,0" Command="{Binding MkdirRemoteCommand}" />
-            <Button DockPanel.Dock="Right" Content="删除" Style="{StaticResource DangerButton}" Command="{Binding DeleteRemoteCommand}" />
-            <Button DockPanel.Dock="Right" Content="重命名" Style="{StaticResource MiniButton}" Margin="0,0,6,0" Command="{Binding RenameRemoteCommand}" />
-            <Button DockPanel.Dock="Right" Content="← 下载" Style="{StaticResource InfoButton}" Margin="0,0,6,0" Command="{Binding DownloadCommand}"
-                    ToolTip="下载选中的文件/文件夹到本地（可多选批量，按住 Ctrl/Shift 多选；文件夹递归下载）" />
+            <Button DockPanel.Dock="Left" Content="{DynamicResource S.ftp.client.mkdir}" Style="{StaticResource MiniButton}" Margin="0,0,6,0" Command="{Binding MkdirRemoteCommand}" />
+            <Button DockPanel.Dock="Right" Content="{DynamicResource S.common.delete}" Style="{StaticResource DangerButton}" Command="{Binding DeleteRemoteCommand}" />
+            <Button DockPanel.Dock="Right" Content="{DynamicResource S.common.rename}" Style="{StaticResource MiniButton}" Margin="0,0,6,0" Command="{Binding RenameRemoteCommand}" />
+            <Button DockPanel.Dock="Right" Content="{DynamicResource S.ftp.client.download}" Style="{StaticResource InfoButton}" Margin="0,0,6,0" Command="{Binding DownloadCommand}"
+                    ToolTip="{DynamicResource S.ftp.client.downloadTip}" />
             <TextBlock Text="{Binding RemoteDir}" FontSize="11" FontFamily="Consolas" Foreground="{DynamicResource TextTertiary}"
                        VerticalAlignment="Center" Margin="6,0,8,0" TextTrimming="CharacterEllipsis" ToolTip="{Binding RemoteDir}" />
           </DockPanel>
           <Grid Grid.Row="2">
-            <TextBlock Text="未连接，或目录为空。" FontSize="12.5" Foreground="{DynamicResource TextSecondary}"
+            <TextBlock Text="{DynamicResource S.ftp.client.noRemote}" FontSize="12.5" Foreground="{DynamicResource TextSecondary}"
                        Margin="14,10,0,0" VerticalAlignment="Top"
                        Visibility="{Binding NoRemote, Converter={StaticResource BoolToVis}}" />
             <DataGrid x:Name="RemoteGrid" ItemsSource="{Binding RemoteEntries}" SelectedItem="{Binding SelectedRemote}"
@@ -176,24 +176,24 @@
                       SelectionMode="Extended" SelectionChanged="RemoteGrid_SelectionChanged">
               <DataGrid.ContextMenu>
                 <ContextMenu Style="{StaticResource ThemedContextMenu}">
-                  <MenuItem Header="打开" Style="{StaticResource ThemedMenuItem}"
+                  <MenuItem Header="{DynamicResource S.ftp.client.open}" Style="{StaticResource ThemedMenuItem}"
                             Command="{Binding PlacementTarget.DataContext.OpenRemoteItemCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
                     <MenuItem.Icon><TextBlock Text="&#xE8E5;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource TextSecondary}" /></MenuItem.Icon>
                   </MenuItem>
-                  <MenuItem Header="下载到本地" Style="{StaticResource ThemedMenuItem}"
+                  <MenuItem Header="{DynamicResource S.ftp.client.downloadToLocal}" Style="{StaticResource ThemedMenuItem}"
                             Command="{Binding PlacementTarget.DataContext.DownloadCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
                     <MenuItem.Icon><TextBlock Text="&#xE896;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource Accent}" /></MenuItem.Icon>
                   </MenuItem>
                   <Separator Style="{StaticResource ThemedSeparator}" />
-                  <MenuItem Header="新建目录" Style="{StaticResource ThemedMenuItem}"
+                  <MenuItem Header="{DynamicResource S.ftp.client.mkdir}" Style="{StaticResource ThemedMenuItem}"
                             Command="{Binding PlacementTarget.DataContext.MkdirRemoteCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
                     <MenuItem.Icon><TextBlock Text="&#xE8F4;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource TextSecondary}" /></MenuItem.Icon>
                   </MenuItem>
-                  <MenuItem Header="重命名" Style="{StaticResource ThemedMenuItem}"
+                  <MenuItem Header="{DynamicResource S.common.rename}" Style="{StaticResource ThemedMenuItem}"
                             Command="{Binding PlacementTarget.DataContext.RenameRemoteCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
                     <MenuItem.Icon><TextBlock Text="&#xE8AC;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource TextSecondary}" /></MenuItem.Icon>
                   </MenuItem>
-                  <MenuItem Header="删除" Style="{StaticResource ThemedMenuItem}"
+                  <MenuItem Header="{DynamicResource S.common.delete}" Style="{StaticResource ThemedMenuItem}"
                             Command="{Binding PlacementTarget.DataContext.DeleteRemoteCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
                     <MenuItem.Icon><TextBlock Text="&#xE74D;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource FailFg}" /></MenuItem.Icon>
                   </MenuItem>
@@ -207,9 +207,9 @@
                     </DataTemplate>
                   </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
-                <DataGridTextColumn Header="名称" Binding="{Binding Name}" Width="*" />
-                <DataGridTextColumn Header="大小" Binding="{Binding SizeText}" Width="Auto" />
-                <DataGridTextColumn Header="修改时间" Binding="{Binding ModifiedText}" Width="Auto" />
+                <DataGridTextColumn Header="{DynamicResource S.ftp.col.name}" Binding="{Binding Name}" Width="*" />
+                <DataGridTextColumn Header="{DynamicResource S.ftp.col.size}" Binding="{Binding SizeText}" Width="Auto" />
+                <DataGridTextColumn Header="{DynamicResource S.ftp.col.modified}" Binding="{Binding ModifiedText}" Width="Auto" />
               </DataGrid.Columns>
             </DataGrid>
           </Grid>
@@ -233,10 +233,10 @@
           </StackPanel>
           <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right">
             <TextBlock FontSize="12.5" HorizontalAlignment="Right" Foreground="{DynamicResource Accent}">
-              <Run Text="速度 " /><Run Text="{Binding SpeedText, Mode=OneWay}" FontWeight="SemiBold" />
+              <Run Text="{DynamicResource S.ftp.client.speed}" /><Run Text="{Binding SpeedText, Mode=OneWay}" FontWeight="SemiBold" />
             </TextBlock>
             <TextBlock FontSize="12" HorizontalAlignment="Right" Margin="0,2,0,0" Foreground="{DynamicResource TextSecondary}">
-              <Run Text="剩余 " /><Run Text="{Binding EtaText, Mode=OneWay}" />
+              <Run Text="{DynamicResource S.ftp.client.eta}" /><Run Text="{Binding EtaText, Mode=OneWay}" />
             </TextBlock>
           </StackPanel>
         </Grid>

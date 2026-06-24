@@ -1,5 +1,6 @@
 using WinDeploy.Core.Config;
 using WinDeploy.Core.Engine.Installers;
+using WinDeploy.Core.I18n;
 using WinDeploy.Core.Models;
 using WinDeploy.Core.Util;
 
@@ -27,9 +28,9 @@ public static class OfflineKit
                     {
                         var ext = GuessExt(ins.Url!);
                         var dest = Path.Combine(outDir, $"{it.Id}{ext}");
-                        ctx.Step($"下载 {it.Name} …");
+                        ctx.Step(Localizer.Format("engine.offline.downloading", it.Name));
                         await Download.ToFileAsync(ins.Url!, dest, ctx, ctx.Ct);
-                        results.Add(ConfigResult.Ok(it.Name, $"已下载 → {Path.GetFileName(dest)}"));
+                        results.Add(ConfigResult.Ok(it.Name, Localizer.Format("engine.offline.downloaded", Path.GetFileName(dest))));
                         break;
                     }
                     case "winget" when !string.IsNullOrWhiteSpace(ins.Id):
@@ -45,12 +46,12 @@ public static class OfflineKit
                         if (ins.Source != null) { args.Add("--source"); args.Add(ins.Source); }
                         var r = await Proc.RunAsync("winget", args, ct: ctx.Ct);
                         results.Add(r.Ok
-                            ? ConfigResult.Ok(it.Name, $"winget 已下载 → {it.Id}/")
-                            : ConfigResult.Skip(it.Name, "winget download 不支持该包（需在线安装）"));
+                            ? ConfigResult.Ok(it.Name, Localizer.Format("engine.offline.wingetDownloaded", it.Id))
+                            : ConfigResult.Skip(it.Name, Localizer.T("engine.offline.wingetUnsupported")));
                         break;
                     }
                     default:
-                        results.Add(ConfigResult.Skip(it.Name, $"{ins.Method} 无法离线预下载"));
+                        results.Add(ConfigResult.Skip(it.Name, Localizer.Format("engine.offline.cannotPredownload", ins.Method)));
                         break;
                 }
             }

@@ -1,14 +1,17 @@
 using System.IO;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using WinDeploy.Core.I18n;
 using WinDeploy.Core.Models;
 
 namespace WinDeploy.App.ViewModels;
 
-public sealed class NavItemViewModel : ObservableObject
+public sealed class NavItemViewModel : LocalizedObject
 {
+    private readonly string _labelKey;
     public string Glyph { get; }
-    public string Label { get; }
+    /// <summary>Localized nav label (resolved live from the i18n key passed to the ctor).</summary>
+    public string Label => Localizer.T(_labelKey);
     public object Page { get; }
 
     /// <summary>Advanced / professional page — only shown in the nav when 开发人员模式 is on.</summary>
@@ -18,14 +21,16 @@ public sealed class NavItemViewModel : ObservableObject
     /// hidden from the nav (e.g. WSL on pre-Windows 10).</summary>
     public int MinBuild { get; }
 
-    public NavItemViewModel(string glyph, string label, object page, bool advanced = false, int minBuild = 0)
+    public NavItemViewModel(string glyph, string labelKey, object page, bool advanced = false, int minBuild = 0)
     {
         Glyph = glyph;
-        Label = label;
+        _labelKey = labelKey;
         Page = page;
         Advanced = advanced;
         MinBuild = minBuild;
     }
+
+    protected override void OnCultureChanged() => OnPropertyChanged(nameof(Label));
 
     private bool _isVisible = true;
     public bool IsVisible { get => _isVisible; set => Set(ref _isVisible, value); }
@@ -35,19 +40,23 @@ public sealed class NavItemViewModel : ObservableObject
 }
 
 /// <summary>A collapsible nav group (e.g. 部署 / 系统 / 开发) with an icon and a set of nav items.</summary>
-public sealed class NavGroupViewModel : ObservableObject
+public sealed class NavGroupViewModel : LocalizedObject
 {
+    private readonly string _titleKey;
     public string Glyph { get; }
-    public string Title { get; }
+    /// <summary>Localized group header (resolved live from the i18n key passed to the ctor).</summary>
+    public string Title => Localizer.T(_titleKey);
     public System.Collections.ObjectModel.ObservableCollection<NavItemViewModel> Items { get; } = new();
     public RelayCommand ToggleCommand { get; }
 
-    public NavGroupViewModel(string glyph, string title)
+    public NavGroupViewModel(string glyph, string titleKey)
     {
         Glyph = glyph;
-        Title = title;
+        _titleKey = titleKey;
         ToggleCommand = new RelayCommand(_ => IsExpanded = !IsExpanded);
     }
+
+    protected override void OnCultureChanged() => OnPropertyChanged(nameof(Title));
 
     private bool _isExpanded = true;
     public bool IsExpanded { get => _isExpanded; set { if (Set(ref _isExpanded, value)) OnPropertyChanged(nameof(ChevronGlyph)); } }
@@ -61,11 +70,13 @@ public sealed class NavGroupViewModel : ObservableObject
 }
 
 /// <summary>One toggle chip in the install-center category filter (全选 + per-group show/hide).</summary>
-public sealed class CategoryFilterViewModel : ObservableObject
+public sealed class CategoryFilterViewModel : LocalizedObject
 {
     public string Key { get; }
-    public string Title { get; }
-    public CategoryFilterViewModel(string key, string title) { Key = key; Title = title; }
+    /// <summary>Localized category name (resolved live from the <c>cat.&lt;key&gt;</c> i18n key).</summary>
+    public string Title => Localizer.T("cat." + Key);
+    public CategoryFilterViewModel(string key) { Key = key; }
+    protected override void OnCultureChanged() => OnPropertyChanged(nameof(Title));
 
     private bool _isChecked = true;
     public bool IsChecked { get => _isChecked; set { if (Set(ref _isChecked, value)) Changed?.Invoke(); } }
@@ -89,7 +100,7 @@ public sealed class PlaceholderViewModel
 }
 
 /// <summary>One software card on the install center.</summary>
-public sealed class AppItemViewModel : ObservableObject
+public sealed class AppItemViewModel : LocalizedObject
 {
     private static readonly Dictionary<string, (string Bg, string Fg)> Palette = new()
     {
@@ -123,7 +134,7 @@ public sealed class AppItemViewModel : ObservableObject
 
     public string Id => Model.Id;
     public string Name => Model.Name;
-    public string Summary => Model.Summary ?? "";
+    public string Summary => Model.SummaryFor(Localizer.Current) ?? "";
     public string Method => Model.Install.Method;
     public string Badge => Model.Name.Length > 0 ? Model.Name[..1].ToUpperInvariant() : "?";
     public Brush ChipBackground { get; }
@@ -214,7 +225,18 @@ public sealed class AppItemViewModel : ObservableObject
     }
 
     public bool IsInstalled => _installed == true;
-    public string StatusText => _installed switch { null => "检测中…", true => "已装", _ => "未装" };
+    public string StatusText => _installed switch
+    {
+        null => Localizer.T("install.status.checking"),
+        true => Localizer.T("install.status.installed"),
+        _ => Localizer.T("install.status.notInstalled"),
+    };
+
+    protected override void OnCultureChanged()
+    {
+        OnPropertyChanged(nameof(StatusText));
+        OnPropertyChanged(nameof(Summary));
+    }
 
     // Right-click context-menu gating.
     public bool NotInstalled => _installed == false;
@@ -258,20 +280,20 @@ public sealed class AppItemViewModel : ObservableObject
     public event Action? SelectionChanged;
 }
 
-public sealed class CategoryGroupViewModel : ObservableObject
+public sealed class CategoryGroupViewModel : LocalizedObject
 {
     public string Key { get; }
-    public string Title { get; }
+    /// <summary>Localized category name (resolved live from the <c>cat.&lt;key&gt;</c> i18n key).</summary>
+    public string Title => Localizer.T("cat." + Key);
     public System.Collections.ObjectModel.ObservableCollection<AppItemViewModel> Items { get; } = new();
 
-    public CategoryGroupViewModel(string key, string title)
+    public CategoryGroupViewModel(string key)
     {
         Key = key;
-        Title = title;
     }
 
     public int SelectedCount => Items.Count(i => i.IsSelected);
-    public string CountText => $"{SelectedCount} / {Items.Count} 已选";
+    public string CountText => Localizer.Format("install.countSelected", SelectedCount, Items.Count);
 
     private bool _isVisible = true;
     public bool IsVisible { get => _isVisible; set => Set(ref _isVisible, value); }
@@ -281,10 +303,16 @@ public sealed class CategoryGroupViewModel : ObservableObject
         OnPropertyChanged(nameof(SelectedCount));
         OnPropertyChanged(nameof(CountText));
     }
+
+    protected override void OnCultureChanged()
+    {
+        OnPropertyChanged(nameof(Title));
+        OnPropertyChanged(nameof(CountText));
+    }
 }
 
 /// <summary>One row in the running-progress list: status pill + start/end/duration + expandable steps.</summary>
-public sealed class ProgressItemViewModel : ObservableObject
+public sealed class ProgressItemViewModel : LocalizedObject
 {
     public string Id { get; set; } = "";
     public string Name { get; }
@@ -299,12 +327,21 @@ public sealed class ProgressItemViewModel : ObservableObject
         ToggleDetailsCommand = new RelayCommand(_ => IsDetailsOpen = !IsDetailsOpen);
     }
 
-    private string _status = "排队";
-    public string Status { get => _status; set => Set(ref _status, value); }
-
-    /// <summary>queued | running | ok | failed | skip — drives the row pill colour via DataTrigger.</summary>
+    /// <summary>queued | running | ok | failed | skip — drives the row pill colour via DataTrigger
+    /// AND the localized <see cref="Status"/> pill text.</summary>
     private string _kind = "queued";
-    public string Kind { get => _kind; set => Set(ref _kind, value); }
+    public string Kind { get => _kind; set { if (Set(ref _kind, value)) OnPropertyChanged(nameof(Status)); } }
+
+    /// <summary>Localized status pill text, derived from <see cref="Kind"/>.</summary>
+    public string Status => _kind switch
+    {
+        "queued" => Localizer.T("progress.kind.queued"),
+        "running" => Localizer.T("progress.kind.running"),
+        "ok" => Localizer.T("progress.kind.ok"),
+        "failed" => Localizer.T("progress.kind.failed"),
+        "skip" => Localizer.T("progress.kind.skip"),
+        _ => _kind,
+    };
 
     public DateTime? StartTime { get; private set; }
     public DateTime? EndTime { get; private set; }
@@ -321,7 +358,7 @@ public sealed class ProgressItemViewModel : ObservableObject
             if (_timeOverride != null) return _timeOverride;
             if (StartTime == null) return "";
             var s = StartTime.Value.ToString("HH:mm:ss");
-            return EndTime == null ? $"开始 {s}" : $"{s} → {EndTime.Value:HH:mm:ss}";
+            return EndTime == null ? Localizer.Format("progress.time.start", s) : $"{s} → {EndTime.Value:HH:mm:ss}";
         }
     }
 
@@ -336,7 +373,9 @@ public sealed class ProgressItemViewModel : ObservableObject
     }
 
     public static string FormatDuration(TimeSpan d)
-        => d.TotalSeconds >= 60 ? $"耗时 {(int)d.TotalMinutes}分{d.Seconds}秒" : $"耗时 {d.TotalSeconds:0.0}秒";
+        => d.TotalSeconds >= 60
+            ? Localizer.Format("progress.dur.minSec", (int)d.TotalMinutes, d.Seconds)
+            : Localizer.Format("progress.dur.sec", d.TotalSeconds);
 
     /// <summary>Populate a row from a persisted history record (no live timing).</summary>
     public void LoadHistorical(string timeText, string durationText, IEnumerable<string> steps)
@@ -370,6 +409,13 @@ public sealed class ProgressItemViewModel : ObservableObject
 
     private void Raise()
     {
+        OnPropertyChanged(nameof(TimeText));
+        OnPropertyChanged(nameof(DurationText));
+    }
+
+    protected override void OnCultureChanged()
+    {
+        OnPropertyChanged(nameof(Status));
         OnPropertyChanged(nameof(TimeText));
         OnPropertyChanged(nameof(DurationText));
     }

@@ -1,0 +1,19 @@
+{
+  "dialog.choice.ok": "Confirm",
+  "dialog.busy.warning": "Please do not close the app; this window will disappear automatically when the task is done.",
+  "dialog.close.title": "Close OwO! Win Deployer",
+  "dialog.close.q": "Exit the app, or minimize it to keep running in the background?",
+  "dialog.close.desc": "“Keep running in the background” collapses the window to the system tray and keeps the app running; click the tray icon to reopen it.",
+  "dialog.close.remember": "Remember my choice (can be changed in Settings)",
+  "dialog.close.tray": "Minimize to background",
+  "dialog.close.exit": "Exit the app",
+  "dialog.devmode.title": "Enable developer mode",
+  "dialog.devmode.bannerTitle": "Developer mode unlocks advanced system features",
+  "dialog.devmode.bannerBody": "These features can directly modify system settings, manage processes and startup items; improper use may cause system instability or data loss. Please confirm you understand the risks.",
+  "dialog.devmode.featuresTitle": "Enabling unlocks the following:",
+  "dialog.devmode.feat1": "The full software list (dev toolchains, IDE, AI, databases — all categories)",
+  "dialog.devmode.feat2": "Terminal · Service Config · FTP Transfer · WSL · System Tweaks · Advanced Tools",
+  "dialog.devmode.feat3": "Maintenance · Process management · Startup items · Environment variable editing",
+  "dialog.devmode.footer": "This setting can be turned off any time under Settings → Developer Options.",
+  "dialog.devmode.confirm": "Enable"
+}

@@ -1,8 +1,10 @@
+using System.Globalization;
 using WinDeploy.Core;
 using WinDeploy.Core.Config;
 using WinDeploy.Core.Engine;
 using WinDeploy.Core.Engine.Installers;
 using WinDeploy.Core.Export;
+using WinDeploy.Core.I18n;
 using WinDeploy.Core.Models;
 using WinDeploy.Core.Util;
 
@@ -15,6 +17,13 @@ if (argList.Count == 0 || argList[0] is "help" or "-h" or "--help")
 
 string command = argList[0];
 var opts = Opts.Parse(argList.Skip(1).ToList());
+
+// UI language: --lang <code> wins, then WINDEPLOY_LANG, then the OS culture (invariant → en under
+// InvariantGlobalization, so rely on --lang/env for non-English CLI output).
+Localizer.SetLanguage(
+    opts.Get("lang")
+    ?? Environment.GetEnvironmentVariable("WINDEPLOY_LANG")
+    ?? Lang.FromCulture(CultureInfo.CurrentUICulture));
 
 // --log <file>: tee all console output to a file (for unattended / scheduled runs).
 if (opts.Get("log") is string logPath) { try { Tee.Start(logPath); } catch { /* keep running */ } }
@@ -29,7 +38,7 @@ string? catalogDir = opts.Get("catalog") is string cp
 
 if (catalogDir is null)
 {
-    Log.Err("找不到 catalog/catalog.json（用 --catalog <path> 指定）");
+    Log.Err(Localizer.T("cli.error.noCatalog"));
     return 1;
 }
 
@@ -38,7 +47,10 @@ string repoRoot = Path.GetDirectoryName(catalogDir)!;
 
 Catalog catalog;
 try { catalog = CatalogLoader.Load(catalogPath); }
-catch (Exception ex) { Log.Err($"加载 catalog 失败: {ex.Message}"); return 1; }
+catch (Exception ex) { Log.Err(Localizer.Format("cli.error.loadCatalog", ex.Message)); return 1; }
+
+// Localize item summaries so list/plan output prints in the active language.
+CatalogLoader.ApplyLocalizedSummaries(catalog, catalogDir, Localizer.Current);
 
 var resolver = new PathResolver(catalog.PathVars);
 Profile? profile = opts.Get("profile") is string pn ? CatalogLoader.LoadProfile(catalogDir, pn) : null;
@@ -52,8 +64,8 @@ if (profile == null && (only is null || only.Length == 0) && !all && category ==
 {
     if (HostProfiles.Resolve(catalogDir) is string hp)
     {
-        try { profile = CatalogLoader.LoadProfile(catalogDir, hp); Log.Info($"按主机名 {Environment.MachineName} 匹配预设：{hp}"); }
-        catch { Log.Warn($"hosts.json 指定的预设 '{hp}' 不存在"); }
+        try { profile = CatalogLoader.LoadProfile(catalogDir, hp); Log.Info(Localizer.Format("cli.hostProfile.matched", Environment.MachineName, hp)); }
+        catch { Log.Warn(Localizer.Format("cli.hostProfile.missing", hp)); }
     }
 }
 
@@ -61,8 +73,8 @@ if (profile == null && (only is null || only.Length == 0) && !all && category ==
 if (opts.Has("locked") && command is "apply" or "plan")
 {
     var lf = Lockfile.Load(catalogDir);
-    if (lf != null) Log.Info($"已加载 lock.json：钉定 {lf.ApplyTo(catalog)} 个版本");
-    else Log.Warn("未找到 catalog/lock.json（先运行 windeploy lock 生成）");
+    if (lf != null) Log.Info(Localizer.Format("cli.lock.loaded", lf.ApplyTo(catalog)));
+    else Log.Warn(Localizer.T("cli.lock.notFound"));
 }
 
 return command switch
@@ -98,7 +110,7 @@ async Task<int> CmdExport(Catalog cat, PathResolver pr, string root)
     var ctx = new EngineContext { Path = pr, RepoRoot = root, Ct = CancellationToken.None };
     var results = await new ConfigEngine().ExportAsync(cat, ctx, it => Detection.IsInstalledAsync(it, pr));
     PrintConfig(results);
-    Log.Info("已写回 configs/，记得 git commit");
+    Log.Info(Localizer.T("cli.export.done"));
     return 0;
 }
 
@@ -122,22 +134,23 @@ void PrintConfig(List<ConfigResult> results)
 
 int Unknown(string c)
 {
-    Log.Err($"未知命令: {c}");
+    Log.Err(Localizer.Format("cli.error.unknownCommand", c));
     PrintHelp();
     return 1;
 }
 
 int CmdList(Catalog cat)
 {
+    var lang = Localizer.Current;
     foreach (var grp in cat.Items.GroupBy(i => i.Category))
     {
         Console.WriteLine();
         Log.Step(grp.Key);
         foreach (var i in grp)
-            Console.WriteLine($"    {(i.Default ? "●" : "○")} {i.Id,-18} {i.Summary ?? i.Name}");
+            Console.WriteLine($"    {(i.Default ? "●" : "○")} {i.Id,-18} {i.SummaryFor(lang) ?? i.Name}");
     }
     Console.WriteLine();
-    Log.Info("● = 默认强制安装   ○ = 可选");
+    Log.Info(Localizer.T("cli.list.legend"));
     return 0;
 }
 
@@ -145,7 +158,7 @@ async Task<int> CmdPlan(Catalog cat, PathResolver pr, Profile? prof,
     IReadOnlyCollection<string>? sel, bool selAll, string? cat2)
 {
     var items = Selection.Resolve(cat, prof, sel, selAll, cat2);
-    if (items.Count == 0) { Log.Warn("没有匹配的软件"); return 0; }
+    if (items.Count == 0) { Log.Warn(Localizer.T("cli.noMatch")); return 0; }
 
     var engine = new InstallEngine();
     var plan = await engine.BuildPlanAsync(items, pr);
@@ -153,12 +166,12 @@ async Task<int> CmdPlan(Catalog cat, PathResolver pr, Profile? prof,
     Console.WriteLine();
     foreach (var pi in plan)
     {
-        var tag = pi.Status == PlanStatus.Installed ? "已装" : "待装";
+        var tag = pi.Status == PlanStatus.Installed ? Localizer.T("cli.plan.installed") : Localizer.T("cli.plan.toInstall");
         Console.WriteLine($"    [{tag}] {pi.Item.Install.Method,-13} {pi.Item.Name}");
     }
     var todo = plan.Count(p => p.Status == PlanStatus.ToInstall);
     Console.WriteLine();
-    Log.Info($"共 {plan.Count} 项 · 待装 {todo} · 已装 {plan.Count - todo}");
+    Log.Info(Localizer.Format("cli.plan.summary", plan.Count, todo, plan.Count - todo));
     return 0;
 }
 
@@ -166,33 +179,33 @@ async Task<int> CmdApply(Catalog cat, PathResolver pr, string root, Profile? pro
     IReadOnlyCollection<string>? sel, bool selAll, string? cat2, bool yes)
 {
     var items = Selection.Resolve(cat, prof, sel, selAll, cat2);
-    if (items.Count == 0) { Log.Warn("没有匹配的软件"); return 0; }
+    if (items.Count == 0) { Log.Warn(Localizer.T("cli.noMatch")); return 0; }
 
     var engine = new InstallEngine();
     var plan = await engine.BuildPlanAsync(items, pr);
     var todo = plan.Where(p => p.Status == PlanStatus.ToInstall).ToList();
 
-    Log.Info($"待装 {todo.Count} 项；已装 {plan.Count - todo.Count} 项将跳过");
+    Log.Info(Localizer.Format("cli.apply.todo", todo.Count, plan.Count - todo.Count));
     foreach (var pi in todo)
         Console.WriteLine($"    + {pi.Item.Name} ({pi.Item.Install.Method})");
 
-    if (todo.Count == 0) { Log.Ok("全部就绪，无需安装"); return 0; }
+    if (todo.Count == 0) { Log.Ok(Localizer.T("cli.apply.nothingToDo")); return 0; }
 
     if (!yes)
     {
-        Console.Write("\n  确认开始安装? [y/N] ");
+        Console.Write(Localizer.T("cli.apply.confirm"));
         var answer = Console.ReadLine();
-        if (answer?.Trim().ToLowerInvariant() is not ("y" or "yes")) { Log.Warn("已取消"); return 0; }
+        if (answer?.Trim().ToLowerInvariant() is not ("y" or "yes")) { Log.Warn(Localizer.T("cli.cancelled")); return 0; }
     }
 
     var ctx = new EngineContext { Path = pr, RepoRoot = root, Ct = CancellationToken.None };
     var summary = await engine.ApplyAsync(plan, ctx, dryRun: false,
-        onStart: pi => Log.Step($"安装 {pi.Item.Name} …"));
+        onStart: pi => Log.Step(Localizer.Format("cli.apply.installing", pi.Item.Name)));
 
     Console.WriteLine();
     foreach (var r in summary.Results.Where(r => r.Status == StepStatus.Failed))
         Log.Err($"{r.Item.Name}: {r.Message}");
-    Log.Info($"完成 · 成功 {summary.Ok} · 跳过 {summary.Skipped} · 失败 {summary.Failed}");
+    Log.Info(Localizer.Format("cli.apply.done", summary.Ok, summary.Skipped, summary.Failed));
     return summary.Failed > 0 ? 1 : 0;
 }
 
@@ -201,14 +214,14 @@ async Task<int> CmdSync(Catalog cat, PathResolver pr, string root, Profile? prof
 {
     Log.Step("git pull --ff-only");
     var pull = await Proc.RunAsync("git", new[] { "-C", root, "pull", "--ff-only" });
-    Log.Info(pull.Ok ? "已拉取最新" : "拉取未成功（可能无远程 / 有冲突）");
+    Log.Info(pull.Ok ? Localizer.T("cli.sync.pulled") : Localizer.T("cli.sync.pullFailed"));
 
-    Log.Step("套用配置");
+    Log.Step(Localizer.T("cli.sync.applyConfig"));
     var ctx = new EngineContext { Path = pr, RepoRoot = root, Ct = CancellationToken.None };
     var cfg = await new ConfigEngine().ApplyAsync(cat, ctx, it => Detection.IsInstalledAsync(it, pr), includeAsk: false);
     PrintConfig(cfg);
 
-    Log.Step("安装计划（如需安装，运行 apply）");
+    Log.Step(Localizer.T("cli.sync.planStep"));
     return await CmdPlan(cat, pr, prof, sel, selAll, cat2);
 }
 
@@ -217,18 +230,18 @@ async Task<int> CmdSave(string root, string? message, bool push)
     await Proc.RunAsync("git", new[] { "-C", root, "add", "-A" });
     var msg = message ?? $"sync from {Environment.MachineName} {DateTime.Now:yyyy-MM-dd HH:mm}";
     var commit = await Proc.RunAsync("git", new[] { "-C", root, "commit", "-m", msg });
-    Log.Info(commit.Ok ? $"已提交：{msg}" : "无改动或提交失败");
+    Log.Info(commit.Ok ? Localizer.Format("cli.save.committed", msg) : Localizer.T("cli.save.noChange"));
     if (push)
     {
         var p = await Proc.RunAsync("git", new[] { "-C", root, "push" });
-        Log.Info(p.Ok ? "已 push" : "push 失败（检查远程）");
+        Log.Info(p.Ok ? Localizer.T("cli.save.pushed") : Localizer.T("cli.save.pushFailed"));
     }
     return 0;
 }
 
 async Task<int> CmdDoctor(Catalog cat, PathResolver pr)
 {
-    Log.Step("环境体检 …");
+    Log.Step(Localizer.T("cli.doctor.checking"));
     var findings = await Doctor.RunAsync(cat, pr);
     Console.WriteLine();
     foreach (var f in findings)
@@ -241,7 +254,7 @@ async Task<int> CmdDoctor(Catalog cat, PathResolver pr)
     Console.WriteLine();
     var errors = findings.Count(f => f.Level == HealthLevel.Error);
     var warns = findings.Count(f => f.Level == HealthLevel.Warn);
-    Log.Info($"完成 · 错误 {errors} · 警告 {warns}");
+    Log.Info(Localizer.Format("cli.doctor.done", errors, warns));
     return errors > 0 ? 1 : 0;
 }
 
@@ -254,18 +267,18 @@ int CmdValidate(Catalog cat, string root)
     var errors = issues.Count(i => i.Level == IssueLevel.Error);
     var warns = issues.Count(i => i.Level == IssueLevel.Warn);
     Console.WriteLine();
-    if (issues.Count == 0) Log.Ok("catalog.json 校验通过，无问题");
-    else Log.Info($"校验完成 · 错误 {errors} · 警告 {warns}");
+    if (issues.Count == 0) Log.Ok(Localizer.T("cli.validate.passed"));
+    else Log.Info(Localizer.Format("cli.validate.done", errors, warns));
     return errors > 0 ? 1 : 0;
 }
 
 async Task<int> CmdLock(Catalog cat, string catDir)
 {
-    Log.Step("采集已装版本 → lock.json …");
+    Log.Step(Localizer.T("cli.lock.capturing"));
     var lf = await Lockfile.CaptureAsync(cat, DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
     lf.Save(catDir);
-    Log.Ok($"已写入 {Lockfile.DefaultPath(catDir)} · 钉定 {lf.Versions.Count} 个版本");
-    Log.Info("提交 lock.json 后，其它机器可用 windeploy apply --locked 复刻相同版本");
+    Log.Ok(Localizer.Format("cli.lock.written", Lockfile.DefaultPath(catDir), lf.Versions.Count));
+    Log.Info(Localizer.T("cli.lock.hint"));
     return 0;
 }
 
@@ -275,14 +288,14 @@ int CmdExportDsc(Catalog cat, Profile? prof, IReadOnlyCollection<string>? sel, b
     var yaml = DscExport.Build(items);
     var path = outPath ?? "windeploy.dsc.yaml";
     File.WriteAllText(path, yaml);
-    Log.Ok($"已导出 winget configure 配置：{Path.GetFullPath(path)}");
-    Log.Info($"在目标机运行：winget configure -f \"{path}\"");
+    Log.Ok(Localizer.Format("cli.exportDsc.done", Path.GetFullPath(path)));
+    Log.Info(Localizer.Format("cli.exportDsc.hint", path));
     return 0;
 }
 
 async Task<int> CmdInventory(string? format, string? outPath)
 {
-    Log.Step("读取已装软件清单 …");
+    Log.Step(Localizer.T("cli.inventory.reading"));
     var items = await Inventory.ListAsync();
     var fmt = (format ?? "csv").ToLowerInvariant();
     var text = fmt switch
@@ -291,7 +304,7 @@ async Task<int> CmdInventory(string? format, string? outPath)
         "html" => Inventory.ToHtml(items),
         _ => Inventory.ToCsv(items),
     };
-    if (outPath != null) { File.WriteAllText(outPath, text); Log.Ok($"已导出 {items.Count} 项 → {Path.GetFullPath(outPath)}"); }
+    if (outPath != null) { File.WriteAllText(outPath, text); Log.Ok(Localizer.Format("cli.inventory.exported", items.Count, Path.GetFullPath(outPath))); }
     else Console.WriteLine(text);
     return 0;
 }
@@ -300,9 +313,9 @@ async Task<int> CmdDownloadOnly(Catalog cat, PathResolver pr, string root, Profi
     IReadOnlyCollection<string>? sel, bool selAll, string? cat2, string? outDir)
 {
     var items = Selection.Resolve(cat, prof, sel, selAll, cat2);
-    if (items.Count == 0) { Log.Warn("没有匹配的软件"); return 0; }
+    if (items.Count == 0) { Log.Warn(Localizer.T("cli.noMatch")); return 0; }
     var dir = outDir ?? Path.Combine(Directory.GetCurrentDirectory(), "windeploy-offline");
-    Log.Step($"预下载 {items.Count} 项 → {dir}");
+    Log.Step(Localizer.Format("cli.downloadOnly.predownload", items.Count, dir));
     var ctx = new EngineContext
     {
         Path = pr, RepoRoot = root, Ct = CancellationToken.None,
@@ -310,7 +323,7 @@ async Task<int> CmdDownloadOnly(Catalog cat, PathResolver pr, string root, Profi
     };
     var results = await OfflineKit.DownloadAsync(items, dir, ctx);
     PrintConfig(results);
-    Log.Info($"完成 · 文件位于 {Path.GetFullPath(dir)}");
+    Log.Info(Localizer.Format("cli.downloadOnly.done", Path.GetFullPath(dir)));
     return results.Any(r => r.Status == StepStatus.Failed) ? 1 : 0;
 }
 
@@ -320,73 +333,32 @@ async Task<int> CmdMigrate(Catalog cat, PathResolver pr, string root, Opts o)
     var dir = o.Get("export") ?? o.Get("import");
     if (sub == null || dir == null)
     {
-        Log.Err("用法: windeploy migrate --export <目录>  |  windeploy migrate --import <目录>");
+        Log.Err(Localizer.T("cli.migrate.usage"));
         return 1;
     }
     var ctx = new EngineContext { Path = pr, RepoRoot = root, Ct = CancellationToken.None };
     if (sub == "export")
     {
-        Log.Step($"导出迁移工具包 → {dir}");
+        Log.Step(Localizer.Format("cli.migrate.exporting", dir));
         var results = await MigrationKit.ExportAsync(cat, ctx, dir, it => Detection.IsInstalledAsync(it, pr));
         PrintConfig(results);
-        Log.Ok($"迁移工具包已生成：{Path.GetFullPath(dir)}（含 configs/、manifest.json、RESTORE.txt）");
+        Log.Ok(Localizer.Format("cli.migrate.exportDone", Path.GetFullPath(dir)));
         return 0;
     }
     else
     {
-        Log.Step($"从迁移工具包还原 ← {dir}");
+        Log.Step(Localizer.Format("cli.migrate.importing", dir));
         var (results, manifest) = MigrationKit.Import(dir, root);
         PrintConfig(results);
         if (manifest is { InstalledIds.Count: > 0 })
-            Log.Info($"还原软件：windeploy apply --only {string.Join(",", manifest.InstalledIds)}");
+            Log.Info(Localizer.Format("cli.migrate.importDone", string.Join(",", manifest.InstalledIds)));
         return 0;
     }
 }
 
 void PrintHelp()
 {
-    Console.WriteLine("""
-    OwO! Win Deployer — Windows 环境复刻器 (M1 / CLI)
-
-      windeploy <命令> [选项]
-
-    命令:
-      list                    列出 catalog 中的全部软件
-      plan                    显示将安装/已装的计划（不执行）
-      apply                   执行安装
-      apply-config            套用配置（VS Code/Git/env…，按 applyWhen）
-      export                  采集本机配置回写仓库
-      ssh-setup [--register]  生成本机 SSH 密钥并套用 ssh 配置
-      sync                    git pull → 套用配置 + 显示安装计划
-      save [--message m] [--push]   提交 configs 改动（--push 推送到远程）
-      doctor                  环境体检（PATH 重复/失效、*_HOME 失效、已装但不在 PATH）
-      validate                校验 catalog.json（CI 友好；有错误时退出码 1）
-      lock                    采集已装版本写入 catalog/lock.json（可复现）
-      export-dsc [--out f]    导出为 winget configure (DSC) YAML
-      inventory [--format csv|json|html] [--out f]   导出本机已装软件清单
-      download-only [--out d] 仅预下载所选软件安装包（离线/U 盘部署）
-      migrate --export <目录> | --import <目录>      迁移工具包导出 / 还原
-
-    选项:
-      --profile <名称>        使用预设 (catalog/profiles/<名称>.json)
-      --only <id,id>          仅这些 id
-      --category <类别>       仅该类别
-      --all                   全部
-      --yes / --silent        apply 时跳过确认（--silent 另关闭彩色输出）
-      --locked                apply/plan 时套用 lock.json 钉定的版本
-      --log <文件>            将输出同时写入日志文件（无人值守）
-      --catalog <路径>        指定 catalog.json
-
-    示例:
-      windeploy plan  --profile dev
-      windeploy apply --profile dev --silent --log deploy.log
-      windeploy apply --profile dev --locked
-      windeploy doctor
-      windeploy validate
-      windeploy inventory --format html --out inventory.html
-      windeploy export-dsc --profile full --out full.dsc.yaml
-      windeploy migrate --export D:\kit
-    """);
+    Console.WriteLine(Localizer.T("cli.help"));
 }
 
 sealed class Opts

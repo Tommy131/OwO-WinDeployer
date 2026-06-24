@@ -25,8 +25,8 @@
     </Grid.RowDefinitions>
 
     <StackPanel Grid.Row="0">
-      <TextBlock Text="终端" FontSize="20" FontWeight="SemiBold" />
-      <TextBlock Text="真实伪终端（ConPTY）：支持 ssh、交互式提示、全屏 TUI（vim / htop 等）。可同时打开多个会话，切换标签不会断开连接。" FontSize="13"
+      <TextBlock Text="{DynamicResource S.term.title}" FontSize="20" FontWeight="SemiBold" />
+      <TextBlock Text="{DynamicResource S.term.subtitle}" FontSize="13"
                  Foreground="{DynamicResource TextSecondary}" Margin="0,3,0,0" TextWrapping="Wrap" />
     </StackPanel>
 
@@ -40,27 +40,27 @@
       <StackPanel Grid.Column="0" Orientation="Horizontal">
         <ComboBox x:Name="SessionPicker" MinWidth="200" MaxWidth="300" Height="32" VerticalAlignment="Center"
                   ItemsSource="{Binding Sessions}" SelectedItem="{Binding ActiveSession, Mode=TwoWay}"
-                  ItemTemplate="{StaticResource SessionItemTemplate}" ToolTip="选择终端会话" />
+                  ItemTemplate="{StaticResource SessionItemTemplate}" ToolTip="{DynamicResource S.term.picker.tip}" />
         <Button x:Name="NewBtn" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0"
-                Click="OnNewSessionClick" ToolTip="新建终端会话（选择 CLI）" VerticalAlignment="Center">
+                Click="OnNewSessionClick" ToolTip="{DynamicResource S.term.new.tip}" VerticalAlignment="Center">
           <StackPanel Orientation="Horizontal">
             <TextBlock Text="&#xE710;" FontFamily="Segoe MDL2 Assets" FontSize="11" VerticalAlignment="Center"
                        Margin="0,0,7,0" Foreground="{DynamicResource Accent}" />
-            <TextBlock Text="新建" VerticalAlignment="Center" Foreground="{DynamicResource Accent}" />
+            <TextBlock Text="{DynamicResource S.common.new}" VerticalAlignment="Center" Foreground="{DynamicResource Accent}" />
           </StackPanel>
         </Button>
-        <Button Content="✎ 编辑" Style="{StaticResource MiniButton}" Margin="6,0,0,0" VerticalAlignment="Center"
+        <Button Content="{DynamicResource S.term.session.edit}" Style="{StaticResource MiniButton}" Margin="6,0,0,0" VerticalAlignment="Center"
                 Command="{Binding EditSessionCommand}" CommandParameter="{Binding ActiveSession}"
-                ToolTip="重命名 / 设置颜色" />
-        <Button Content="✕ 关闭" Style="{StaticResource MiniButton}" Margin="6,0,0,0" VerticalAlignment="Center"
+                ToolTip="{DynamicResource S.term.session.editTip}" />
+        <Button Content="{DynamicResource S.term.session.close}" Style="{StaticResource MiniButton}" Margin="6,0,0,0" VerticalAlignment="Center"
                 Command="{Binding CloseSessionCommand}" CommandParameter="{Binding ActiveSession}"
-                ToolTip="关闭当前会话" />
+                ToolTip="{DynamicResource S.term.session.closeTip}" />
       </StackPanel>
 
       <StackPanel Grid.Column="1" Orientation="Horizontal" DataContext="{Binding ActiveSession}">
-        <Button Content="清屏" Style="{StaticResource MiniButton}" Command="{Binding ClearCommand}" Margin="8,0,0,0" />
-        <Button Content="重启" Style="{StaticResource MiniButton}" Command="{Binding RestartCommand}" Margin="6,0,0,0"
-                ToolTip="结束并重新启动该终端（清空会话状态）" />
+        <Button Content="{DynamicResource S.term.session.clear}" Style="{StaticResource MiniButton}" Command="{Binding ClearCommand}" Margin="8,0,0,0" />
+        <Button Content="{DynamicResource S.term.session.restart}" Style="{StaticResource MiniButton}" Command="{Binding RestartCommand}" Margin="6,0,0,0"
+                ToolTip="{DynamicResource S.term.session.restartTip}" />
       </StackPanel>
     </Grid>
 
@@ -88,11 +88,11 @@
         <TextBlock x:Name="EmptyHint" IsHitTestVisible="False" Visibility="Collapsed"
                    HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13"
                    Foreground="{DynamicResource TextTertiary}"
-                   Text="没有打开的终端 · 点击「﹢ 新建」开启一个会话" />
+                   Text="{DynamicResource S.term.empty}" />
       </Grid>
     </Border>
 
     <TextBlock Grid.Row="4" FontSize="11.5" Foreground="{DynamicResource TextTertiary}" Margin="2,8,0,0" TextWrapping="Wrap"
-               Text="提示：直接键入即可（含 Tab 补全 / 方向键 / Ctrl+C）；Ctrl+V 粘贴，Shift+PgUp/PgDn 翻看历史。外观特效（黑客配色 / CRT / 背景代码）在「设置」页调整。" />
+               Text="{DynamicResource S.term.hint}" />
   </Grid>
 </UserControl>

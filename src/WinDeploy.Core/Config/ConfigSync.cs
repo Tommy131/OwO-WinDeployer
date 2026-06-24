@@ -1,4 +1,5 @@
 using WinDeploy.Core.Engine.Installers;
+using WinDeploy.Core.I18n;
 using WinDeploy.Core.Models;
 
 namespace WinDeploy.Core.Config;
@@ -12,10 +13,10 @@ public static class ConfigSync
     public static ConfigResult Apply(CatalogItem item, EngineContext ctx)
     {
         var c = item.Config!;
-        if (c.Target is null) return ConfigResult.Skip(item.Name, "未定义 target");
+        if (c.Target is null) return ConfigResult.Skip(item.Name, Localizer.T("engine.cfgsync.noTarget"));
 
         var src = ctx.ResolveRepo(c.Source ?? $"configs/{item.Id}");
-        if (!Directory.Exists(src)) return ConfigResult.Skip(item.Name, "仓库内无配置");
+        if (!Directory.Exists(src)) return ConfigResult.Skip(item.Name, Localizer.T("engine.cfgsync.noRepoConfig"));
 
         var target = ctx.Path.Resolve(c.Target);
         Directory.CreateDirectory(target);
@@ -32,14 +33,14 @@ public static class ConfigSync
             File.Copy(s, d, true);
             n++;
         }
-        return n > 0 ? ConfigResult.Ok(item.Name, $"套用 {n} 个文件") : ConfigResult.Skip(item.Name, "无文件可套用");
+        return n > 0 ? ConfigResult.Ok(item.Name, Localizer.Format("engine.cfgsync.applied", n)) : ConfigResult.Skip(item.Name, Localizer.T("engine.cfgsync.noFiles"));
     }
 
     /// <summary>Machine → repo (precise: only the declared files).</summary>
     public static ConfigResult Export(CatalogItem item, EngineContext ctx)
     {
         var c = item.Config!;
-        if (c.Target is null || c.Files is null) return ConfigResult.Skip(item.Name, "无 files 定义，跳过采集");
+        if (c.Target is null || c.Files is null) return ConfigResult.Skip(item.Name, Localizer.T("engine.cfgsync.noFilesDef"));
 
         var target = ctx.Path.Resolve(c.Target);
         var dst = ctx.ResolveRepo(c.Source ?? $"configs/{item.Id}");
@@ -67,8 +68,8 @@ public static class ConfigSync
             n++;
             files.Add(new ConfigFileInfo { Path = RepoRel(ctx.RepoRoot, d), Size = new FileInfo(d).Length, Preview = MakePreview(text) });
         }
-        if (n == 0) return ConfigResult.Skip(item.Name, "本机无对应文件");
-        var msg = redacted > 0 ? $"采集 {n} 个文件（已脱敏 {redacted} 处）" : $"采集 {n} 个文件";
+        if (n == 0) return ConfigResult.Skip(item.Name, Localizer.T("engine.cfgsync.noLocalFile"));
+        var msg = redacted > 0 ? Localizer.Format("engine.cfgsync.capturedRedacted", n, redacted) : Localizer.Format("engine.cfgsync.captured", n);
         return ConfigResult.Ok(item.Name, msg, files);
     }
 
@@ -77,7 +78,7 @@ public static class ConfigSync
 
     public static string MakePreview(string? text)
     {
-        if (text is null) return "(二进制文件)";
+        if (text is null) return Localizer.T("engine.cfgsync.previewBinary");
         var t = text.Replace("\r\n", "\n").Trim();
         return t.Length > 600 ? t[..600] + " …" : t;
     }

@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Security.Principal;
+using WinDeploy.Core.I18n;
 
 namespace WinDeploy.App;
 
@@ -40,6 +41,6 @@ public static class AppInfo
         catch { return false; }
     }
 
-    /// <summary>Window title; appends " (Administrator)" only when elevated, to distinguish admin runs.</summary>
-    public static string TitleWithRole => IsAdministrator ? $"{TitleWithVersion}  (Administrator)" : TitleWithVersion;
+    /// <summary>Window title; appends a localized "(Administrator)" only when elevated, to distinguish admin runs.</summary>
+    public static string TitleWithRole => IsAdministrator ? $"{TitleWithVersion}{Localizer.T("app.adminSuffix")}" : TitleWithVersion;
 }

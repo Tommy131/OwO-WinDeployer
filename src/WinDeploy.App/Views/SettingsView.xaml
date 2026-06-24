@@ -8,8 +8,8 @@
     </Grid.RowDefinitions>
 
     <StackPanel Grid.Row="0">
-      <TextBlock Text="设置" FontSize="20" FontWeight="SemiBold" />
-      <TextBlock Text="路径变量让清单跨设备通用；脱敏关键词在导出时生效。" FontSize="13"
+      <TextBlock Text="{DynamicResource S.settings.title}" FontSize="20" FontWeight="SemiBold" />
+      <TextBlock Text="{DynamicResource S.settings.subtitle}" FontSize="13"
                  Foreground="{DynamicResource TextSecondary}" Margin="0,3,0,0" />
     </StackPanel>
 
@@ -19,23 +19,36 @@
 
         <Border Style="{StaticResource Card}" Padding="16">
           <StackPanel>
-            <TextBlock Text="外观 · 主题" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,10" />
+            <TextBlock Text="{DynamicResource S.settings.appearance.title}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,10" />
             <StackPanel Orientation="Horizontal">
-              <RadioButton Content="跟随系统" IsChecked="{Binding IsThemeSystem}" GroupName="theme" />
-              <RadioButton Content="浅色" IsChecked="{Binding IsThemeLight}" GroupName="theme" Margin="20,0,0,0" />
-              <RadioButton Content="深色" IsChecked="{Binding IsThemeDark}" GroupName="theme" Margin="20,0,0,0" />
+              <RadioButton Content="{DynamicResource S.settings.theme.system}" IsChecked="{Binding IsThemeSystem}" GroupName="theme" />
+              <RadioButton Content="{DynamicResource S.settings.theme.light}" IsChecked="{Binding IsThemeLight}" GroupName="theme" Margin="20,0,0,0" />
+              <RadioButton Content="{DynamicResource S.settings.theme.dark}" IsChecked="{Binding IsThemeDark}" GroupName="theme" Margin="20,0,0,0" />
             </StackPanel>
           </StackPanel>
         </Border>
 
         <Border Style="{StaticResource Card}" Padding="16" Margin="0,12,0,0">
           <StackPanel>
-            <TextBlock Text="终端特效" FontSize="14" FontWeight="SemiBold" />
+            <TextBlock Text="{DynamicResource S.settings.lang.title}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,4" />
+            <TextBlock Text="{DynamicResource S.settings.lang.desc}" FontSize="12"
+                       Foreground="{DynamicResource TextSecondary}" Margin="0,0,0,10" />
+            <StackPanel Orientation="Horizontal">
+              <RadioButton Content="{DynamicResource S.settings.lang.zh}" IsChecked="{Binding IsLangZh}" GroupName="lang" />
+              <RadioButton Content="{DynamicResource S.settings.lang.en}" IsChecked="{Binding IsLangEn}" GroupName="lang" Margin="20,0,0,0" />
+              <RadioButton Content="{DynamicResource S.settings.lang.de}" IsChecked="{Binding IsLangDe}" GroupName="lang" Margin="20,0,0,0" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+
+        <Border Style="{StaticResource Card}" Padding="16" Margin="0,12,0,0">
+          <StackPanel>
+            <TextBlock Text="{DynamicResource S.settings.termfx.title}" FontSize="14" FontWeight="SemiBold" />
             <TextBlock FontSize="12" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Margin="0,4,0,10"
-                       Text="「开发 → 终端」的外观特效，各项独立开关，调整即时生效。" />
-            <CheckBox Content="黑客风格配色（绿色磷光 + 辉光 + 近黑底）" IsChecked="{Binding TermHacker}" FontSize="13" Margin="0,2,0,0" />
-            <CheckBox Content="CRT 特效（扫描线 + 轻微闪烁）" IsChecked="{Binding TermCrt}" FontSize="13" Margin="0,8,0,0" />
-            <CheckBox Content="背景代码滚动特效" IsChecked="{Binding TermCodeRain}" FontSize="13" Margin="0,8,0,0" />
+                       Text="{DynamicResource S.settings.termfx.desc}" />
+            <CheckBox Content="{DynamicResource S.settings.termfx.hacker}" IsChecked="{Binding TermHacker}" FontSize="13" Margin="0,2,0,0" />
+            <CheckBox Content="{DynamicResource S.settings.termfx.crt}" IsChecked="{Binding TermCrt}" FontSize="13" Margin="0,8,0,0" />
+            <CheckBox Content="{DynamicResource S.settings.termfx.coderain}" IsChecked="{Binding TermCodeRain}" FontSize="13" Margin="0,8,0,0" />
 
             <Grid Margin="0,12,0,0" IsEnabled="{Binding CodeRainEnabled}">
               <Grid.ColumnDefinitions>
@@ -43,12 +56,12 @@
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="56" />
               </Grid.ColumnDefinitions>
-              <TextBlock Grid.Column="0" Text="代码不透明度" FontSize="12.5" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="0" Text="{DynamicResource S.settings.termfx.opacity}" FontSize="12.5" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" />
               <Slider Grid.Column="1" Minimum="0.05" Maximum="1.0" Value="{Binding TermCodeOpacity}" VerticalAlignment="Center" Margin="6,0" />
               <TextBlock Grid.Column="2" Text="{Binding TermCodeOpacityText}" FontSize="12" Foreground="{DynamicResource TextTertiary}" VerticalAlignment="Center" HorizontalAlignment="Right" />
             </Grid>
             <TextBlock FontSize="11" Foreground="{DynamicResource TextTertiary}" TextWrapping="Wrap" Margin="0,4,0,0"
-                       Text="不透明度越低，背景代码越淡，前景命令文字越清晰。" />
+                       Text="{DynamicResource S.settings.termfx.opacityHint}" />
 
             <Grid Margin="0,10,0,0" IsEnabled="{Binding CodeRainEnabled}">
               <Grid.ColumnDefinitions>
@@ -56,7 +69,7 @@
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="56" />
               </Grid.ColumnDefinitions>
-              <TextBlock Grid.Column="0" Text="滚动速度" FontSize="12.5" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="0" Text="{DynamicResource S.settings.termfx.speed}" FontSize="12.5" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" />
               <Slider Grid.Column="1" Minimum="0.2" Maximum="4.0" Value="{Binding TermCodeSpeed}" VerticalAlignment="Center" Margin="6,0" />
               <TextBlock Grid.Column="2" Text="{Binding TermCodeSpeedText}" FontSize="12" Foreground="{DynamicResource TextTertiary}" VerticalAlignment="Center" HorizontalAlignment="Right" />
             </Grid>
@@ -65,11 +78,11 @@
 
         <Border Style="{StaticResource Card}" Padding="16" Margin="0,12,0,0">
           <StackPanel>
-            <TextBlock Text="软件图标" FontSize="14" FontWeight="SemiBold" />
+            <TextBlock Text="{DynamicResource S.settings.icons.title}" FontSize="14" FontWeight="SemiBold" />
             <TextBlock FontSize="12" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Margin="0,4,0,10"
-                       Text="对没有内置图标的软件，联网获取高清品牌图标并缓存到本地（%LOCALAPPDATA%\WinDeploy\iconcache）。启动时会自动补全；也可手动刷新。" />
+                       Text="{DynamicResource S.settings.icons.desc}" />
             <StackPanel Orientation="Horizontal">
-              <Button Content="联网刷新软件图标" Style="{StaticResource InfoButton}" Command="{Binding RefreshIconsCommand}" />
+              <Button Content="{DynamicResource S.settings.icons.refresh}" Style="{StaticResource InfoButton}" Command="{Binding RefreshIconsCommand}" />
               <TextBlock Text="{Binding IconNote}" FontSize="12" Foreground="{DynamicResource TextTertiary}"
                          VerticalAlignment="Center" Margin="12,0,0,0" TextTrimming="CharacterEllipsis" />
             </StackPanel>
@@ -78,55 +91,55 @@
 
         <Border Style="{StaticResource Card}" Padding="16" Margin="0,12,0,0">
           <StackPanel>
-            <TextBlock Text="开发者选项" FontSize="14" FontWeight="SemiBold" />
-            <CheckBox Content="开发人员模式（解锁完整软件列表与专业功能）" IsChecked="{Binding DeveloperMode}"
+            <TextBlock Text="{DynamicResource S.settings.dev.title}" FontSize="14" FontWeight="SemiBold" />
+            <CheckBox Content="{DynamicResource S.settings.dev.toggle}" IsChecked="{Binding DeveloperMode}"
                       FontSize="13" Margin="0,10,0,0" />
             <TextBlock FontSize="12" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Margin="0,6,0,0"
-                       Text="关闭时仅显示「办公 / 通讯、游戏平台、系统依赖、媒体」四类常用软件；开启后额外显示完整软件分类（开发工具链、IDE、AI、数据库等），并在左侧导航解锁「开发」栏的全部功能页（终端、服务配置、FTP、WSL、系统调优、高级工具）以及「系统」栏下的系统维护、进程管理、启动项和环境变量。即时生效。" />
+                       Text="{DynamicResource S.settings.dev.desc}" />
           </StackPanel>
         </Border>
 
         <Border Style="{StaticResource Card}" Padding="16" Margin="0,12,0,0">
           <StackPanel>
-            <TextBlock Text="关闭主窗口时" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,10" />
+            <TextBlock Text="{DynamicResource S.settings.close.title}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,10" />
             <StackPanel Orientation="Horizontal">
-              <RadioButton Content="每次询问" IsChecked="{Binding IsCloseAsk}" GroupName="close" />
-              <RadioButton Content="最小化到后台常驻" IsChecked="{Binding IsCloseTray}" GroupName="close" Margin="20,0,0,0" />
-              <RadioButton Content="直接退出" IsChecked="{Binding IsCloseExit}" GroupName="close" Margin="20,0,0,0" />
+              <RadioButton Content="{DynamicResource S.settings.close.ask}" IsChecked="{Binding IsCloseAsk}" GroupName="close" />
+              <RadioButton Content="{DynamicResource S.settings.close.tray}" IsChecked="{Binding IsCloseTray}" GroupName="close" Margin="20,0,0,0" />
+              <RadioButton Content="{DynamicResource S.settings.close.exit}" IsChecked="{Binding IsCloseExit}" GroupName="close" Margin="20,0,0,0" />
             </StackPanel>
             <TextBlock FontSize="12" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Margin="0,8,0,0"
-                       Text="「后台常驻」会在关闭窗口后将程序收起到系统托盘继续运行，双击托盘图标可重新打开、右键可退出。" />
+                       Text="{DynamicResource S.settings.close.desc}" />
           </StackPanel>
         </Border>
 
         <Border Style="{StaticResource Card}" Padding="16" Margin="0,12,0,0">
           <StackPanel>
-            <TextBlock Text="路径变量" FontSize="14" FontWeight="SemiBold" />
-            <TextBlock Text="便携工具的安装根目录，支持 %ENV% 变量。改后下次启动生效。" FontSize="12"
+            <TextBlock Text="{DynamicResource S.settings.paths.title}" FontSize="14" FontWeight="SemiBold" />
+            <TextBlock Text="{DynamicResource S.settings.paths.desc}" FontSize="12"
                        Foreground="{DynamicResource TextSecondary}" Margin="0,2,0,10" />
-            <TextBlock Text="DevRoot（git/Flutter 等）" FontSize="12" Foreground="{DynamicResource TextSecondary}" />
+            <TextBlock Text="{DynamicResource S.settings.paths.devRoot}" FontSize="12" Foreground="{DynamicResource TextSecondary}" />
             <TextBox Text="{Binding DevRoot, UpdateSourceTrigger=PropertyChanged}" Height="34" VerticalContentAlignment="Center" Padding="8,0" Margin="0,3,0,10" />
-            <TextBlock Text="ToolsDir（Node/MinGW/ffmpeg 等便携包）" FontSize="12" Foreground="{DynamicResource TextSecondary}" />
+            <TextBlock Text="{DynamicResource S.settings.paths.toolsDir}" FontSize="12" Foreground="{DynamicResource TextSecondary}" />
             <TextBox Text="{Binding ToolsDir, UpdateSourceTrigger=PropertyChanged}" Height="34" VerticalContentAlignment="Center" Padding="8,0" Margin="0,3,0,10" />
-            <TextBlock Text="DownloadDir（软件默认下载地址：安装包 / 便携包下载到此，可用 ${DownloadDir}）" FontSize="12" Foreground="{DynamicResource TextSecondary}" />
+            <TextBlock Text="{DynamicResource S.settings.paths.downloadDir}" FontSize="12" Foreground="{DynamicResource TextSecondary}" />
             <TextBox Text="{Binding DownloadDir, UpdateSourceTrigger=PropertyChanged}" Height="34" VerticalContentAlignment="Center" Padding="8,0" Margin="0,3,0,0" />
           </StackPanel>
         </Border>
 
         <Border Style="{StaticResource Card}" Padding="16" Margin="0,12,0,0">
           <StackPanel>
-            <TextBlock Text="仓库与下载" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,10" />
-            <TextBlock Text="仓库地址（sync/save 与引导使用）" FontSize="12" Foreground="{DynamicResource TextSecondary}" />
+            <TextBlock Text="{DynamicResource S.settings.repo.title}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,10" />
+            <TextBlock Text="{DynamicResource S.settings.repo.url}" FontSize="12" Foreground="{DynamicResource TextSecondary}" />
             <TextBox Text="{Binding RepoUrl, UpdateSourceTrigger=PropertyChanged}" Height="34" VerticalContentAlignment="Center" Padding="8,0" Margin="0,3,0,10" />
-            <TextBlock Text="下载镜像（可选，便携包/winget 加速；留空用官方源）" FontSize="12" Foreground="{DynamicResource TextSecondary}" />
+            <TextBlock Text="{DynamicResource S.settings.repo.mirror}" FontSize="12" Foreground="{DynamicResource TextSecondary}" />
             <TextBox Text="{Binding Mirror, UpdateSourceTrigger=PropertyChanged}" Height="34" VerticalContentAlignment="Center" Padding="8,0" Margin="0,3,0,0" />
           </StackPanel>
         </Border>
 
         <Border Style="{StaticResource Card}" Padding="16" Margin="0,12,0,0">
           <StackPanel>
-            <TextBlock Text="安全 · 脱敏关键词" FontSize="14" FontWeight="SemiBold" />
-            <TextBlock Text="导出配置时，键名包含这些词的值会被替换为 ***REDACTED***（内置 token/密码已自动处理）。逗号或空格分隔。" FontSize="12"
+            <TextBlock Text="{DynamicResource S.settings.redact.title}" FontSize="14" FontWeight="SemiBold" />
+            <TextBlock Text="{DynamicResource S.settings.redact.desc}" FontSize="12"
                        Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Margin="0,2,0,10" />
             <TextBox Text="{Binding RedactKeywords, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap"
                      Height="68" VerticalContentAlignment="Top" Padding="8,6" />
@@ -134,25 +147,25 @@
         </Border>
 
         <StackPanel Orientation="Horizontal" Margin="0,14,0,0">
-          <Button Content="保存设置" Style="{StaticResource PrimaryButton}" Command="{Binding SaveCommand}" />
+          <Button Content="{DynamicResource S.settings.save}" Style="{StaticResource PrimaryButton}" Command="{Binding SaveCommand}" />
           <TextBlock Text="{Binding Note}" Foreground="{DynamicResource OkFg}" VerticalAlignment="Center" Margin="14,0,0,0" />
         </StackPanel>
 
         <!-- 关于 + 检查更新 -->
         <Border Style="{StaticResource Card}" Padding="16" Margin="0,12,0,0">
           <StackPanel>
-            <TextBlock Text="关于" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8" />
+            <TextBlock Text="{DynamicResource S.settings.about.title}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8" />
             <TextBlock Text="{Binding AppTitle, Mode=OneWay}" FontSize="13" FontWeight="SemiBold" />
             <TextBlock Text="{Binding AppCopyright, Mode=OneWay}" FontSize="12" Foreground="{DynamicResource TextTertiary}" Margin="0,2,0,0" />
             <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-              <Button Content="检查更新" Style="{StaticResource PrimaryButton}" Command="{Binding CheckUpdateCommand}"
-                      ToolTip="连接 GitHub 仓库 Tommy131/owo-win-deployer 的发布版检测新版本" />
-              <Button Content="打开数据目录" Style="{StaticResource MiniButton}" Command="{Binding OpenFolderCommand}" Margin="8,0,0,0"
-                      ToolTip="在资源管理器中打开 %LOCALAPPDATA%\WinDeploy（含 settings.json、logs\app.log、logs\progress.jsonl）" />
+              <Button Content="{DynamicResource S.settings.about.checkUpdate}" Style="{StaticResource PrimaryButton}" Command="{Binding CheckUpdateCommand}"
+                      ToolTip="{DynamicResource S.settings.about.checkUpdateTip}" />
+              <Button Content="{DynamicResource S.settings.about.openDataDir}" Style="{StaticResource MiniButton}" Command="{Binding OpenFolderCommand}" Margin="8,0,0,0"
+                      ToolTip="{DynamicResource S.settings.about.openDataDirTip}" />
               <TextBlock Text="{Binding UpdateNote}" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" Margin="10,0,0,0" />
             </StackPanel>
             <TextBlock FontSize="11" Foreground="{DynamicResource TextTertiary}" Margin="0,8,0,0" TextWrapping="Wrap">
-              <Run Text="数据目录（设置 / 日志 / 运行进度日志）：" /><Run Text="{Binding SettingsPath, Mode=OneWay}" />
+              <Run Text="{DynamicResource S.settings.about.dataDir}" /><Run Text="{Binding SettingsPath, Mode=OneWay}" />
             </TextBlock>
           </StackPanel>
         </Border>
@@ -160,7 +173,7 @@
         <!-- 关于开发者 -->
         <Border Style="{StaticResource Card}" Padding="16" Margin="0,12,0,18">
           <StackPanel>
-            <TextBlock Text="关于开发者" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,12" />
+            <TextBlock Text="{DynamicResource S.settings.aboutDev.title}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,12" />
             <StackPanel Orientation="Horizontal">
               <Ellipse Width="68" Height="68" VerticalAlignment="Top">
                 <Ellipse.Fill>
@@ -170,19 +183,19 @@
               <StackPanel Margin="16,0,0,0" VerticalAlignment="Center">
                 <TextBlock Text="{Binding AuthorName}" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,6" />
                 <TextBlock FontSize="12" Margin="0,2,0,0">
-                  <Run Text="GitHub：" Foreground="{DynamicResource TextSecondary}" /><Hyperlink Command="{Binding OpenLinkCommand}" CommandParameter="https://github.com/Tommy131" Foreground="{DynamicResource Accent}">https://github.com/Tommy131</Hyperlink>
+                  <Run Text="{DynamicResource S.settings.aboutDev.github}" Foreground="{DynamicResource TextSecondary}" /><Hyperlink Command="{Binding OpenLinkCommand}" CommandParameter="https://github.com/Tommy131" Foreground="{DynamicResource Accent}">https://github.com/Tommy131</Hyperlink>
                 </TextBlock>
                 <TextBlock FontSize="12" Margin="0,2,0,0">
-                  <Run Text="Email：" Foreground="{DynamicResource TextSecondary}" /><Hyperlink Command="{Binding OpenLinkCommand}" CommandParameter="mailto:hanskijay@owoblog.com" Foreground="{DynamicResource Accent}">hanskijay@owoblog.com</Hyperlink>
+                  <Run Text="{DynamicResource S.settings.aboutDev.email}" Foreground="{DynamicResource TextSecondary}" /><Hyperlink Command="{Binding OpenLinkCommand}" CommandParameter="mailto:hanskijay@owoblog.com" Foreground="{DynamicResource Accent}">hanskijay@owoblog.com</Hyperlink>
                 </TextBlock>
                 <TextBlock FontSize="12" Margin="0,2,0,0">
-                  <Run Text="捐赠：" Foreground="{DynamicResource TextSecondary}" /><Hyperlink Command="{Binding OpenLinkCommand}" CommandParameter="https://owoblog.com/donation" Foreground="{DynamicResource Accent}">https://owoblog.com/donation</Hyperlink>
+                  <Run Text="{DynamicResource S.settings.aboutDev.donation}" Foreground="{DynamicResource TextSecondary}" /><Hyperlink Command="{Binding OpenLinkCommand}" CommandParameter="https://owoblog.com/donation" Foreground="{DynamicResource Accent}">https://owoblog.com/donation</Hyperlink>
                 </TextBlock>
                 <TextBlock FontSize="12" Margin="0,2,0,0">
-                  <Run Text="服务：" Foreground="{DynamicResource TextSecondary}" /><Hyperlink Command="{Binding OpenLinkCommand}" CommandParameter="https://owoblog.com/service" Foreground="{DynamicResource Accent}">https://owoblog.com/service</Hyperlink>
+                  <Run Text="{DynamicResource S.settings.aboutDev.service}" Foreground="{DynamicResource TextSecondary}" /><Hyperlink Command="{Binding OpenLinkCommand}" CommandParameter="https://owoblog.com/service" Foreground="{DynamicResource Accent}">https://owoblog.com/service</Hyperlink>
                 </TextBlock>
                 <TextBlock FontSize="12" Margin="0,2,0,0">
-                  <Run Text="博客：" Foreground="{DynamicResource TextSecondary}" /><Hyperlink Command="{Binding OpenLinkCommand}" CommandParameter="https://owoblog.com" Foreground="{DynamicResource Accent}">https://owoblog.com</Hyperlink>
+                  <Run Text="{DynamicResource S.settings.aboutDev.blog}" Foreground="{DynamicResource TextSecondary}" /><Hyperlink Command="{Binding OpenLinkCommand}" CommandParameter="https://owoblog.com" Foreground="{DynamicResource Accent}">https://owoblog.com</Hyperlink>
                 </TextBlock>
               </StackPanel>
             </StackPanel>

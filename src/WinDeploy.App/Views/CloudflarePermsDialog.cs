@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using WinDeploy.Core.I18n;
 
 namespace WinDeploy.App.Views;
 
@@ -11,7 +12,7 @@ public sealed class CloudflarePermsDialog : Window
 {
     public CloudflarePermsDialog()
     {
-        Title = "Cloudflare API 令牌所需权限";
+        Title = Localizer.T("cloud.perms.dialogTitle");
         Width = 560;
         SizeToContent = SizeToContent.Height;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
@@ -22,28 +23,28 @@ public sealed class CloudflarePermsDialog : Window
 
         root.Children.Add(new TextBlock
         {
-            Text = "创建用于 DDNS 的 API 令牌时，请按下表申请权限：",
+            Text = Localizer.T("cloud.perms.intro"),
             FontSize = 14, FontWeight = FontWeights.SemiBold, Foreground = Brush("TextPrimary"),
             TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 4),
         });
         root.Children.Add(new TextBlock
         {
-            Text = "Cloudflare 控制台 → 个人资料 → API 令牌 → 创建令牌 → 使用「自定义令牌」模板",
+            Text = Localizer.T("cloud.perms.path"),
             FontSize = 12, Foreground = Brush("TextTertiary"), TextWrapping = TextWrapping.Wrap,
             Margin = new Thickness(0, 0, 0, 14),
         });
 
         // ── 权限 ──────────────────────────────────────────────────────────────
-        root.Children.Add(SectionTitle("权限 (Permissions)"));
-        root.Children.Add(PermRow(new[] { "区域 Zone", "区域 Zone", "读取 Read" },
-            "列出账号下的全部域名（Zone）。"));
-        root.Children.Add(PermRow(new[] { "区域 Zone", "DNS", "编辑 Edit" },
-            "读取并新建 / 修改 DNS 解析记录 —— DDNS 的核心权限。"));
+        root.Children.Add(SectionTitle(Localizer.T("cloud.perms.permissions")));
+        root.Children.Add(PermRow(new[] { Localizer.T("cloud.perms.chipZone"), Localizer.T("cloud.perms.chipZone"), Localizer.T("cloud.perms.chipRead") },
+            Localizer.T("cloud.perms.rowZoneReadDesc")));
+        root.Children.Add(PermRow(new[] { Localizer.T("cloud.perms.chipZone"), Localizer.T("cloud.perms.chipDns"), Localizer.T("cloud.perms.chipEdit") },
+            Localizer.T("cloud.perms.rowZoneDnsDesc")));
 
         // ── 区域资源 ──────────────────────────────────────────────────────────
-        root.Children.Add(SectionTitle("区域资源 (Zone Resources)"));
-        root.Children.Add(PermRow(new[] { "包含 Include", "所有区域 All zones" },
-            "或仅选择你要用于 DDNS 的特定域名。"));
+        root.Children.Add(SectionTitle(Localizer.T("cloud.perms.zoneResources")));
+        root.Children.Add(PermRow(new[] { Localizer.T("cloud.perms.chipInclude"), Localizer.T("cloud.perms.chipAllZones") },
+            Localizer.T("cloud.perms.rowResourcesDesc")));
 
         // ── 说明 ──────────────────────────────────────────────────────────────
         var note = new Border
@@ -53,7 +54,7 @@ public sealed class CloudflarePermsDialog : Window
         };
         note.Child = new TextBlock
         {
-            Text = "说明：以上为最小权限集，只需 Zone 范围，无需 User / Account 权限。正因如此，Cloudflare 的「令牌验证」接口可能返回 #1000，但不影响 DDNS —— 本工具以「能否读取域名」作为有效判据。其余项（客户端 IP 地址筛选、TTL）留空即可。",
+            Text = Localizer.T("cloud.perms.note"),
             FontSize = 12, Foreground = Brush("Accent"), TextWrapping = TextWrapping.Wrap, LineHeight = 19,
         };
         root.Children.Add(note);
@@ -64,11 +65,11 @@ public sealed class CloudflarePermsDialog : Window
             Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right,
             Margin = new Thickness(0, 20, 0, 0),
         };
-        var go = new Button { Content = "前往创建令牌", MinWidth = 110, Margin = new Thickness(0, 0, 8, 0) };
+        var go = new Button { Content = Localizer.T("cloud.perms.goCreate"), MinWidth = 110, Margin = new Thickness(0, 0, 8, 0) };
         if (Application.Current.TryFindResource("PrimaryButton") is Style gs) go.Style = gs;
         go.Click += (_, _) => Open("https://dash.cloudflare.com/profile/api-tokens");
 
-        var close = new Button { Content = "关闭", MinWidth = 72, IsCancel = true, IsDefault = true };
+        var close = new Button { Content = Localizer.T("common.close"), MinWidth = 72, IsCancel = true, IsDefault = true };
         if (Application.Current.TryFindResource("MiniButton") is Style cs) close.Style = cs;
         close.Click += (_, _) => DialogResult = true;
 

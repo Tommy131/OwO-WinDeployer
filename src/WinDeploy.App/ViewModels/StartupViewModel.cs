@@ -4,6 +4,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Media;
 using WinDeploy.App.Services;
+using WinDeploy.Core.I18n;
 
 namespace WinDeploy.App.ViewModels;
 
@@ -30,7 +31,7 @@ public sealed class StartupRowViewModel : ObservableObject
 
     public bool Enabled => Entry.Enabled;
     public bool Disabled => !Entry.Enabled;
-    public string ToggleLabel => Entry.Enabled ? "禁用" : "启用";
+    public string ToggleLabel => Entry.Enabled ? Localizer.T("startup.toggle.disable") : Localizer.T("startup.toggle.enable");
 
     public void RaiseState()
     {
@@ -42,7 +43,7 @@ public sealed class StartupRowViewModel : ObservableObject
 
 /// <summary>The "启动项" page: manage Windows startup entries (Run keys + Startup folders) — enable /
 /// disable (via StartupApproved, like Task Manager), remove, and reveal in Explorer.</summary>
-public sealed class StartupViewModel : ObservableObject
+public sealed class StartupViewModel : LocalizedObject
 {
     public ObservableCollection<StartupRowViewModel> Items { get; } = new();
     public RelayCommand RefreshCommand { get; }
@@ -58,7 +59,15 @@ public sealed class StartupViewModel : ObservableObject
         OpenLocationCommand = new RelayCommand(p => { if (p is StartupRowViewModel r) OpenLocation(r); });
     }
 
-    private string _summary = "点击刷新以扫描启动项";
+    protected override void OnCultureChanged()
+    {
+        base.OnCultureChanged();
+        // Re-localize live row toggle labels and the summary line.
+        foreach (var row in Items) row.RaiseAllPropertiesChanged();
+        if (Items.Count > 0) UpdateSummary();
+    }
+
+    private string _summary = Localizer.T("startup.summary.idle");
     public string Summary { get => _summary; private set => Set(ref _summary, value); }
 
     public void Refresh() => _ = RefreshAsync();
@@ -67,7 +76,7 @@ public sealed class StartupViewModel : ObservableObject
     /// extraction are slow), then populate. Icon order: bundled catalog → entry exe → live process → letter.</summary>
     private async Task RefreshAsync()
     {
-        Summary = "正在扫描启动项 …";
+        Summary = Localizer.T("startup.scanning");
         var rows = await Task.Run(() =>
         {
             var entries = StartupService.List().OrderBy(e => e.Name, StringComparer.OrdinalIgnoreCase).ToList();
@@ -101,7 +110,7 @@ public sealed class StartupViewModel : ObservableObject
     private void UpdateSummary()
     {
         var on = Items.Count(i => i.Enabled);
-        Summary = $"共 {Items.Count} 项 · 已启用 {on} · 已禁用 {Items.Count - on}";
+        Summary = Localizer.Format("startup.summary", Items.Count, on, Items.Count - on);
     }
 
     private void Toggle(StartupRowViewModel r)
@@ -109,8 +118,8 @@ public sealed class StartupViewModel : ObservableObject
         var (ok, msg) = StartupService.SetEnabled(r.Entry, !r.Entry.Enabled);
         if (!ok)
         {
-            MessageBox.Show($"操作失败：{msg}\n\n（HKLM / 公共启动项需以管理员身份运行 WinDeploy）",
-                "启动项", MessageBoxButton.OK, MessageBoxImage.Warning);
+            Dialogs.Show(Localizer.Format("startup.toggle.fail", msg),
+                Localizer.T("startup.titleBox"), MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
         r.RaiseState();
@@ -120,13 +129,13 @@ public sealed class StartupViewModel : ObservableObject
 
     private void Remove(StartupRowViewModel r)
     {
-        if (MessageBox.Show($"确定删除启动项「{r.Name}」？\n来源：{r.Source}\n\n仅从系统启动项中移除，不会卸载程序本身。",
-                "删除启动项", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        if (Dialogs.Show(Localizer.Format("startup.remove.confirm", r.Name, r.Source),
+                Localizer.T("startup.remove.title"), MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
         var (ok, msg) = StartupService.Remove(r.Entry);
         if (!ok)
         {
-            MessageBox.Show($"删除失败：{msg}\n\n（HKLM / 公共启动项需以管理员身份运行）",
-                "启动项", MessageBoxButton.OK, MessageBoxImage.Warning);
+            Dialogs.Show(Localizer.Format("startup.remove.fail", msg),
+                Localizer.T("startup.titleBox"), MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
         AuditLog.Action($"启动项删除：{r.Name}（{r.Source}）");

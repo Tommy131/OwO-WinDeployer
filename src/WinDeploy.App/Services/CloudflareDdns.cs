@@ -1,4 +1,5 @@
 using System.Globalization;
+using WinDeploy.Core.I18n;
 
 namespace WinDeploy.App.Services;
 
@@ -16,7 +17,7 @@ public sealed class CloudflareDdnsMonitor
     public string? CurrentIpv4 { get; private set; }
     public string? CurrentIpv6 { get; private set; }
     public DateTime? LastCheck { get; private set; }
-    public string LastResult { get; private set; } = "尚未运行";
+    public string LastResult { get; private set; } = Localizer.T("cloud.monitor.notRunYet");
 
     /// <summary>Raised after each cycle / state change. Handlers must marshal to the UI thread themselves.</summary>
     public event Action? Changed;
@@ -33,7 +34,7 @@ public sealed class CloudflareDdnsMonitor
             Running = true;
             _ = Task.Run(() => LoopAsync(_cts.Token));
         }
-        LastResult = "正在启动监听 …";
+        LastResult = Localizer.T("cloud.monitor.starting");
         Raise();
     }
 
@@ -45,7 +46,7 @@ public sealed class CloudflareDdnsMonitor
             try { _cts?.Cancel(); } catch { /* ignore */ }
             Running = false;
         }
-        LastResult = "已停止监听";
+        LastResult = Localizer.T("cloud.monitor.stoppedResult");
         Raise();
     }
 
@@ -62,7 +63,7 @@ public sealed class CloudflareDdnsMonitor
             }
         }
         catch (OperationCanceledException) { /* stopped */ }
-        catch (Exception ex) { LastResult = "监听异常：" + ex.Message; Raise(); }
+        catch (Exception ex) { LastResult = Localizer.Format("cloud.monitor.unexpected", ex.Message); Raise(); }
     }
 
     /// <summary>Run one DDNS pass. Public so the page / tray can trigger an immediate check. Returns a summary
@@ -81,8 +82,8 @@ public sealed class CloudflareDdnsMonitor
         var enabled = cfg.Bindings.Where(b => b.Enabled).ToList();
 
         LastCheck = DateTime.Now;
-        if (token.Length == 0) return Finish("未配置 API 令牌");
-        if (enabled.Count == 0) return Finish("没有启用的 DDNS 绑定");
+        if (token.Length == 0) return Finish(Localizer.T("cloud.monitor.noToken"));
+        if (enabled.Count == 0) return Finish(Localizer.T("cloud.monitor.noEnabledBinding"));
 
         if (enabled.Any(b => b.Type == "A"))
         {
@@ -112,7 +113,7 @@ public sealed class CloudflareDdnsMonitor
                 updated++;
                 applied.Add((b.RecordId, ip, DateTime.Now.ToString("s", CultureInfo.InvariantCulture)));
                 AuditLog.Action($"Cloudflare DDNS：{b.RecordName} ({b.Type}) → {ip}");
-                Updated?.Invoke("Cloudflare DDNS 已更新", $"{b.RecordName} → {ip}");
+                Updated?.Invoke(Localizer.T("cloud.ddns.toastTitle"), $"{b.RecordName} → {ip}");
             }
             else
             {
@@ -122,7 +123,7 @@ public sealed class CloudflareDdnsMonitor
         }
 
         if (applied.Count > 0) CloudflareConfigStore.ApplyResults(applied);
-        return Finish($"更新 {updated} · 未变 {unchanged} · 失败 {failed}");
+        return Finish(Localizer.Format("cloud.monitor.summary", updated, unchanged, failed));
     }
 
     private string Finish(string summary)

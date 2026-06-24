@@ -9,21 +9,21 @@
     </Grid.RowDefinitions>
 
     <StackPanel Grid.Row="0">
-      <TextBlock Text="高级工具" FontSize="20" FontWeight="SemiBold" />
-      <TextBlock Text="面向专业 / 开发人员：环境体检、catalog 校验、版本锁定、winget DSC 导出、离线部署包、迁移工具包、主机预设映射。"
+      <TextBlock Text="{DynamicResource S.advtools.title}" FontSize="20" FontWeight="SemiBold" />
+      <TextBlock Text="{DynamicResource S.advtools.subtitle}"
                  FontSize="13" Foreground="{DynamicResource TextSecondary}" Margin="0,3,0,0" TextWrapping="Wrap" />
     </StackPanel>
 
     <WrapPanel Grid.Row="1" Margin="0,14,0,0">
-      <Button Content="环境体检" Style="{StaticResource InfoButton}" Margin="0,0,8,8" Command="{Binding DoctorCommand}" />
-      <Button Content="校验 catalog" Style="{StaticResource InfoButton}" Margin="0,0,8,8" Command="{Binding ValidateCommand}" />
-      <Button Content="生成 lock.json" Style="{StaticResource InfoButton}" Margin="0,0,8,8" Command="{Binding LockCommand}" />
-      <Button Content="导出 winget DSC" Style="{StaticResource InfoButton}" Margin="0,0,8,8" Command="{Binding DscCommand}" />
-      <Button Content="离线部署包" Style="{StaticResource InfoButton}" Margin="0,0,8,8" Command="{Binding OfflineCommand}" />
-      <Button Content="迁移包·导出" Style="{StaticResource InfoButton}" Margin="0,0,8,8" Command="{Binding MigrateExportCommand}" />
-      <Button Content="迁移包·还原" Style="{StaticResource InfoButton}" Margin="0,0,8,8" Command="{Binding MigrateImportCommand}" />
-      <Button Content="编辑主机预设" Style="{StaticResource MiniButton}" Margin="0,0,8,8" Command="{Binding EditHostsCommand}" />
-      <Button Content="清空输出" Style="{StaticResource MiniButton}" Margin="0,0,8,8" Command="{Binding ClearCommand}" />
+      <Button Content="{DynamicResource S.advtools.btn.doctor}" Style="{StaticResource InfoButton}" Margin="0,0,8,8" Command="{Binding DoctorCommand}" />
+      <Button Content="{DynamicResource S.advtools.btn.validate}" Style="{StaticResource InfoButton}" Margin="0,0,8,8" Command="{Binding ValidateCommand}" />
+      <Button Content="{DynamicResource S.advtools.btn.lock}" Style="{StaticResource InfoButton}" Margin="0,0,8,8" Command="{Binding LockCommand}" />
+      <Button Content="{DynamicResource S.advtools.btn.dsc}" Style="{StaticResource InfoButton}" Margin="0,0,8,8" Command="{Binding DscCommand}" />
+      <Button Content="{DynamicResource S.advtools.btn.offline}" Style="{StaticResource InfoButton}" Margin="0,0,8,8" Command="{Binding OfflineCommand}" />
+      <Button Content="{DynamicResource S.advtools.btn.migrateExport}" Style="{StaticResource InfoButton}" Margin="0,0,8,8" Command="{Binding MigrateExportCommand}" />
+      <Button Content="{DynamicResource S.advtools.btn.migrateImport}" Style="{StaticResource InfoButton}" Margin="0,0,8,8" Command="{Binding MigrateImportCommand}" />
+      <Button Content="{DynamicResource S.advtools.btn.editHosts}" Style="{StaticResource MiniButton}" Margin="0,0,8,8" Command="{Binding EditHostsCommand}" />
+      <Button Content="{DynamicResource S.advtools.btn.clear}" Style="{StaticResource MiniButton}" Margin="0,0,8,8" Command="{Binding ClearCommand}" />
     </WrapPanel>
 
     <Border Grid.Row="2" Style="{StaticResource Card}" Padding="2" Margin="0,4,0,0">

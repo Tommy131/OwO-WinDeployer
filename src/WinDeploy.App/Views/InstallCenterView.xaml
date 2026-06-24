@@ -19,7 +19,7 @@
       </Grid.ColumnDefinitions>
 
       <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,12,0">
-        <TextBlock Text="软件安装中心" FontSize="20" FontWeight="SemiBold" />
+        <TextBlock Text="{DynamicResource S.nav.installCenter}" FontSize="20" FontWeight="SemiBold" />
         <TextBlock Text="{Binding Subtitle}" FontSize="13" Foreground="{DynamicResource TextSecondary}" Margin="0,3,0,0"
                    TextTrimming="CharacterEllipsis" />
       </StackPanel>
@@ -28,32 +28,32 @@
       <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,10,0,0">
         <!-- 统一用右/下外边距（不用左边距），换行后每一行都从左侧对齐 -->
         <WrapPanel>
-          <Button Content="↻ 刷新" Style="{StaticResource MiniButton}" Command="{Binding RefreshCommand}" Margin="0,0,8,6"
-                  ToolTip="重新检测本机软件安装状态与可用更新" />
+          <Button Content="{DynamicResource S.install.refresh}" Style="{StaticResource MiniButton}" Command="{Binding RefreshCommand}" Margin="0,0,8,6"
+                  ToolTip="{DynamicResource S.install.refreshTip}" />
           <Border Width="1" Background="{DynamicResource BorderSoft}" Margin="2,2,10,8" />
-          <Button Content="全选" Style="{StaticResource MiniButton}" Command="{Binding SelectAllCommand}" Margin="0,0,8,6" />
-          <Button Content="反选" Style="{StaticResource MiniButton}" Command="{Binding InvertCommand}" Margin="0,0,8,6" />
-          <Button Content="恢复" Style="{StaticResource MiniButton}" Command="{Binding RestoreCommand}" Margin="0,0,8,6"
-                  ToolTip="恢复到上一次「全选 / 反选 / 切换预设」之前的勾选状态" />
-          <Button Content="设置安装路径" Style="{StaticResource MiniButton}" Click="SetPath_Click" Margin="0,0,8,6"
-                  ToolTip="为选中软件统一设置安装根目录（便携/git 在其下建 id 子目录；winget 用 --location）" />
+          <Button Content="{DynamicResource S.install.selectAll}" Style="{StaticResource MiniButton}" Command="{Binding SelectAllCommand}" Margin="0,0,8,6" />
+          <Button Content="{DynamicResource S.install.invert}" Style="{StaticResource MiniButton}" Command="{Binding InvertCommand}" Margin="0,0,8,6" />
+          <Button Content="{DynamicResource S.install.restore}" Style="{StaticResource MiniButton}" Command="{Binding RestoreCommand}" Margin="0,0,8,6"
+                  ToolTip="{DynamicResource S.install.restoreTip}" />
+          <Button Content="{DynamicResource S.install.setPath}" Style="{StaticResource MiniButton}" Click="SetPath_Click" Margin="0,0,8,6"
+                  ToolTip="{DynamicResource S.install.setPathTip}" />
           <Border Width="1" Background="{DynamicResource BorderSoft}" Margin="2,2,10,8" />
           <Button Content="{Binding UpdateLabel}" Style="{StaticResource MiniButton}" Command="{Binding UpdateSelectedCommand}" Margin="0,0,8,6"
-                  ToolTip="更新选中且已安装的软件（winget upgrade / git pull / 便携包重拉），跳转到运行进度页" />
+                  ToolTip="{DynamicResource S.install.updateSelectedTip}" />
           <Button Content="{Binding UpdateToggleLabel}" Style="{StaticResource MiniButton}" Command="{Binding ToggleUpdatesCommand}" Margin="0,0,8,6"
                   Visibility="{Binding HasUpdates, Converter={StaticResource BoolToVis}}"
-                  ToolTip="忽略 / 显示「可更新」徽章" />
+                  ToolTip="{DynamicResource S.install.updatesTip}" />
           <Border Width="1" Background="{DynamicResource BorderSoft}" Margin="2,2,10,8" />
           <ToggleButton x:Name="GroupFilterBtn" Content="{Binding GroupFilterLabel}" Style="{StaticResource MiniToggle}" Margin="0,0,8,6"
-                        ToolTip="按分组筛选要显示的软件类别" />
+                        ToolTip="{DynamicResource S.install.filterGroupsTip}" />
           <Popup PlacementTarget="{Binding ElementName=GroupFilterBtn}" Placement="Bottom" StaysOpen="False" AllowsTransparency="True"
                  IsOpen="{Binding IsChecked, ElementName=GroupFilterBtn}">
             <Border Style="{StaticResource Card}" Padding="10" Margin="0,4,0,0" MinWidth="180">
               <StackPanel>
                 <StackPanel Orientation="Horizontal" Margin="2,0,2,8">
-                  <TextBlock Text="按分组筛选" FontSize="12.5" FontWeight="SemiBold" VerticalAlignment="Center" />
-                  <Button Content="全选" Style="{StaticResource MiniButton}" Command="{Binding ShowAllGroupsCommand}" Margin="12,0,0,0" />
-                  <Button Content="清空" Style="{StaticResource MiniButton}" Command="{Binding HideAllGroupsCommand}" Margin="6,0,0,0" />
+                  <TextBlock Text="{DynamicResource S.install.filterTitle}" FontSize="12.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+                  <Button Content="{DynamicResource S.install.selectAll}" Style="{StaticResource MiniButton}" Command="{Binding ShowAllGroupsCommand}" Margin="12,0,0,0" />
+                  <Button Content="{DynamicResource S.install.filterClear}" Style="{StaticResource MiniButton}" Command="{Binding HideAllGroupsCommand}" Margin="6,0,0,0" />
                 </StackPanel>
                 <ScrollViewer MaxHeight="320" VerticalScrollBarVisibility="Auto">
                   <ItemsControl ItemsSource="{Binding CategoryFilters}">
@@ -74,10 +74,10 @@
 
       <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
         <!-- 搜索框（带水印 + 说明） -->
-        <Grid Width="150" Height="32" ToolTip="搜索：按名称 / 简介 / id 过滤软件列表">
+        <Grid Width="150" Height="32" ToolTip="{DynamicResource S.install.searchTip}">
           <TextBox VerticalContentAlignment="Center" Padding="8,0"
                    Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
-          <TextBlock Text="搜索软件…" Foreground="{DynamicResource TextTertiary}" Margin="10,0,0,0"
+          <TextBlock Text="{DynamicResource S.install.searchWatermark}" Foreground="{DynamicResource TextTertiary}" Margin="10,0,0,0"
                      VerticalAlignment="Center" IsHitTestVisible="False">
             <TextBlock.Style>
               <Style TargetType="TextBlock">
@@ -91,9 +91,9 @@
         </Grid>
 
         <!-- 预设下拉（带水印 + 说明） -->
-        <Grid Width="120" Height="32" Margin="8,0,0,0" ToolTip="预设：选 dev / full / ai-station 一键套用对应勾选">
+        <Grid Width="120" Height="32" Margin="8,0,0,0" ToolTip="{DynamicResource S.install.profileTip}">
           <ComboBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}" />
-          <TextBlock Text="选择预设…" Foreground="{DynamicResource TextTertiary}" Margin="9,0,0,0"
+          <TextBlock Text="{DynamicResource S.install.profileWatermark}" Foreground="{DynamicResource TextTertiary}" Margin="9,0,0,0"
                      VerticalAlignment="Center" IsHitTestVisible="False">
             <TextBlock.Style>
               <Style TargetType="TextBlock">
@@ -123,7 +123,7 @@
                 Visibility="{Binding IsLoading, Converter={StaticResource BoolToVis}}">
       <ProgressBar IsIndeterminate="True" Width="220" Height="4"
                    Foreground="{DynamicResource Accent}" Background="{DynamicResource PageBg}" BorderThickness="0" />
-      <TextBlock Text="正在检测已安装软件 …" FontSize="13" Foreground="{DynamicResource TextSecondary}"
+      <TextBlock Text="{DynamicResource S.install.detecting}" FontSize="13" Foreground="{DynamicResource TextSecondary}"
                  HorizontalAlignment="Center" Margin="0,12,0,0" />
     </StackPanel>
 
@@ -159,56 +159,56 @@
                       </Border.InputBindings>
                       <Border.ContextMenu>
                         <ContextMenu Style="{StaticResource ThemedContextMenu}">
-                          <MenuItem Header="快速安装到默认路径" Style="{StaticResource ThemedMenuItem}"
+                          <MenuItem Header="{DynamicResource S.install.ctx.install}" Style="{StaticResource ThemedMenuItem}"
                                     Visibility="{Binding NotInstalled, Converter={StaticResource BoolToVis}}"
                                     Command="{Binding PlacementTarget.Tag.InstallCardCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                     CommandParameter="{Binding}">
                             <MenuItem.Icon><TextBlock Text="&#xE896;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource TextSecondary}" /></MenuItem.Icon>
                           </MenuItem>
-                          <MenuItem Header="检查更新" Style="{StaticResource ThemedMenuItem}"
+                          <MenuItem Header="{DynamicResource S.install.ctx.checkUpdate}" Style="{StaticResource ThemedMenuItem}"
                                     Visibility="{Binding CanUpdate, Converter={StaticResource BoolToVis}}"
                                     Command="{Binding PlacementTarget.Tag.UpdateCardCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                     CommandParameter="{Binding}">
                             <MenuItem.Icon><TextBlock Text="&#xE895;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource TextSecondary}" /></MenuItem.Icon>
                           </MenuItem>
-                          <MenuItem Header="启动" Style="{StaticResource ThemedMenuItem}"
+                          <MenuItem Header="{DynamicResource S.install.ctx.launch}" Style="{StaticResource ThemedMenuItem}"
                                     Visibility="{Binding ShowLaunch, Converter={StaticResource BoolToVis}}"
                                     Command="{Binding PlacementTarget.Tag.LaunchCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                     CommandParameter="{Binding}">
                             <MenuItem.Icon><TextBlock Text="&#xE768;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource TextSecondary}" /></MenuItem.Icon>
                           </MenuItem>
-                          <MenuItem Header="停止" Style="{StaticResource ThemedMenuItem}"
+                          <MenuItem Header="{DynamicResource S.install.ctx.stop}" Style="{StaticResource ThemedMenuItem}"
                                     Visibility="{Binding ShowStop, Converter={StaticResource BoolToVis}}"
                                     Command="{Binding PlacementTarget.Tag.StopCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                     CommandParameter="{Binding}">
                             <MenuItem.Icon><TextBlock Text="&#xE71A;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource TextSecondary}" /></MenuItem.Icon>
                           </MenuItem>
-                          <MenuItem Header="重启" Style="{StaticResource ThemedMenuItem}"
+                          <MenuItem Header="{DynamicResource S.install.ctx.restart}" Style="{StaticResource ThemedMenuItem}"
                                     Visibility="{Binding IsInstalled, Converter={StaticResource BoolToVis}}"
                                     Command="{Binding PlacementTarget.Tag.RestartCardCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                     CommandParameter="{Binding}">
                             <MenuItem.Icon><TextBlock Text="&#xE72C;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource TextSecondary}" /></MenuItem.Icon>
                           </MenuItem>
                           <Separator Style="{StaticResource ThemedSeparator}" />
-                          <MenuItem Header="打开软件目录" Style="{StaticResource ThemedMenuItem}"
+                          <MenuItem Header="{DynamicResource S.install.ctx.openDir}" Style="{StaticResource ThemedMenuItem}"
                                     Visibility="{Binding IsInstalled, Converter={StaticResource BoolToVis}}"
                                     Command="{Binding PlacementTarget.Tag.OpenDirCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                     CommandParameter="{Binding}">
                             <MenuItem.Icon><TextBlock Text="&#xE8B7;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource TextSecondary}" /></MenuItem.Icon>
                           </MenuItem>
-                          <MenuItem Header="前往官网" Style="{StaticResource ThemedMenuItem}"
-                                    ToolTip="打开官网；未配置官网的软件改为联网搜索该软件名"
+                          <MenuItem Header="{DynamicResource S.install.ctx.homepage}" Style="{StaticResource ThemedMenuItem}"
+                                    ToolTip="{DynamicResource S.install.ctx.homepageTip}"
                                     Command="{Binding PlacementTarget.Tag.OpenHomepageCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                     CommandParameter="{Binding}">
                             <MenuItem.Icon><TextBlock Text="&#xE774;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource TextSecondary}" /></MenuItem.Icon>
                           </MenuItem>
-                          <MenuItem Header="详情…" Style="{StaticResource ThemedMenuItem}"
+                          <MenuItem Header="{DynamicResource S.install.ctx.detail}" Style="{StaticResource ThemedMenuItem}"
                                     Command="{Binding PlacementTarget.Tag.OpenDetailCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                     CommandParameter="{Binding}">
                             <MenuItem.Icon><TextBlock Text="&#xE946;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource TextSecondary}" /></MenuItem.Icon>
                           </MenuItem>
                           <Separator Style="{StaticResource ThemedSeparator}" />
-                          <MenuItem Header="卸载" Style="{StaticResource ThemedMenuItem}"
+                          <MenuItem Header="{DynamicResource S.install.ctx.uninstall}" Style="{StaticResource ThemedMenuItem}"
                                     Visibility="{Binding CanUninstall, Converter={StaticResource BoolToVis}}"
                                     Command="{Binding PlacementTarget.Tag.UninstallCardCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                     CommandParameter="{Binding}">
@@ -233,17 +233,17 @@
                             <Border CornerRadius="8" Padding="6,1" Margin="0,0,6,0" VerticalAlignment="Center"
                                     Background="{DynamicResource AccentBg}"
                                     Visibility="{Binding ShowUpdateBadge, Converter={StaticResource BoolToVis}}"
-                                    ToolTip="有可用更新">
-                              <TextBlock Text="可更新" FontSize="10" Foreground="{DynamicResource Accent}" />
+                                    ToolTip="{DynamicResource S.install.updateAvailTip}">
+                              <TextBlock Text="{DynamicResource S.install.badge.update}" FontSize="10" Foreground="{DynamicResource Accent}" />
                             </Border>
                             <Button Style="{StaticResource CardIconButton}" Content="▶" Margin="0,0,6,0"
                                     Visibility="{Binding ShowLaunch, Converter={StaticResource BoolToVis}}"
                                     Command="{Binding DataContext.LaunchCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                    CommandParameter="{Binding}" ToolTip="启动" />
+                                    CommandParameter="{Binding}" ToolTip="{DynamicResource S.install.launchTip}" />
                             <Button Style="{StaticResource CardStopButton}" Content="■" Margin="0,0,6,0"
                                     Visibility="{Binding ShowStop, Converter={StaticResource BoolToVis}}"
                                     Command="{Binding DataContext.StopCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                    CommandParameter="{Binding}" ToolTip="停止（结束进程）" />
+                                    CommandParameter="{Binding}" ToolTip="{DynamicResource S.install.stopProcTip}" />
                             <CheckBox IsChecked="{Binding IsSelected}" VerticalAlignment="Center" />
                           </StackPanel>
                         </Grid>
@@ -261,7 +261,7 @@
                           </Border>
                           <Border CornerRadius="6" Padding="6,2" Margin="0,0,5,4" Background="{DynamicResource AccentBg}"
                                   Visibility="{Binding ShowStop, Converter={StaticResource BoolToVis}}">
-                            <TextBlock Text="运行中" FontSize="11" Foreground="{DynamicResource Accent}" />
+                            <TextBlock Text="{DynamicResource S.install.badge.running}" FontSize="11" Foreground="{DynamicResource Accent}" />
                           </Border>
                         </WrapPanel>
                       </StackPanel>

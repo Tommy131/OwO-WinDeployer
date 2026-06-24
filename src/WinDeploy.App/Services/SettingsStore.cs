@@ -13,6 +13,9 @@ public sealed class AppSettings
     public string? RedactKeywords { get; set; }
     public string? Theme { get; set; }   // system | light | dark
 
+    /// <summary>界面语言：zh | en | de。null 表示首次运行未设定（按系统语言自动选择）。</summary>
+    public string? Language { get; set; }
+
     /// <summary>关闭主窗口时的行为：ask（每次询问，默认）| tray（最小化到后台常驻）| exit（直接退出）。</summary>
     public string? CloseAction { get; set; }
 
@@ -76,6 +79,12 @@ public static class SettingsStore
     public static void SetCloseAction(string action)
     {
         try { var s = Load(); s.CloseAction = action; Save(s); } catch { /* best effort */ }
+    }
+
+    /// <summary>Persist the UI language (zh | en | de). Load-modify-save.</summary>
+    public static void SetLanguage(string code)
+    {
+        try { var s = Load(); s.Language = code; Save(s); } catch { /* best effort */ }
     }
 
     /// <summary>Persist the terminal hacker-FX toggle. Load-modify-save.</summary>

@@ -1,5 +1,6 @@
 using System.IO;
 using Microsoft.Win32;
+using WinDeploy.Core.I18n;
 
 namespace WinDeploy.App.Services;
 
@@ -74,14 +75,14 @@ public static class StartupService
     {
         var list = new List<StartupEntry>();
 
-        AddRegistry(Registry.CurrentUser, Run, Registry.CurrentUser, AppRun, "HKCU 注册表", false, list);
-        AddRegistry(Registry.LocalMachine, Run, Registry.LocalMachine, AppRun, "HKLM 注册表", true, list);
-        AddRegistry(Registry.LocalMachine, Run32, Registry.LocalMachine, AppRun32, "HKLM 注册表(32位)", true, list);
+        AddRegistry(Registry.CurrentUser, Run, Registry.CurrentUser, AppRun, Localizer.T("startup.source.hkcuReg"), false, list);
+        AddRegistry(Registry.LocalMachine, Run, Registry.LocalMachine, AppRun, Localizer.T("startup.source.hklmReg"), true, list);
+        AddRegistry(Registry.LocalMachine, Run32, Registry.LocalMachine, AppRun32, Localizer.T("startup.source.hklmReg32"), true, list);
 
         AddFolder(Environment.GetFolderPath(Environment.SpecialFolder.Startup),
-            Registry.CurrentUser, "用户启动文件夹", false, list);
+            Registry.CurrentUser, Localizer.T("startup.source.userFolder"), false, list);
         AddFolder(Environment.GetFolderPath(Environment.SpecialFolder.CommonStartup),
-            Registry.LocalMachine, "公共启动文件夹", true, list);
+            Registry.LocalMachine, Localizer.T("startup.source.commonFolder"), true, list);
 
         return list;
     }
@@ -164,8 +165,8 @@ public static class StartupService
             e.Enabled = enabled;
             return (true, "");
         }
-        catch (UnauthorizedAccessException) { return (false, "需要管理员权限"); }
-        catch (System.Security.SecurityException) { return (false, "需要管理员权限"); }
+        catch (UnauthorizedAccessException) { return (false, Localizer.T("startup.err.needAdmin")); }
+        catch (System.Security.SecurityException) { return (false, Localizer.T("startup.err.needAdmin")); }
         catch (Exception ex) { return (false, ex.Message); }
     }
 
@@ -186,8 +187,8 @@ public static class StartupService
             catch { /* approved cleanup best effort */ }
             return (true, "");
         }
-        catch (UnauthorizedAccessException) { return (false, "需要管理员权限"); }
-        catch (System.Security.SecurityException) { return (false, "需要管理员权限"); }
+        catch (UnauthorizedAccessException) { return (false, Localizer.T("startup.err.needAdmin")); }
+        catch (System.Security.SecurityException) { return (false, Localizer.T("startup.err.needAdmin")); }
         catch (Exception ex) { return (false, ex.Message); }
     }
 }

@@ -1,0 +1,17 @@
+{
+  "cfgsync.apply": "套用配置",
+  "cfgsync.envVars": "环境变量",
+  "cfgsync.envVars.target": "用户环境 / PATH",
+  "cfgsync.includeAsk": "包含 ask 类（如 LM Studio）",
+  "cfgsync.processing": "处理中 …",
+  "cfgsync.ssh.generate": "生成 SSH 密钥",
+  "cfgsync.ssh.register": "并登记公钥到 GitHub",
+  "cfgsync.ssh.subtitle": "生成本机 ed25519 密钥并套用 ssh 配置；私钥永不入库。勾选后才会把公钥登记到 GitHub。",
+  "cfgsync.ssh.title": "SSH（每台设备新生成密钥）",
+  "cfgsync.status.done": "完成",
+  "cfgsync.status.failed": "失败",
+  "cfgsync.status.skip": "跳过",
+  "cfgsync.subtitle": "把仓库里的配置套用到本机（覆盖前自动备份）。会修改本机环境，请按需操作。",
+  "cfgsync.title": "配置同步",
+  "cfgsync.toApply": "将套用的配置"
+}

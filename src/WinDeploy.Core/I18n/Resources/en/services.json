@@ -1,0 +1,20 @@
+{
+  "launch.arpEntry": "Registry entry: {0}",
+  "launch.displayIcon": "DisplayIcon is non-launchable (uninstaller/icon); picking from its folder: {0}",
+  "launch.noExe": "Could not locate an executable",
+  "launch.noExeDetail": "Could not locate an executable; please launch it from the Start menu",
+  "launch.noMatch": "no match",
+  "launch.pickInstallDir": "Picked from install folder → {0}",
+  "launch.pickInstallLoc": "Picked from InstallLocation → {0}",
+  "launch.pickRunKey": "Startup registry → {0}",
+  "launch.pickSpec": "Install path (portable/custom) → {0}",
+  "launch.pickStartMenu": "Start-menu shortcut → {0}",
+  "launch.started": "Launched: {0}",
+  "launch.tryStore": "Trying Start menu / Store app…",
+  "launch.win32Fail": "Win32 launch failed: {0}, trying Store/MSIX…",
+  "store.entries": "Start-menu entries: {0}",
+  "store.launchFail": "Store launch failed: {0}",
+  "update.noReleaseOrNet": "No releases in the repo, or the network is unavailable",
+  "winlibs.llvm": " · incl. LLVM/Clang",
+  "winlibs.threads": "{0} threads"
+}

@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using WinDeploy.Core.I18n;
 
 namespace WinDeploy.App.Views;
 
@@ -14,7 +15,7 @@ public sealed class EjectResultDialog : Window
 
     public EjectResultDialog(bool success, string deviceName, string message, bool allowForce = false)
     {
-        Title = success ? "已安全弹出" : "无法弹出设备";
+        Title = success ? Localizer.T("sysov.ejectDlg.success.title") : Localizer.T("sysov.ejectDlg.fail.title");
         Width = 440;
         SizeToContent = SizeToContent.Height;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
@@ -56,7 +57,7 @@ public sealed class EjectResultDialog : Window
         Grid.SetColumn(titleStack, 1);
         titleStack.Children.Add(new TextBlock
         {
-            Text = success ? "设备已安全弹出" : "设备暂时被占用",
+            Text = success ? Localizer.T("sysov.ejectDlg.subSuccess") : Localizer.T("sysov.ejectDlg.subFail"),
             FontSize = 15,
             FontWeight = FontWeights.SemiBold,
             Foreground = Brush("TextPrimary"),
@@ -87,8 +88,8 @@ public sealed class EjectResultDialog : Window
             root.Children.Add(new TextBlock
             {
                 Text = allowForce
-                    ? "可以尝试「强制弹出」：将立即卸载该设备上的所有分区并断开连接，正在进行或未保存的读写可能丢失，请确认无重要操作后再使用。"
-                    : "请关闭正在访问该设备的程序或资源管理器窗口后重试。",
+                    ? Localizer.T("sysov.ejectDlg.busy.body")
+                    : Localizer.T("sysov.ejectDlg.notBusy.body"),
                 FontSize = 12,
                 Foreground = Brush(allowForce ? "WarnFg" : "TextTertiary"),
                 TextWrapping = TextWrapping.Wrap,
@@ -100,11 +101,11 @@ public sealed class EjectResultDialog : Window
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 20, 0, 0) };
         if (allowForce)
         {
-            var cancel = new Button { Content = "取消", MinWidth = 80, IsCancel = true };
+            var cancel = new Button { Content = Localizer.T("sysov.ejectDlg.cancel"), MinWidth = 80, IsCancel = true };
             if (Application.Current.TryFindResource("MiniButton") is Style cs) cancel.Style = cs;
             cancel.Click += (_, _) => DialogResult = false;
 
-            var force = new Button { Content = "强制弹出", MinWidth = 96, Margin = new Thickness(10, 0, 0, 0) };
+            var force = new Button { Content = Localizer.T("sysov.ejectDlg.force"), MinWidth = 96, Margin = new Thickness(10, 0, 0, 0) };
             if (Application.Current.TryFindResource("DangerButton") is Style ds) force.Style = ds;
             force.Click += (_, _) => { ForceRequested = true; DialogResult = true; };
 
@@ -113,7 +114,7 @@ public sealed class EjectResultDialog : Window
         }
         else
         {
-            var ok = new Button { Content = "知道了", MinWidth = 88, IsDefault = true, IsCancel = true };
+            var ok = new Button { Content = Localizer.T("sysov.ejectDlg.gotIt"), MinWidth = 88, IsDefault = true, IsCancel = true };
             if (Application.Current.TryFindResource("PrimaryButton") is Style s) ok.Style = s;
             ok.Click += (_, _) => DialogResult = true;
             buttons.Children.Add(ok);

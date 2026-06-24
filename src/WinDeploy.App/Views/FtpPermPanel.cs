@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using WinDeploy.App.Services.Ftp;
+using WinDeploy.Core.I18n;
 
 namespace WinDeploy.App.Views;
 
@@ -11,14 +12,14 @@ internal sealed class FtpPermPanel
 {
     private readonly (FtpPerm Flag, string Text)[] _defs =
     {
-        (FtpPerm.List,      "列目录"),
-        (FtpPerm.Download,  "下载"),
-        (FtpPerm.Upload,    "上传"),
-        (FtpPerm.Append,    "续传 / 追加"),
-        (FtpPerm.Delete,    "删除文件"),
-        (FtpPerm.Rename,    "重命名"),
-        (FtpPerm.CreateDir, "新建目录"),
-        (FtpPerm.DeleteDir, "删除目录"),
+        (FtpPerm.List,      Localizer.T("ftp.perm.list")),
+        (FtpPerm.Download,  Localizer.T("ftp.perm.download")),
+        (FtpPerm.Upload,    Localizer.T("ftp.perm.upload")),
+        (FtpPerm.Append,    Localizer.T("ftp.perm.append")),
+        (FtpPerm.Delete,    Localizer.T("ftp.perm.delete")),
+        (FtpPerm.Rename,    Localizer.T("ftp.perm.rename")),
+        (FtpPerm.CreateDir, Localizer.T("ftp.perm.createDir")),
+        (FtpPerm.DeleteDir, Localizer.T("ftp.perm.deleteDir")),
     };
     private readonly List<(FtpPerm Flag, CheckBox Box)> _boxes = new();
     private readonly List<Button> _presets = new();
@@ -26,7 +27,7 @@ internal sealed class FtpPermPanel
     public FrameworkElement Build()
     {
         var outer = new StackPanel { Margin = new Thickness(0, 6, 0, 0) };
-        outer.Children.Add(new TextBlock { Text = "权限", FontSize = 12, Foreground = Brush("TextTertiary"), Margin = new Thickness(0, 4, 0, 4) });
+        outer.Children.Add(new TextBlock { Text = Localizer.T("ftp.perm.title"), FontSize = 12, Foreground = Brush("TextTertiary"), Margin = new Thickness(0, 4, 0, 4) });
 
         var grid = new Grid();
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -44,9 +45,9 @@ internal sealed class FtpPermPanel
         outer.Children.Add(grid);
 
         var presets = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 6, 0, 0) };
-        presets.Children.Add(Preset("只读", FtpPerm.ReadOnly));
-        presets.Children.Add(Preset("完全控制", FtpPerm.Full));
-        presets.Children.Add(Preset("无", FtpPerm.None));
+        presets.Children.Add(Preset(Localizer.T("ftp.perm.presetReadOnly"), FtpPerm.ReadOnly));
+        presets.Children.Add(Preset(Localizer.T("ftp.perm.presetFull"), FtpPerm.Full));
+        presets.Children.Add(Preset(Localizer.T("ftp.perm.presetNone"), FtpPerm.None));
         outer.Children.Add(presets);
         return outer;
     }

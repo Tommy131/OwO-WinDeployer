@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using WinDeploy.App.Services;
+using WinDeploy.Core.I18n;
 
 namespace WinDeploy.App.Views;
 
@@ -12,7 +13,7 @@ public sealed class VhostDialog : Window
     private readonly TextBox _name = Tb("example.local");
     private readonly TextBox _port;
     private readonly TextBox _root = Tb(@"C:\www\example");
-    private readonly CheckBox _ssl = new() { Content = "启用 HTTPS（SSL）", Margin = new Thickness(0, 4, 0, 0) };
+    private readonly CheckBox _ssl = new() { Content = Localizer.T("ftp.vhost.enableSsl"), Margin = new Thickness(0, 4, 0, 0) };
     private readonly ComboBox _cert = new();
     private readonly ComboBox _key = new();
     private readonly StackPanel _sslPanel;
@@ -21,7 +22,7 @@ public sealed class VhostDialog : Window
 
     public VhostDialog(ServerInfo server)
     {
-        Title = $"新建站点 (vhost) · {server.Name}";
+        Title = Localizer.Format("ftp.vhost.title", server.Name);
         Width = 520;
         SizeToContent = SizeToContent.Height;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
@@ -32,17 +33,17 @@ public sealed class VhostDialog : Window
         WinDeploy.App.Behaviors.InputFilter.SetMode(_port, "portlist");   // digits + separators only
 
         var root = new StackPanel { Margin = new Thickness(20) };
-        root.Children.Add(Label("域名 / server_name"));
+        root.Children.Add(Label(Localizer.T("ftp.vhost.nameLabel")));
         root.Children.Add(_name);
-        root.Children.Add(Label("监听端口（多个端口用英文逗号分隔，如 80,8080,8443）"));
+        root.Children.Add(Label(Localizer.T("ftp.vhost.portLabel")));
         root.Children.Add(_port);
-        root.Children.Add(Label("站点根目录 (DocumentRoot)"));
+        root.Children.Add(Label(Localizer.T("ftp.vhost.docRootLabel")));
         var rootRow = new DockPanel { Margin = new Thickness(0, 0, 0, 2) };
-        var browse = new Button { Content = "浏览…", MinWidth = 64, Margin = new Thickness(8, 0, 0, 0) };
+        var browse = new Button { Content = Localizer.T("ftp.vhost.browse"), MinWidth = 64, Margin = new Thickness(8, 0, 0, 0) };
         if (Application.Current.TryFindResource("MiniButton") is Style ms) browse.Style = ms;
         browse.Click += (_, _) =>
         {
-            var d = new Microsoft.Win32.OpenFolderDialog { Title = "选择站点根目录" };
+            var d = new Microsoft.Win32.OpenFolderDialog { Title = Localizer.T("ftp.vhost.rootPickTitle") };
             if (d.ShowDialog() == true) _root.Text = d.FolderName;
         };
         DockPanel.SetDock(browse, Dock.Right);
@@ -52,9 +53,9 @@ public sealed class VhostDialog : Window
 
         root.Children.Add(_ssl);
         _sslPanel = new StackPanel { Margin = new Thickness(0, 4, 0, 0), Visibility = Visibility.Collapsed };
-        _sslPanel.Children.Add(Label("证书 (.crt/.pem)"));
+        _sslPanel.Children.Add(Label(Localizer.T("ftp.vhost.certLabel")));
         _sslPanel.Children.Add(StyleCombo(_cert));
-        _sslPanel.Children.Add(Label("私钥 (.key)"));
+        _sslPanel.Children.Add(Label(Localizer.T("ftp.vhost.keyLabel")));
         _sslPanel.Children.Add(StyleCombo(_key));
         var certs = ServerManager.ListCerts(server);
         foreach (var c in certs)
@@ -65,14 +66,14 @@ public sealed class VhostDialog : Window
         if (_cert.Items.Count > 0) _cert.SelectedIndex = 0;
         if (_key.Items.Count > 0) _key.SelectedIndex = 0;
         if (certs.Count == 0)
-            _sslPanel.Children.Add(new TextBlock { Text = "SSL 目录暂无证书，请先在「SSL 证书」区域生成或导入。", FontSize = 11.5, Foreground = Brush("WarnFg"), Margin = new Thickness(0, 6, 0, 0), TextWrapping = TextWrapping.Wrap });
+            _sslPanel.Children.Add(new TextBlock { Text = Localizer.T("ftp.vhost.noCert"), FontSize = 11.5, Foreground = Brush("WarnFg"), Margin = new Thickness(0, 6, 0, 0), TextWrapping = TextWrapping.Wrap });
         root.Children.Add(_sslPanel);
         _ssl.Checked += (_, _) => { _sslPanel.Visibility = Visibility.Visible; if (_port.Text.Trim() == "80") _port.Text = "443"; };
         _ssl.Unchecked += (_, _) => { _sslPanel.Visibility = Visibility.Collapsed; if (_port.Text.Trim() == "443") _port.Text = "80"; };
 
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 18, 0, 0) };
-        var ok = new Button { Content = "创建", MinWidth = 88, Margin = new Thickness(0, 0, 8, 0), IsDefault = true };
-        var cancel = new Button { Content = "取消", MinWidth = 72, IsCancel = true };
+        var ok = new Button { Content = Localizer.T("ftp.vhost.create"), MinWidth = 88, Margin = new Thickness(0, 0, 8, 0), IsDefault = true };
+        var cancel = new Button { Content = Localizer.T("common.cancel"), MinWidth = 72, IsCancel = true };
         if (Application.Current.TryFindResource("PrimaryButton") is Style okS) ok.Style = okS;
         if (Application.Current.TryFindResource("MiniButton") is Style caS) cancel.Style = caS;
         ok.Click += (_, _) => OnOk();
@@ -89,12 +90,12 @@ public sealed class VhostDialog : Window
     {
         var name = _name.Text.Trim();
         var rootDir = _root.Text.Trim();
-        if (name.Length == 0) { MessageBox.Show("请填写域名 / server_name", "新建站点"); return; }
-        if (rootDir.Length == 0) { MessageBox.Show("请填写站点根目录", "新建站点"); return; }
+        if (name.Length == 0) { Dialogs.Show(Localizer.T("ftp.vhost.nameRequired"), Localizer.T("ftp.vhost.titleShort")); return; }
+        if (rootDir.Length == 0) { Dialogs.Show(Localizer.T("ftp.vhost.rootRequired"), Localizer.T("ftp.vhost.titleShort")); return; }
         var ports = ParsePorts(_port.Text);
-        if (ports.Count == 0) { MessageBox.Show("端口无效。多个端口请用英文逗号分隔，例如 80,8080,8443", "新建站点"); return; }
+        if (ports.Count == 0) { Dialogs.Show(Localizer.T("ftp.vhost.portInvalid"), Localizer.T("ftp.vhost.titleShort")); return; }
         var ssl = _ssl.IsChecked == true;
-        if (ssl && (_cert.SelectedItem == null || _key.SelectedItem == null)) { MessageBox.Show("启用 HTTPS 需要选择证书与私钥", "新建站点"); return; }
+        if (ssl && (_cert.SelectedItem == null || _key.SelectedItem == null)) { Dialogs.Show(Localizer.T("ftp.vhost.sslNeedCert"), Localizer.T("ftp.vhost.titleShort")); return; }
         Result = new VhostSpec(name, ports, rootDir, ssl, _cert.SelectedItem as string, _key.SelectedItem as string);
         DialogResult = true;
     }

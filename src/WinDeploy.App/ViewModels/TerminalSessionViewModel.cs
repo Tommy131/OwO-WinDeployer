@@ -2,6 +2,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Media;
 using WinDeploy.App.Services;
+using WinDeploy.Core.I18n;
 
 namespace WinDeploy.App.ViewModels;
 
@@ -66,7 +67,7 @@ public sealed class TerminalSessionViewModel : ObservableObject, IDisposable
 
     public bool Supported => PtySession.IsSupported;
 
-    private string _status = "未启动";
+    private string _status = Localizer.T("term.status.notStarted");
     public string Status { get => _status; private set => Set(ref _status, value); }
 
     // ── lifecycle (driven by the surface's measured size while this session is active) ──────────
@@ -94,8 +95,8 @@ public sealed class TerminalSessionViewModel : ObservableObject, IDisposable
         if (!PtySession.IsSupported)
         {
             Screen.Clear();
-            Screen.FeedSystem("当前系统不支持 ConPTY（需 Windows 10 1809 及以上版本）。");
-            Status = "不支持";
+            Screen.FeedSystem(Localizer.T("term.surface.notSupported"));
+            Status = Localizer.T("term.status.notSupported");
             return;
         }
         KillPty();
@@ -112,7 +113,7 @@ public sealed class TerminalSessionViewModel : ObservableObject, IDisposable
             Status = Shell.Name + " · " + dir;
             Reset?.Invoke();
         }
-        catch (Exception ex) { Screen.FeedSystem("启动失败：" + ex.Message); Status = "启动失败"; }
+        catch (Exception ex) { Screen.FeedSystem(Localizer.Format("term.surface.startFailed", ex.Message)); Status = Localizer.T("term.status.startFailed"); }
     }
 
     private void OnOutput(string s) => Screen.Feed(s);   // VtScreen.Feed is lock-guarded (reader thread)
@@ -121,8 +122,8 @@ public sealed class TerminalSessionViewModel : ObservableObject, IDisposable
     {
         var disp = Application.Current?.Dispatcher;
         if (disp != null && !disp.CheckAccess()) { disp.BeginInvoke(new Action(OnExited)); return; }
-        Screen.FeedSystem("[会话已结束 — 按「重启」开启新会话]");
-        Status = "已退出";
+        Screen.FeedSystem(Localizer.T("term.surface.exited"));
+        Status = Localizer.T("term.status.exited");
         _started = false;
     }
 

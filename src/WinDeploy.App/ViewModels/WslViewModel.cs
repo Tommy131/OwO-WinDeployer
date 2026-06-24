@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Windows;
 using WinDeploy.App.Services;
+using WinDeploy.Core.I18n;
 
 namespace WinDeploy.App.ViewModels;
 
@@ -17,7 +18,7 @@ public sealed class WslDistroRowViewModel
 
 /// <summary>The "WSL" page (开发人员模式): list installed distros, install from the online catalog, set
 /// default, launch, terminate, export (backup .tar) and unregister. Dev-only.</summary>
-public sealed class WslViewModel : ObservableObject
+public sealed class WslViewModel : LocalizedObject
 {
     public ObservableCollection<WslDistroRowViewModel> Distros { get; } = new();
     public ObservableCollection<WslOnline> Online { get; } = new();
@@ -37,14 +38,21 @@ public sealed class WslViewModel : ObservableObject
     {
         RefreshCommand = new RelayCommand(_ => _ = LoadAsync());
         InstallCommand = new RelayCommand(_ => Install(), _ => FeatureEnabled && SelectedOnline != null);
-        ShutdownCommand = new RelayCommand(_ => _ = ActAsync(Wsl.ShutdownAsync(), "已关闭所有 WSL 实例"));
-        SetDefaultCommand = new RelayCommand(p => { if (p is WslDistroRowViewModel r) _ = ActAsync(Wsl.SetDefaultAsync(r.Name), $"已设为默认：{r.Name}"); });
-        TerminateCommand = new RelayCommand(p => { if (p is WslDistroRowViewModel r) _ = ActAsync(Wsl.TerminateAsync(r.Name), $"已停止：{r.Name}"); });
+        ShutdownCommand = new RelayCommand(_ => _ = ActAsync(Wsl.ShutdownAsync(), Localizer.T("wsl.msg.shutdownAll")));
+        SetDefaultCommand = new RelayCommand(p => { if (p is WslDistroRowViewModel r) _ = ActAsync(Wsl.SetDefaultAsync(r.Name), Localizer.Format("wsl.msg.setDefault", r.Name)); });
+        TerminateCommand = new RelayCommand(p => { if (p is WslDistroRowViewModel r) _ = ActAsync(Wsl.TerminateAsync(r.Name), Localizer.Format("wsl.msg.terminated", r.Name)); });
         ExportCommand = new RelayCommand(p => { if (p is WslDistroRowViewModel r) _ = ExportAsync(r); });
         UnregisterCommand = new RelayCommand(p => { if (p is WslDistroRowViewModel r) _ = UnregisterAsync(r); });
         LaunchCommand = new RelayCommand(p => { if (p is WslDistroRowViewModel r) Wsl.LaunchVisible($"-d \"{r.Name}\""); });
-        OpenFeaturesCommand = new RelayCommand(_ => { var (_, m) = Wsl.OpenWindowsFeatures(); Note = m + "：勾选「适用于 Linux 的 Windows 子系统」与「虚拟机平台」，确定后重启，再回到本页点刷新。"; });
-        EnableFeatureCommand = new RelayCommand(_ => { var (ok, m) = Wsl.EnableFeatureVisible(); Note = ok ? "正在启用 WSL 功能（请在新窗口允许 UAC，完成后重启系统再刷新）。" : m; });
+        OpenFeaturesCommand = new RelayCommand(_ => { var (_, m) = Wsl.OpenWindowsFeatures(); Note = Localizer.Format("wsl.msg.featuresOpenedHint", m); });
+        EnableFeatureCommand = new RelayCommand(_ => { var (ok, m) = Wsl.EnableFeatureVisible(); Note = ok ? Localizer.T("wsl.msg.enabling") : m; });
+        _ = LoadAsync();
+    }
+
+    protected override void OnCultureChanged()
+    {
+        base.OnCultureChanged();
+        // Reload so the status note is rebuilt in the new language.
         _ = LoadAsync();
     }
 
@@ -70,11 +78,11 @@ public sealed class WslViewModel : ObservableObject
         {
             Distros.Clear();
             Online.Clear();
-            Note = "WSL 功能未启用：请先在「控制面板 → 程序 → 启用或关闭 Windows 功能」勾选 WSL 后再下载发行版。";
+            Note = Localizer.T("wsl.msg.featureDisabled");
             return;
         }
 
-        Note = "正在读取 WSL 发行版 …";
+        Note = Localizer.T("wsl.msg.loading");
         var distros = await Wsl.ListAsync();
         Distros.Clear();
         foreach (var d in distros) Distros.Add(new WslDistroRowViewModel(d));
@@ -83,8 +91,8 @@ public sealed class WslViewModel : ObservableObject
         {
             try { foreach (var o in await Wsl.ListOnlineAsync()) Online.Add(o); } catch { /* offline */ }
         }
-        var wsl2 = Wsl.IsVmPlatformEnabled() ? "" : "（注意：未启用「虚拟机平台」，WSL2 不可用，可在 Windows 功能中补勾选）";
-        Note = $"已安装 {Distros.Count} 个发行版{wsl2}";
+        var wsl2 = Wsl.IsVmPlatformEnabled() ? "" : Localizer.T("wsl.msg.noVmPlatform");
+        Note = Localizer.Format("wsl.msg.installed", Distros.Count, wsl2);
     }
 
     private void Install()
@@ -92,7 +100,7 @@ public sealed class WslViewModel : ObservableObject
         var name = SelectedOnline?.Name;
         if (name == null) return;
         var (ok, msg) = Wsl.InstallVisible(name);
-        Note = ok ? $"已在新窗口中安装 {name}（完成后点刷新）" : msg;
+        Note = ok ? Localizer.Format("wsl.msg.installing", name) : msg;
     }
 
     private async Task ActAsync(Task<(bool Ok, string Msg)> op, string okMsg)
@@ -106,10 +114,10 @@ public sealed class WslViewModel : ObservableObject
     {
         var dlg = new Microsoft.Win32.SaveFileDialog
         {
-            Title = $"导出 {r.Name}", FileName = $"{r.Name}.tar", Filter = "tar 备份 (*.tar)|*.tar",
+            Title = Localizer.Format("wsl.export.saveTitle", r.Name), FileName = $"{r.Name}.tar", Filter = Localizer.T("wsl.export.filter"),
         };
         if (dlg.ShowDialog() != true) return;
-        Note = $"正在导出 {r.Name} …（较大发行版可能耗时数分钟）";
+        Note = Localizer.Format("wsl.msg.exporting", r.Name);
         var (ok, msg) = await Wsl.ExportAsync(r.Name, dlg.FileName);
         Note = msg;
         if (ok) AuditLog.Action($"WSL 导出：{r.Name} → {dlg.FileName}");
@@ -117,10 +125,10 @@ public sealed class WslViewModel : ObservableObject
 
     private async Task UnregisterAsync(WslDistroRowViewModel r)
     {
-        if (MessageBox.Show($"注销并删除发行版「{r.Name}」？\n\n这会删除该发行版的全部数据，不可恢复！\n建议先「导出备份」。",
-                "注销 WSL 发行版", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        if (Dialogs.Show(Localizer.Format("wsl.unregister.confirm", r.Name),
+                Localizer.T("wsl.unregister.title"), MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
         var (ok, msg) = await Wsl.UnregisterAsync(r.Name);
-        Note = ok ? $"已注销：{r.Name}" : msg;
+        Note = ok ? Localizer.Format("wsl.msg.unregistered", r.Name) : msg;
         if (ok) AuditLog.Action($"WSL 注销：{r.Name}");
         await LoadAsync();
     }

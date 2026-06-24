@@ -1,4 +1,5 @@
 using Microsoft.Win32;
+using WinDeploy.Core.I18n;
 
 namespace WinDeploy.App.Services;
 
@@ -36,21 +37,22 @@ public static class RegTweaks
 
     public static readonly IReadOnlyList<RegTweak> All = new[]
     {
-        new RegTweak { Id = "fileext", Title = "显示文件扩展名", Detail = "在资源管理器中始终显示已知文件类型的扩展名",
+        // Title / Detail are localization keys (tweaks.item.<id>.title|detail), resolved in TweakRowViewModel.
+        new RegTweak { Id = "fileext", Title = "tweaks.item.fileext.title", Detail = "tweaks.item.fileext.detail",
             Path = Adv, Value = "HideFileExt", On = 0, Off = 1, RestartExplorer = true },
-        new RegTweak { Id = "hidden", Title = "显示隐藏文件", Detail = "显示隐藏的文件和文件夹",
+        new RegTweak { Id = "hidden", Title = "tweaks.item.hidden.title", Detail = "tweaks.item.hidden.detail",
             Path = Adv, Value = "Hidden", On = 1, Off = 2, RestartExplorer = true },
-        new RegTweak { Id = "darkapps", Title = "应用深色模式", Detail = "应用使用深色主题",
+        new RegTweak { Id = "darkapps", Title = "tweaks.item.darkapps.title", Detail = "tweaks.item.darkapps.detail",
             Path = Personalize, Value = "AppsUseLightTheme", On = 0, Off = 1, MinBuild = OsInfo.Win10_1809 },
-        new RegTweak { Id = "darksys", Title = "系统深色模式", Detail = "任务栏 / 开始菜单使用深色主题",
+        new RegTweak { Id = "darksys", Title = "tweaks.item.darksys.title", Detail = "tweaks.item.darksys.detail",
             Path = Personalize, Value = "SystemUsesLightTheme", On = 0, Off = 1, MinBuild = OsInfo.Win10_1809 },
-        new RegTweak { Id = "thispc", Title = "资源管理器默认打开“此电脑”", Detail = "而非“快速访问 / 主文件夹”",
+        new RegTweak { Id = "thispc", Title = "tweaks.item.thispc.title", Detail = "tweaks.item.thispc.detail",
             Path = Adv, Value = "LaunchTo", On = 1, Off = 2 },
-        new RegTweak { Id = "clockseconds", Title = "任务栏时钟显示秒", Detail = "在系统托盘时钟中显示秒（Win11 22H2+）",
+        new RegTweak { Id = "clockseconds", Title = "tweaks.item.clockseconds.title", Detail = "tweaks.item.clockseconds.detail",
             Path = Adv, Value = "ShowSecondsInSystemClock", On = 1, Off = 0, RestartExplorer = true, MinBuild = OsInfo.Win11_22H2 },
-        new RegTweak { Id = "classicmenu", Title = "经典右键菜单（Win11）", Detail = "恢复 Windows 10 风格的完整右键菜单",
+        new RegTweak { Id = "classicmenu", Title = "tweaks.item.classicmenu.title", Detail = "tweaks.item.classicmenu.detail",
             Kind = TweakKind.ClassicMenu, Path = ClassicClsid, RestartExplorer = true, MinBuild = OsInfo.Win11_21H2 },
-        new RegTweak { Id = "telemetry", Title = "关闭遥测（需管理员）", Detail = "将诊断数据级别设为“安全/关闭”（HKLM 策略）",
+        new RegTweak { Id = "telemetry", Title = "tweaks.item.telemetry.title", Detail = "tweaks.item.telemetry.detail",
             Hive = RegistryHive.LocalMachine, Path = @"SOFTWARE\Policies\Microsoft\Windows\DataCollection",
             Value = "AllowTelemetry", On = 0, Off = 1, NeedsAdmin = true },
     };
@@ -96,8 +98,8 @@ public static class RegTweaks
             key!.SetValue(t.Value, on ? t.On : t.Off, RegistryValueKind.DWord);
             return (true, "");
         }
-        catch (UnauthorizedAccessException) { return (false, "需要管理员权限"); }
-        catch (System.Security.SecurityException) { return (false, "需要管理员权限"); }
+        catch (UnauthorizedAccessException) { return (false, Localizer.T("tweaks.err.needAdmin")); }
+        catch (System.Security.SecurityException) { return (false, Localizer.T("tweaks.err.needAdmin")); }
         catch (Exception ex) { return (false, ex.Message); }
     }
 

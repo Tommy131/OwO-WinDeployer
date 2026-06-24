@@ -8,4 +8,10 @@
     <RootNamespace>WinDeploy.Core</RootNamespace>
   </PropertyGroup>
 
+  <!-- i18n translation dictionaries: per-area JSON under I18n/Resources/<lang>/, merged at load by Localizer.
+       Embedded into the assembly so single-file publish keeps them with the binary. -->
+  <ItemGroup>
+    <EmbeddedResource Include="I18n/Resources/**/*.json" />
+  </ItemGroup>
+
 </Project>

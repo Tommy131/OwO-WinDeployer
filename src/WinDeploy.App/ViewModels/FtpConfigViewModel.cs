@@ -1,7 +1,9 @@
 using System.Collections.ObjectModel;
 using System.Windows;
+using WinDeploy.App;
 using WinDeploy.App.Services;
 using WinDeploy.App.Services.Ftp;
+using WinDeploy.Core.I18n;
 
 namespace WinDeploy.App.ViewModels;
 
@@ -10,18 +12,18 @@ public static class FtpPermText
 {
     public static string Summary(FtpPerm p)
     {
-        if (p == FtpPerm.Full) return "完全控制";
-        if (p == FtpPerm.ReadOnly) return "只读（列目录 + 下载）";
-        if (p == FtpPerm.None) return "无权限";
+        if (p == FtpPerm.Full) return Localizer.T("ftp.perm.full");
+        if (p == FtpPerm.ReadOnly) return Localizer.T("ftp.perm.readOnly");
+        if (p == FtpPerm.None) return Localizer.T("ftp.perm.noPerm");
         var bits = new List<string>();
-        if (p.HasFlag(FtpPerm.List)) bits.Add("列目录");
-        if (p.HasFlag(FtpPerm.Download)) bits.Add("下载");
-        if (p.HasFlag(FtpPerm.Upload)) bits.Add("上传");
-        if (p.HasFlag(FtpPerm.Append)) bits.Add("续传");
-        if (p.HasFlag(FtpPerm.Delete)) bits.Add("删文件");
-        if (p.HasFlag(FtpPerm.Rename)) bits.Add("重命名");
-        if (p.HasFlag(FtpPerm.CreateDir)) bits.Add("建目录");
-        if (p.HasFlag(FtpPerm.DeleteDir)) bits.Add("删目录");
+        if (p.HasFlag(FtpPerm.List)) bits.Add(Localizer.T("ftp.perm.sumList"));
+        if (p.HasFlag(FtpPerm.Download)) bits.Add(Localizer.T("ftp.perm.download"));
+        if (p.HasFlag(FtpPerm.Upload)) bits.Add(Localizer.T("ftp.perm.upload"));
+        if (p.HasFlag(FtpPerm.Append)) bits.Add(Localizer.T("ftp.perm.sumAppend"));
+        if (p.HasFlag(FtpPerm.Delete)) bits.Add(Localizer.T("ftp.perm.sumDelete"));
+        if (p.HasFlag(FtpPerm.Rename)) bits.Add(Localizer.T("ftp.perm.rename"));
+        if (p.HasFlag(FtpPerm.CreateDir)) bits.Add(Localizer.T("ftp.perm.sumCreateDir"));
+        if (p.HasFlag(FtpPerm.DeleteDir)) bits.Add(Localizer.T("ftp.perm.sumDeleteDir"));
         return string.Join(" · ", bits);
     }
 }
@@ -31,12 +33,12 @@ public sealed class FtpUserRow : ObservableObject
     public FtpUser Model { get; }
     public FtpUserRow(FtpUser m) { Model = m; }
     public string Name => Model.Name;
-    public string Group => string.IsNullOrEmpty(Model.Group) ? "" : "组 " + Model.Group;
+    public string Group => string.IsNullOrEmpty(Model.Group) ? "" : Localizer.Format("ftp.user.groupPrefix", Model.Group);
     public string Home => Model.Home;
     public bool Enabled => Model.Enabled;
     public string PermText => Model.UseGroupPermissions && !string.IsNullOrEmpty(Model.Group)
-        ? "（继承组）" : FtpPermText.Summary(Model.Permissions);
-    public string StateText => Model.Enabled ? "启用" : "停用";
+        ? Localizer.T("ftp.perm.inherit") : FtpPermText.Summary(Model.Permissions);
+    public string StateText => Model.Enabled ? Localizer.T("ftp.user.stateEnabled") : Localizer.T("ftp.user.stateDisabled");
     public string StateBrush => Model.Enabled ? "OkFg" : "TextTertiary";
     public void Raise() { OnPropertyChanged(""); }
 }
@@ -46,7 +48,7 @@ public sealed class FtpGroupRow : ObservableObject
     public FtpGroup Model { get; }
     public FtpGroupRow(FtpGroup m) { Model = m; }
     public string Name => Model.Name;
-    public string Home => string.IsNullOrEmpty(Model.Home) ? "（成员各自指定）" : Model.Home!;
+    public string Home => string.IsNullOrEmpty(Model.Home) ? Localizer.T("ftp.group.homeUnset") : Model.Home!;
     public string PermText => FtpPermText.Summary(Model.Permissions);
     public void Raise() { OnPropertyChanged(""); }
 }
@@ -54,7 +56,7 @@ public sealed class FtpGroupRow : ObservableObject
 /// <summary>The 服务端配置 tab: scalar server parameters (ports, TLS, passive range, concurrency caps,
 /// anonymous access) plus FileZilla-style user and group management. Holds the live config object; the
 /// server-run tab starts from <see cref="Snapshot"/>, and <see cref="SaveCommand"/> persists to ftp.json.</summary>
-public sealed class FtpConfigViewModel : ObservableObject
+public sealed class FtpConfigViewModel : LocalizedObject
 {
     private readonly FtpServerConfig _cfg;
 
@@ -139,10 +141,10 @@ public sealed class FtpConfigViewModel : ObservableObject
     private string _anonymousHome; public string AnonymousHome { get => _anonymousHome; set { if (Set(ref _anonymousHome, value)) Touch(); } }
     private bool _anonAllowUpload; public bool AnonAllowUpload { get => _anonAllowUpload; set { if (Set(ref _anonAllowUpload, value)) Touch(); } }
 
-    private string _note = "配置用户、分组、权限、端口、并发与 SSL。修改后点击「保存配置」持久化。";
+    private string _note = Localizer.T("ftp.config.defaultNote");
     public string Note { get => _note; set => Set(ref _note, value); }
 
-    private void Touch() { if (Note.Length > 0 && !Note.StartsWith("●")) Note = "● 有未保存的修改，点击「保存配置」。"; }
+    private void Touch() { if (Note.Length > 0 && !Note.StartsWith("●")) Note = Localizer.T("ftp.config.dirtyNote"); }
 
     public RelayCommand SaveCommand { get; }
     public RelayCommand BrowseCertCommand { get; }
@@ -189,15 +191,15 @@ public sealed class FtpConfigViewModel : ObservableObject
         Snapshot();
         FtpConfigStore.Save(_cfg);
         AuditLog.Action($"FTP 配置已保存 · 端口 {_cfg.Port} · TLS {_cfg.TlsMode} · 用户 {_cfg.Users.Count} · 分组 {_cfg.Groups.Count}");
-        Note = $"已保存（{FtpConfigStore.FilePath}）。若服务端正在运行，请重启以生效。";
+        Note = Localizer.Format("ftp.config.saved", FtpConfigStore.FilePath);
     }
 
     private void BrowseCert()
     {
         var d = new Microsoft.Win32.OpenFileDialog
         {
-            Title = "选择服务器证书",
-            Filter = "证书 (*.pfx;*.p12;*.crt;*.cer;*.pem)|*.pfx;*.p12;*.crt;*.cer;*.pem|所有文件 (*.*)|*.*",
+            Title = Localizer.T("ftp.config.browseCertTitle"),
+            Filter = Localizer.T("ftp.config.browseCertFilter"),
         };
         if (d.ShowDialog() == true) CertPath = d.FileName;
     }
@@ -206,8 +208,8 @@ public sealed class FtpConfigViewModel : ObservableObject
     {
         var d = new Microsoft.Win32.OpenFileDialog
         {
-            Title = "选择私钥 (PEM)",
-            Filter = "私钥 (*.key;*.pem)|*.key;*.pem|所有文件 (*.*)|*.*",
+            Title = Localizer.T("ftp.config.browseKeyTitle"),
+            Filter = Localizer.T("ftp.config.browseKeyFilter"),
         };
         if (d.ShowDialog() == true) KeyPath = d.FileName;
     }
@@ -219,13 +221,13 @@ public sealed class FtpConfigViewModel : ObservableObject
         if (dlg.ShowDialog() != true || dlg.Result == null) return;
         if (_cfg.Users.Any(u => u.Name.Equals(dlg.Result.Name, StringComparison.OrdinalIgnoreCase)))
         {
-            MessageBox.Show("已存在同名用户。", "添加用户", MessageBoxButton.OK, MessageBoxImage.Warning);
+            Dialogs.Show(Localizer.T("ftp.user.addDuplicate"), Localizer.T("ftp.user.addTitle"), MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
         _cfg.Users.Add(dlg.Result);
         Users.Add(new FtpUserRow(dlg.Result));
         OnPropertyChanged(nameof(NoUsers));
-        Persist($"新增用户 {dlg.Result.Name}");
+        Persist(Localizer.Format("ftp.config.userAdded", dlg.Result.Name), $"新增用户 {dlg.Result.Name}");
     }
 
     private void EditUser(FtpUserRow row)
@@ -236,16 +238,16 @@ public sealed class FtpConfigViewModel : ObservableObject
         if (idx >= 0) _cfg.Users[idx] = dlg.Result;
         var rIdx = Users.IndexOf(row);
         if (rIdx >= 0) Users[rIdx] = new FtpUserRow(dlg.Result);
-        Persist($"编辑用户 {dlg.Result.Name}");
+        Persist(Localizer.Format("ftp.config.userEdited", dlg.Result.Name), $"编辑用户 {dlg.Result.Name}");
     }
 
     private void RemoveUser(FtpUserRow row)
     {
-        if (MessageBox.Show($"删除用户 {row.Name}？", "删除用户", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        if (Dialogs.Show(Localizer.Format("ftp.user.removeConfirm", row.Name), Localizer.T("ftp.user.removeTitle"), MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
         _cfg.Users.Remove(row.Model);
         Users.Remove(row);
         OnPropertyChanged(nameof(NoUsers));
-        Persist($"删除用户 {row.Name}");
+        Persist(Localizer.Format("ftp.config.userRemoved", row.Name), $"删除用户 {row.Name}");
     }
 
     // ── groups ────────────────────────────────────────────────────────────────
@@ -255,13 +257,13 @@ public sealed class FtpConfigViewModel : ObservableObject
         if (dlg.ShowDialog() != true || dlg.Result == null) return;
         if (_cfg.Groups.Any(g => g.Name.Equals(dlg.Result.Name, StringComparison.OrdinalIgnoreCase)))
         {
-            MessageBox.Show("已存在同名分组。", "添加分组", MessageBoxButton.OK, MessageBoxImage.Warning);
+            Dialogs.Show(Localizer.T("ftp.group.addDuplicate"), Localizer.T("ftp.group.addTitle"), MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
         _cfg.Groups.Add(dlg.Result);
         Groups.Add(new FtpGroupRow(dlg.Result));
         OnPropertyChanged(nameof(NoGroups));
-        Persist($"新增分组 {dlg.Result.Name}");
+        Persist(Localizer.Format("ftp.config.groupAdded", dlg.Result.Name), $"新增分组 {dlg.Result.Name}");
     }
 
     private void EditGroup(FtpGroupRow row)
@@ -276,30 +278,37 @@ public sealed class FtpConfigViewModel : ObservableObject
         // keep member references consistent if the group was renamed
         if (!old.Equals(dlg.Result.Name, StringComparison.Ordinal))
             foreach (var u in _cfg.Users.Where(u => u.Group == old)) u.Group = dlg.Result.Name;
-        Persist($"编辑分组 {dlg.Result.Name}");
+        Persist(Localizer.Format("ftp.config.groupEdited", dlg.Result.Name), $"编辑分组 {dlg.Result.Name}");
     }
 
     private void RemoveGroup(FtpGroupRow row)
     {
-        if (MessageBox.Show($"删除分组 {row.Name}？\n属于该组的用户将变为「无分组」。", "删除分组",
+        if (Dialogs.Show(Localizer.Format("ftp.group.removeConfirm", row.Name), Localizer.T("ftp.group.removeTitle"),
                 MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
         _cfg.Groups.Remove(row.Model);
         Groups.Remove(row);
         foreach (var u in _cfg.Users.Where(u => u.Group == row.Name)) u.Group = null;
         for (var i = 0; i < Users.Count; i++) Users[i] = new FtpUserRow(Users[i].Model);   // refresh group column
         OnPropertyChanged(nameof(NoGroups));
-        Persist($"删除分组 {row.Name}");
+        Persist(Localizer.Format("ftp.config.groupRemoved", row.Name), $"删除分组 {row.Name}");
     }
 
     private List<string> GroupNames() => _cfg.Groups.Select(g => g.Name).ToList();
 
     /// <summary>User/group edits are discrete actions — persist them immediately so they survive a restart
     /// even without pressing 保存配置 (which is for the scalar fields).</summary>
-    private void Persist(string action)
+    private void Persist(string note, string auditAction)
     {
         Snapshot();
         FtpConfigStore.Save(_cfg);
-        AuditLog.Action("FTP：" + action);
-        Note = action + "（已保存）。";
+        AuditLog.Action("FTP：" + auditAction);
+        Note = Localizer.Format("ftp.config.savedNote", note);
+    }
+
+    protected override void OnCultureChanged()
+    {
+        base.OnCultureChanged();
+        foreach (var u in Users) u.RaiseAllPropertiesChanged();
+        foreach (var g in Groups) g.RaiseAllPropertiesChanged();
     }
 }

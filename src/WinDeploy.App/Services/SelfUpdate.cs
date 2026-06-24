@@ -1,3 +1,5 @@
+using WinDeploy.Core.I18n;
+
 namespace WinDeploy.App.Services;
 
 /// <summary>Result of an app self-update check.</summary>
@@ -14,7 +16,7 @@ public static class SelfUpdate
         try
         {
             var rel = await GitHub.LatestReleaseAsync(AppInfo.Repo, force);
-            if (rel == null) return new(false, "", cur, fallbackUrl, "仓库暂无发布版或网络不可用");
+            if (rel == null) return new(false, "", cur, fallbackUrl, Localizer.T("update.noReleaseOrNet"));
             var latest = rel.Tag.TrimStart('v', 'V');
             var url = string.IsNullOrWhiteSpace(rel.HtmlUrl) ? fallbackUrl : rel.HtmlUrl;
             var available = !string.IsNullOrWhiteSpace(latest) && UpdateChecker.CompareSemver(latest, cur) > 0;

@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Threading;
 using WinDeploy.App.Services;
 using WinDeploy.Core;
+using WinDeploy.Core.I18n;
 using WinDeploy.Core.Models;
 
 namespace WinDeploy.App.ViewModels;
@@ -11,7 +12,7 @@ namespace WinDeploy.App.ViewModels;
 /// <summary>The "服务配置" page host. Implements nested navigation: it shows a <see cref="ServerListViewModel"/>
 /// (home — all supported servers) and, when one is opened, swaps to a <see cref="ServerDetailViewModel"/>
 /// (per-server management). The active sub-page is exposed via <see cref="Current"/>.</summary>
-public sealed class ServiceConfigViewModel : ObservableObject
+public sealed class ServiceConfigViewModel : LocalizedObject
 {
     private Catalog? _catalog;
     private PathResolver _resolver = new(new Dictionary<string, string>());
@@ -53,6 +54,12 @@ public sealed class ServiceConfigViewModel : ObservableObject
         var detail = new ServerDetailViewModel(info, () => { _list?.Refresh(); Current = _list; });
         Current = detail;
     }
+
+    protected override void OnCultureChanged()
+    {
+        base.OnCultureChanged();
+        if (_current is LocalizedObject vm) vm.RaiseAllPropertiesChanged();
+    }
 }
 
 // ── home: list of supported servers ──────────────────────────────────────────
@@ -73,21 +80,21 @@ public sealed class ServerCardViewModel : ObservableObject
     {
         get
         {
-            var bits = new List<string> { $"{ConfigCount} 个配置文件" };
-            if (Info.SupportsVhost) bits.Add("站点 vhost");
-            if (Info.SupportsSsl) bits.Add("SSL");
-            if (Info.HasService) bits.Add("进程管理");
+            var bits = new List<string> { Localizer.Format("svc.summary.configCount", ConfigCount) };
+            if (Info.SupportsVhost) bits.Add(Localizer.T("svc.summary.vhost"));
+            if (Info.SupportsSsl) bits.Add(Localizer.T("svc.summary.ssl"));
+            if (Info.HasService) bits.Add(Localizer.T("svc.summary.processMgmt"));
             return string.Join(" · ", bits);
         }
     }
 
     private bool _running;
     public bool Running { get => _running; set { if (Set(ref _running, value)) { OnPropertyChanged(nameof(StatusText)); OnPropertyChanged(nameof(StatusBrush)); } } }
-    public string StatusText => !Info.HasService ? "—" : _running ? "运行中" : "已停止";
+    public string StatusText => !Info.HasService ? "—" : _running ? Localizer.T("svc.status.running") : Localizer.T("svc.status.stopped");
     public string StatusBrush => _running ? "OkFg" : "TextTertiary";
 }
 
-public sealed class ServerListViewModel : ObservableObject
+public sealed class ServerListViewModel : LocalizedObject
 {
     private readonly Catalog _catalog;
     private readonly PathResolver _resolver;
@@ -121,9 +128,18 @@ public sealed class ServerListViewModel : ObservableObject
         OnPropertyChanged(nameof(HasServers));
         OnPropertyChanged(nameof(NoServers));
         Note = Servers.Count == 0
-            ? "未检测到受支持的 Web 服务端，请前往软件安装中心安装 nginx / Apache / Tomcat / PHP 后在此处管理。"
-            : $"已检测到 {Servers.Count} 个服务端，点击进入可管理配置、SSL、站点与进程。";
+            ? Localizer.T("svc.list.empty")
+            : Localizer.Format("svc.list.found", Servers.Count);
         _ = ProbeStatusAsync();
+    }
+
+    protected override void OnCultureChanged()
+    {
+        base.OnCultureChanged();
+        Note = Servers.Count == 0
+            ? Localizer.T("svc.list.empty")
+            : Localizer.Format("svc.list.found", Servers.Count);
+        foreach (var c in Servers) c.RaiseAllPropertiesChanged();
     }
 
     private async Task ProbeStatusAsync()
@@ -138,7 +154,7 @@ public sealed class ServerListViewModel : ObservableObject
 }
 
 // ── detail: per-server management ────────────────────────────────────────────
-public sealed class ServerDetailViewModel : ObservableObject
+public sealed class ServerDetailViewModel : LocalizedObject
 {
     public ServerInfo Info { get; }
     private readonly Action _back;
@@ -229,7 +245,7 @@ public sealed class ServerDetailViewModel : ObservableObject
     /// <summary>Raised when a file is loaded into the editor: (content, path).</summary>
     public event Action<string, string>? FileOpened;
 
-    private string _note = "管理该服务端的配置、SSL 证书、站点与进程。";
+    private string _note = Localizer.T("svc.detail.note");
     public string Note { get => _note; set => Set(ref _note, value); }
 
     public bool HasLogs => Logs.Count > 0;
@@ -241,7 +257,7 @@ public sealed class ServerDetailViewModel : ObservableObject
         get => _running;
         set { if (Set(ref _running, value)) { OnPropertyChanged(nameof(StatusText)); OnPropertyChanged(nameof(StatusBrush)); RaiseActionVisibility(); } }
     }
-    public string StatusText => !HasService ? "无进程" : _running ? "运行中" : "已停止";
+    public string StatusText => !HasService ? Localizer.T("svc.status.noProcess") : _running ? Localizer.T("svc.status.running") : Localizer.T("svc.status.stopped");
     public string StatusBrush => !HasService ? "TextTertiary" : _running ? "OkFg" : "FailFg";
 
     private string _pidText = "—";
@@ -295,15 +311,15 @@ public sealed class ServerDetailViewModel : ObservableObject
     private static string FormatUptime(TimeSpan up)
     {
         if (up.TotalSeconds < 0) up = TimeSpan.Zero;
-        if (up.TotalDays >= 1) return $"{(int)up.TotalDays} 天 {up.Hours} 小时";
-        if (up.TotalHours >= 1) return $"{(int)up.TotalHours} 小时 {up.Minutes} 分";
-        if (up.TotalMinutes >= 1) return $"{(int)up.TotalMinutes} 分 {up.Seconds} 秒";
-        return $"{(int)up.TotalSeconds} 秒";
+        if (up.TotalDays >= 1) return Localizer.Format("svc.runtime.days", (int)up.TotalDays, up.Hours);
+        if (up.TotalHours >= 1) return Localizer.Format("svc.runtime.hours", (int)up.TotalHours, up.Minutes);
+        if (up.TotalMinutes >= 1) return Localizer.Format("svc.runtime.minutes", (int)up.TotalMinutes, up.Seconds);
+        return Localizer.Format("svc.runtime.seconds", (int)up.TotalSeconds);
     }
 
     // ── config editor ──────────────────────────────────────────────────────────
     private string? _currentPath;
-    public string CurrentPath => _currentPath ?? "未选择文件";
+    public string CurrentPath => _currentPath ?? Localizer.T("svc.editor.noFile");
     public bool HasOpenFile => _currentPath != null;
 
     private string _editor = "";
@@ -321,7 +337,7 @@ public sealed class ServerDetailViewModel : ObservableObject
             OnPropertyChanged(nameof(CanSave));
             FileOpened?.Invoke(Editor, path);
         }
-        catch (Exception ex) { Note = "读取失败：" + ex.Message; }
+        catch (Exception ex) { Note = Localizer.Format("svc.file.readFailed", ex.Message); }
     }
 
     private void Save()
@@ -333,19 +349,26 @@ public sealed class ServerDetailViewModel : ObservableObject
                 File.Copy(_currentPath, $"{_currentPath}.bak.{DateTime.Now:yyyyMMddHHmmss}", true);
             File.WriteAllText(_currentPath, Editor);
             AuditLog.Action($"服务配置：保存 {_currentPath}");
-            Note = $"已保存（已备份 .bak）：{Path.GetFileName(_currentPath)}";
+            Note = Localizer.Format("svc.file.saved", Path.GetFileName(_currentPath));
         }
-        catch (Exception ex) { Note = "保存失败：" + ex.Message; }
+        catch (Exception ex) { Note = Localizer.Format("svc.file.saveFailed", ex.Message); }
     }
 
     // ── service actions ──────────────────────────────────────────────────────
     private void Act(SvcAction action)
     {
         var (ok, msg) = ServiceConfig.Run(Info, action);
-        var verb = action switch { SvcAction.Start => "启动", SvcAction.Stop => "停止", SvcAction.Reload => "重载", _ => "重启" };
-        AuditLog.Action($"服务配置：{verb} {Info.Name} — {(ok ? "成功" : "失败")} {msg}".TrimEnd());
+        var auditVerb = action switch { SvcAction.Start => "启动", SvcAction.Stop => "停止", SvcAction.Reload => "重载", _ => "重启" };
+        var verb = action switch
+        {
+            SvcAction.Start => Localizer.T("svc.action.start"),
+            SvcAction.Stop => Localizer.T("svc.action.stop"),
+            SvcAction.Reload => Localizer.T("svc.action.reload"),
+            _ => Localizer.T("svc.action.restart"),
+        };
+        AuditLog.Action($"服务配置：{auditVerb} {Info.Name} — {(ok ? "成功" : "失败")} {msg}".TrimEnd());
         Note = $"{verb}：{msg}";
-        if (!ok) MessageBox.Show(msg, $"{verb} {Info.Name}", MessageBoxButton.OK, MessageBoxImage.Warning);
+        if (!ok) Dialogs.Show(msg, $"{verb} {Info.Name}", MessageBoxButton.OK, MessageBoxImage.Warning);
         _ = DelayedRuntimeRefresh();
     }
 
@@ -366,12 +389,12 @@ public sealed class ServerDetailViewModel : ObservableObject
     private void CollectLogs()
     {
         var logs = ServerManager.Logs(Info);
-        if (logs.Count == 0) { Note = "没有可采集的日志文件。"; return; }
+        if (logs.Count == 0) { Note = Localizer.T("svc.logs.collect.empty"); return; }
         var dlg = new Microsoft.Win32.SaveFileDialog
         {
-            Title = "采集日志（导出尾部）",
+            Title = Localizer.T("svc.logs.collect.title"),
             FileName = $"{Info.Id}-logs-{Environment.MachineName}.txt",
-            Filter = "文本文件 (*.txt)|*.txt",
+            Filter = Localizer.T("svc.logs.collect.filter"),
         };
         if (dlg.ShowDialog() != true) return;
         try
@@ -384,10 +407,10 @@ public sealed class ServerDetailViewModel : ObservableObject
                 w.WriteLine();
             }
             AuditLog.Action($"服务配置：采集 {Info.Name} 日志 {logs.Count} 个 → {dlg.FileName}");
-            Note = $"已采集 {logs.Count} 个日志 → {dlg.FileName}";
+            Note = Localizer.Format("svc.logs.collected", logs.Count, dlg.FileName);
             OpenPath(dlg.FileName);
         }
-        catch (Exception ex) { Note = "采集失败：" + ex.Message; }
+        catch (Exception ex) { Note = Localizer.Format("svc.logs.collect.failed", ex.Message); }
     }
 
     // ── SSL ──────────────────────────────────────────────────────────────────
@@ -399,11 +422,11 @@ public sealed class ServerDetailViewModel : ObservableObject
 
     private void CreateCert()
     {
-        var dlg = new Views.InputDialog("生成自签名证书", "为该域名 / 主机生成自签名证书与私钥（PEM，有效期 5 年）：", "example.local") { Owner = App() };
+        var dlg = new Views.InputDialog(Localizer.T("svc.cert.create.title"), Localizer.T("svc.cert.create.prompt"), "example.local") { Owner = App() };
         if (dlg.ShowDialog() != true) return;
         var (ok, msg) = ServerManager.CreateSelfSigned(Info, dlg.Value);
         Note = msg;
-        if (!ok) MessageBox.Show(msg, "生成证书", MessageBoxButton.OK, MessageBoxImage.Warning);
+        if (!ok) Dialogs.Show(msg, Localizer.T("svc.cert.createDialogTitle"), MessageBoxButton.OK, MessageBoxImage.Warning);
         RefreshCerts();
     }
 
@@ -411,20 +434,20 @@ public sealed class ServerDetailViewModel : ObservableObject
     {
         var dlg = new Microsoft.Win32.OpenFileDialog
         {
-            Title = "导入证书 / 私钥",
-            Filter = "证书与私钥 (*.crt;*.cer;*.pem;*.key;*.pfx)|*.crt;*.cer;*.pem;*.key;*.pfx|所有文件 (*.*)|*.*",
+            Title = Localizer.T("svc.cert.import.title"),
+            Filter = Localizer.T("svc.cert.import.filter"),
             Multiselect = true,
         };
         if (dlg.ShowDialog() != true) return;
         var n = 0;
         foreach (var f in dlg.FileNames) { var (ok, _) = ServerManager.ImportCert(Info, f); if (ok) n++; }
-        Note = $"已导入 {n} 个文件到 SSL 目录。";
+        Note = Localizer.Format("svc.cert.imported", n);
         RefreshCerts();
     }
 
     private void DeleteCert(CertFile c)
     {
-        if (MessageBox.Show($"确定删除证书文件？\n{c.Name}", "删除证书", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        if (Dialogs.Show(Localizer.Format("svc.cert.delete.confirm", c.Name), Localizer.T("svc.cert.delete.title"), MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
         var (ok, msg) = ServerManager.DeleteCert(c.Path);
         Note = $"{c.Name}：{msg}";
         if (ok) RefreshCerts();
@@ -443,13 +466,13 @@ public sealed class ServerDetailViewModel : ObservableObject
         if (dlg.ShowDialog() != true || dlg.Result == null) return;
         var (ok, msg) = ServerManager.CreateVhost(Info, dlg.Result);
         Note = msg;
-        if (!ok) MessageBox.Show(msg, "新建站点", MessageBoxButton.OK, MessageBoxImage.Warning);
+        if (!ok) Dialogs.Show(msg, Localizer.T("svc.vhost.create.title"), MessageBoxButton.OK, MessageBoxImage.Warning);
         RefreshVhosts();
     }
 
     private void DeleteVhost(ConfigFile f)
     {
-        if (MessageBox.Show($"确定删除站点配置？\n{f.Name}\n\n（删除后请重载 / 重启服务生效）", "删除站点", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        if (Dialogs.Show(Localizer.Format("svc.vhost.delete.confirm", f.Name), Localizer.T("svc.vhost.delete.title"), MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
         var (ok, msg) = ServerManager.DeleteVhost(f.Path);
         Note = $"{f.Name}：{msg}";
         if (ok) RefreshVhosts();
@@ -464,8 +487,8 @@ public sealed class ServerDetailViewModel : ObservableObject
         {
             if (Directory.Exists(path) || File.Exists(path))
                 System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true });
-            else Note = "路径不存在：" + path;
+            else Note = Localizer.Format("svc.open.notFound", path);
         }
-        catch (Exception ex) { Note = "打开失败：" + ex.Message; }
+        catch (Exception ex) { Note = Localizer.Format("svc.open.failed", ex.Message); }
     }
 }

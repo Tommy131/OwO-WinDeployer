@@ -1,0 +1,10 @@
+{
+  "export.capture": "Lokale Konfiguration erfassen",
+  "export.done": "Nach configs/ zurückgeschrieben. Denken Sie daran, im Repository git commit auszuführen.",
+  "export.processing": "Wird verarbeitet …",
+  "export.status.failed": "Fehlgeschlagen",
+  "export.status.ok": "Erfolg",
+  "export.status.skip": "Übersprungen",
+  "export.subtitle": "Diesen Rechner scannen und die Konfigurationen installierter Software ins Repository erfassen (sensible Daten werden automatisch geschwärzt). Klicken Sie auf einen Eintrag, um Dateipfad / Größe / Vorschau anzuzeigen.",
+  "export.title": "Exportieren"
+}

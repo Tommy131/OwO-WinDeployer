@@ -1,7 +1,9 @@
+using System.Globalization;
 using System.IO;
 using System.Windows;
 using System.Windows.Threading;
 using WinDeploy.App.Services;
+using WinDeploy.Core.I18n;
 
 namespace WinDeploy.App;
 
@@ -19,8 +21,17 @@ public partial class App : Application
         // "OwO! Win Deployer" rather than an auto-generated "NotifyIconGeneratedAumid_…" id.
         AppUserModel.Configure();
         var settings = SettingsStore.Load();
+
+        // Language: saved choice wins; on first run follow the Windows UI language (de/zh, else en),
+        // then persist it. Seed the S.* string resources BEFORE base.OnStartup creates MainWindow,
+        // so every {DynamicResource S.*} resolves on first layout.
+        var lang = settings.Language ?? Lang.FromCulture(CultureInfo.CurrentUICulture);
+        if (settings.Language is null) { settings.Language = lang; SettingsStore.Save(settings); }
+        Localizer.SetLanguage(lang);
+        LocalizationManager.Apply();
+
         ThemeManager.Apply(ThemeManager.Parse(settings.Theme));
-        AuditLog.App($"应用启动 · 主题 {settings.Theme ?? "system"}");
+        AuditLog.App($"应用启动 · 语言 {lang} · 主题 {settings.Theme ?? "system"}");
         base.OnStartup(e);
     }
 
@@ -28,8 +39,8 @@ public partial class App : Application
     {
         LogCrash("UI", e.Exception);
         MessageBox.Show(
-            $"操作出错（已记录到 crash.log，应用将继续运行）：\n\n{e.Exception.Message}\n\n{e.Exception.GetType().FullName}",
-            "出现错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            Localizer.Format("crash.dialogBody", e.Exception.Message, e.Exception.GetType().FullName),
+            Localizer.T("crash.dialogTitle"), MessageBoxButton.OK, MessageBoxImage.Error);
         e.Handled = true;   // keep the app alive
     }
 

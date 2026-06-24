@@ -9,7 +9,7 @@
 
     <StackPanel Grid.Row="0">
       <TextBlock Text="Cloudflare DDNS" FontSize="20" FontWeight="SemiBold" />
-      <TextBlock Text="对接 Cloudflare API：列出账号下的全部域名与解析记录，可新建/修改解析，并将 A·AAAA 记录绑定为 DDNS，后台常驻自动跟随本机公网 IP。"
+      <TextBlock Text="{DynamicResource S.cloud.intro}"
                  FontSize="13" Foreground="{DynamicResource TextSecondary}" Margin="0,3,0,0" TextWrapping="Wrap" />
     </StackPanel>
 
@@ -20,33 +20,33 @@
         <!-- ① API 令牌 ──────────────────────────────────────────────────────────── -->
         <Border Style="{StaticResource Card}" Padding="16,13">
           <StackPanel>
-            <TextBlock Text="① API 令牌" FontSize="14" FontWeight="SemiBold" />
+            <TextBlock Text="{DynamicResource S.cloud.token.section}" FontSize="14" FontWeight="SemiBold" />
             <TextBlock TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource TextTertiary}" Margin="0,4,0,0"
-                       Text="推荐使用 Cloudflare「API 令牌」（个人资料 → API 令牌 → 创建令牌），需具备 区域:Zone:Read 与 区域:DNS:Edit 权限。也可使用「全局 API Key」+ 账户邮箱。凭证通过 Windows DPAPI 加密保存在本机，永不入库。" />
+                       Text="{DynamicResource S.cloud.token.intro}" />
             <!-- Explicit auth-mode choice: prevents accidentally sending a token as a Global API Key (→ #6003). -->
             <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
-              <RadioButton Content="API 令牌（推荐）" GroupName="CfAuth" IsChecked="{Binding UseApiToken}" VerticalAlignment="Center" FontSize="12.5" />
-              <RadioButton Content="全局 API Key" GroupName="CfAuth" IsChecked="{Binding UseGlobalKey}" Margin="18,0,0,0" VerticalAlignment="Center" FontSize="12.5" />
+              <RadioButton Content="{DynamicResource S.cloud.auth.token}" GroupName="CfAuth" IsChecked="{Binding UseApiToken}" VerticalAlignment="Center" FontSize="12.5" />
+              <RadioButton Content="{DynamicResource S.cloud.auth.globalKey}" GroupName="CfAuth" IsChecked="{Binding UseGlobalKey}" Margin="18,0,0,0" VerticalAlignment="Center" FontSize="12.5" />
             </StackPanel>
             <StackPanel Orientation="Horizontal" Margin="0,10,0,0" VerticalAlignment="Center">
               <TextBlock Text="{Binding TokenLabel}" Width="92" FontSize="12.5" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" />
               <PasswordBox x:Name="TokenBox" Width="330" Padding="8,6" VerticalContentAlignment="Center"
                            Background="{DynamicResource CardBg}" Foreground="{DynamicResource TextPrimary}"
                            BorderBrush="{DynamicResource BorderStrong}" />
-              <Button Content="保存并验证" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0"
+              <Button Content="{DynamicResource S.cloud.token.save}" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0"
                       Command="{Binding VerifyTokenCommand}" />
             </StackPanel>
             <!-- Help links on their own line (indented under the input) so the credential row never crowds. -->
             <StackPanel Orientation="Horizontal" Margin="92,8,0,0">
-              <Button Content="所需权限" Style="{StaticResource MiniButton}" Command="{Binding ShowPermsCommand}" />
-              <Button Content="如何创建令牌" Style="{StaticResource MiniButton}" Margin="8,0,0,0"
+              <Button Content="{DynamicResource S.cloud.token.help.perms}" Style="{StaticResource MiniButton}" Command="{Binding ShowPermsCommand}" />
+              <Button Content="{DynamicResource S.cloud.token.help.create}" Style="{StaticResource MiniButton}" Margin="8,0,0,0"
                       Command="{Binding OpenTokenHelpCommand}" />
             </StackPanel>
             <StackPanel Orientation="Horizontal" Margin="0,8,0,0" VerticalAlignment="Center"
                         Visibility="{Binding ShowEmail, Converter={StaticResource BoolToVis}}">
-              <TextBlock Text="账户邮箱：" Width="92" FontSize="12.5" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" />
+              <TextBlock Text="{DynamicResource S.cloud.email.label}" Width="92" FontSize="12.5" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" />
               <TextBox Text="{Binding Email, UpdateSourceTrigger=PropertyChanged}" Width="280" Height="30" VerticalContentAlignment="Center" />
-              <TextBlock Text="（Cloudflare 登录邮箱）" FontSize="11" Foreground="{DynamicResource TextTertiary}" VerticalAlignment="Center" Margin="8,0,0,0" />
+              <TextBlock Text="{DynamicResource S.cloud.email.hint}" FontSize="11" Foreground="{DynamicResource TextTertiary}" VerticalAlignment="Center" Margin="8,0,0,0" />
             </StackPanel>
             <TextBlock Text="{Binding TokenStatus}" FontSize="12.5" Margin="0,8,0,0" TextWrapping="Wrap">
               <TextBlock.Style>
@@ -73,7 +73,7 @@
               </Grid.ColumnDefinitions>
               <StackPanel Grid.Column="0" VerticalAlignment="Center">
                 <StackPanel Orientation="Horizontal">
-                  <TextBlock Text="② DDNS 监听 · 状态：" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
+                  <TextBlock Text="{DynamicResource S.cloud.monitor.section}" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
                   <TextBlock Text="{Binding StatusText}" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center">
                     <TextBlock.Style>
                       <Style TargetType="TextBlock">
@@ -90,16 +90,16 @@
                 <TextBlock Text="{Binding CurrentIpText}" FontSize="12.5" FontFamily="Consolas" Foreground="{DynamicResource TextSecondary}" Margin="0,6,0,0" TextWrapping="Wrap" />
               </StackPanel>
               <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                <Button Content="▶ 启动监听" Style="{StaticResource OkButton}" Command="{Binding StartMonitorCommand}" />
-                <Button Content="■ 停止" Style="{StaticResource DangerButton}" Margin="6,0,0,0" Command="{Binding StopMonitorCommand}" />
-                <Button Content="↻ 立即检查" Style="{StaticResource InfoButton}" Margin="6,0,0,0" Command="{Binding RunOnceCommand}" />
+                <Button Content="{DynamicResource S.cloud.monitor.start}" Style="{StaticResource OkButton}" Command="{Binding StartMonitorCommand}" />
+                <Button Content="{DynamicResource S.cloud.monitor.stop}" Style="{StaticResource DangerButton}" Margin="6,0,0,0" Command="{Binding StopMonitorCommand}" />
+                <Button Content="{DynamicResource S.cloud.monitor.checkNow}" Style="{StaticResource InfoButton}" Margin="6,0,0,0" Command="{Binding RunOnceCommand}" />
               </StackPanel>
             </Grid>
 
             <StackPanel Orientation="Horizontal" Margin="0,12,0,0" VerticalAlignment="Center">
-              <TextBlock Text="检查间隔（秒）：" FontSize="12.5" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" />
+              <TextBlock Text="{DynamicResource S.cloud.monitor.intervalLabel}" FontSize="12.5" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" />
               <TextBox Text="{Binding IntervalText, UpdateSourceTrigger=PropertyChanged}" Width="80" Height="28" VerticalContentAlignment="Center" />
-              <CheckBox Content="启动应用时自动开始监听" IsChecked="{Binding AutoStart}" Margin="18,0,0,0" VerticalAlignment="Center" FontSize="12.5" />
+              <CheckBox Content="{DynamicResource S.cloud.monitor.autoStart}" IsChecked="{Binding AutoStart}" Margin="18,0,0,0" VerticalAlignment="Center" FontSize="12.5" />
             </StackPanel>
             <TextBlock Text="{Binding LastResultText}" FontSize="12" Foreground="{DynamicResource TextTertiary}" Margin="0,8,0,0" TextWrapping="Wrap" />
           </StackPanel>
@@ -108,14 +108,14 @@
         <!-- ③ 域名与解析 ───────────────────────────────────────────────────────── -->
         <Border Style="{StaticResource Card}" Padding="16,13" Margin="0,12,0,0">
           <StackPanel>
-            <TextBlock Text="③ 域名与解析" FontSize="14" FontWeight="SemiBold" />
+            <TextBlock Text="{DynamicResource S.cloud.record.section}" FontSize="14" FontWeight="SemiBold" />
             <StackPanel Orientation="Horizontal" Margin="0,10,0,0" VerticalAlignment="Center">
-              <TextBlock Text="域名：" FontSize="13" VerticalAlignment="Center" />
+              <TextBlock Text="{DynamicResource S.cloud.zones.domainLabel}" FontSize="13" VerticalAlignment="Center" />
               <ComboBox Width="260" Height="30" Margin="6,0,0,0" VerticalAlignment="Center"
                         ItemsSource="{Binding Zones}" SelectedItem="{Binding SelectedZone}" />
-              <Button Content="↻ 刷新域名" Style="{StaticResource MiniButton}" Margin="8,0,0,0" Command="{Binding RefreshZonesCommand}" />
-              <Button Content="↻ 刷新解析" Style="{StaticResource MiniButton}" Margin="6,0,0,0" Command="{Binding RefreshRecordsCommand}" />
-              <Button Content="＋ 新建解析" Style="{StaticResource InfoButton}" Margin="6,0,0,0" Command="{Binding NewRecordCommand}" />
+              <Button Content="{DynamicResource S.cloud.records.refreshZones}" Style="{StaticResource MiniButton}" Margin="8,0,0,0" Command="{Binding RefreshZonesCommand}" />
+              <Button Content="{DynamicResource S.cloud.records.refreshRecords}" Style="{StaticResource MiniButton}" Margin="6,0,0,0" Command="{Binding RefreshRecordsCommand}" />
+              <Button Content="{DynamicResource S.cloud.records.newRecord}" Style="{StaticResource InfoButton}" Margin="6,0,0,0" Command="{Binding NewRecordCommand}" />
             </StackPanel>
             <TextBlock Text="{Binding Note}" FontSize="12" Foreground="{DynamicResource TextTertiary}" Margin="0,8,0,0" TextWrapping="Wrap" />
 
@@ -136,7 +136,7 @@
                           <TextBlock Text="{Binding Name}" FontSize="13.5" FontWeight="SemiBold" Margin="8,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                           <Border CornerRadius="4" Padding="6,1" Margin="8,0,0,0" Background="{DynamicResource WarnBg}" VerticalAlignment="Center"
                                   Visibility="{Binding Proxied, Converter={StaticResource BoolToVis}}">
-                            <TextBlock Text="已代理" FontSize="10" Foreground="{DynamicResource WarnFg}" />
+                            <TextBlock Text="{DynamicResource S.cloud.record.proxied}" FontSize="10" Foreground="{DynamicResource WarnFg}" />
                           </Border>
                           <Border CornerRadius="4" Padding="6,1" Margin="6,0,0,0" Background="{DynamicResource OkBg}" VerticalAlignment="Center"
                                   Visibility="{Binding IsBound, Converter={StaticResource BoolToVis}}">
@@ -148,7 +148,7 @@
                         </TextBlock>
                       </StackPanel>
                       <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button Content="设为本机IP" Style="{StaticResource OkButton}"
+                        <Button Content="{DynamicResource S.cloud.record.setToCurrentIp}" Style="{StaticResource OkButton}"
                                 Visibility="{Binding IsDdnsEligible, Converter={StaticResource BoolToVis}}"
                                 Command="{Binding DataContext.UpdateToCurrentIpCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                 CommandParameter="{Binding}" />
@@ -156,7 +156,7 @@
                                 Visibility="{Binding IsDdnsEligible, Converter={StaticResource BoolToVis}}"
                                 Command="{Binding DataContext.ToggleBindCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                 CommandParameter="{Binding}" />
-                        <Button Content="编辑" Style="{StaticResource MiniButton}" Margin="6,0,0,0"
+                        <Button Content="{DynamicResource S.common.edit}" Style="{StaticResource MiniButton}" Margin="6,0,0,0"
                                 Command="{Binding DataContext.EditRecordCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                 CommandParameter="{Binding}" />
                       </StackPanel>
@@ -173,10 +173,10 @@
              the bottom, so the records list above (where the 「绑定 DDNS」 button is) never shifts. -->
         <Border Style="{StaticResource Card}" Padding="16,13" Margin="0,12,0,0">
           <StackPanel>
-            <TextBlock Text="④ 已绑定的 DDNS 记录" FontSize="14" FontWeight="SemiBold" />
-            <TextBlock Text="以下 A / AAAA 记录会随本机公网 IP 自动更新（勾选框可单独暂停某条）。"
+            <TextBlock Text="{DynamicResource S.cloud.section.bound}" FontSize="14" FontWeight="SemiBold" />
+            <TextBlock Text="{DynamicResource S.cloud.section.boundDesc}"
                        FontSize="12" Foreground="{DynamicResource TextTertiary}" Margin="0,4,0,0" TextWrapping="Wrap" />
-            <TextBlock Text="尚未绑定任何记录。在上方「域名与解析」中对 A / AAAA 记录点「绑定 DDNS」即可。"
+            <TextBlock Text="{DynamicResource S.cloud.section.boundEmpty}"
                        FontSize="12" Foreground="{DynamicResource TextTertiary}" Margin="0,8,0,0" TextWrapping="Wrap"
                        Visibility="{Binding NoBindings, Converter={StaticResource BoolToVis}}" />
             <ItemsControl ItemsSource="{Binding Bindings}" Margin="0,8,0,0"
@@ -191,7 +191,7 @@
                         <ColumnDefinition Width="Auto" />
                       </Grid.ColumnDefinitions>
                       <CheckBox Grid.Column="0" IsChecked="{Binding Enabled}" VerticalAlignment="Center" Margin="0,0,10,0"
-                                ToolTip="启用 / 暂停该记录的自动更新" />
+                                ToolTip="{DynamicResource S.cloud.section.pauseTooltip}" />
                       <StackPanel Grid.Column="1" VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal">
                           <Border CornerRadius="4" Padding="5,1" Background="{DynamicResource AccentBg}" VerticalAlignment="Center">
@@ -200,10 +200,10 @@
                           <TextBlock Text="{Binding RecordName}" FontSize="13" FontWeight="SemiBold" Margin="8,0,0,0" VerticalAlignment="Center" />
                         </StackPanel>
                         <TextBlock FontSize="11.5" Foreground="{DynamicResource TextTertiary}" Margin="0,3,0,0">
-                          <Run Text="上次应用 IP：" /><Run Text="{Binding LastIpText, Mode=OneWay}" /><Run Text="   " /><Run Text="{Binding LastUpdateText, Mode=OneWay}" />
+                          <Run Text="{DynamicResource S.cloud.section.lastAppliedIp}" /><Run Text="{Binding LastIpText, Mode=OneWay}" /><Run Text="   " /><Run Text="{Binding LastUpdateText, Mode=OneWay}" />
                         </TextBlock>
                       </StackPanel>
-                      <Button Grid.Column="2" Content="移除" Style="{StaticResource MiniButton}" VerticalAlignment="Center"
+                      <Button Grid.Column="2" Content="{DynamicResource S.common.remove}" Style="{StaticResource MiniButton}" VerticalAlignment="Center"
                               Command="{Binding DataContext.RemoveBindingCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                               CommandParameter="{Binding}" />
                     </Grid>

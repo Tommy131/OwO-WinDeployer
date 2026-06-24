@@ -9,18 +9,18 @@
     </Grid.RowDefinitions>
 
     <StackPanel Grid.Row="0">
-      <TextBlock Text="FTP 传输" FontSize="20" FontWeight="SemiBold" />
-      <TextBlock Text="把本机临时作为 FTP/FTPS 服务端（用户·分组·权限·目录·密码·并发可配），或作为客户端连接远端传输文件。"
+      <TextBlock Text="{DynamicResource S.ftp.page.title}" FontSize="20" FontWeight="SemiBold" />
+      <TextBlock Text="{DynamicResource S.ftp.page.subtitle}"
                  FontSize="13" Foreground="{DynamicResource TextSecondary}" Margin="0,3,0,0" TextWrapping="Wrap" />
     </StackPanel>
 
     <!-- tab bar -->
     <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,14,0,0">
-      <ToggleButton Content="服务端" Style="{StaticResource MiniToggle}" Margin="0,0,8,0"
+      <ToggleButton Content="{DynamicResource S.ftp.tab.server}" Style="{StaticResource MiniToggle}" Margin="0,0,8,0"
                     IsChecked="{Binding IsServerTab, Mode=OneWay}" Command="{Binding ShowServerCommand}" />
-      <ToggleButton Content="服务端配置" Style="{StaticResource MiniToggle}" Margin="0,0,8,0"
+      <ToggleButton Content="{DynamicResource S.ftp.tab.config}" Style="{StaticResource MiniToggle}" Margin="0,0,8,0"
                     IsChecked="{Binding IsConfigTab, Mode=OneWay}" Command="{Binding ShowConfigCommand}" />
-      <ToggleButton Content="客户端" Style="{StaticResource MiniToggle}"
+      <ToggleButton Content="{DynamicResource S.ftp.tab.client}" Style="{StaticResource MiniToggle}"
                     IsChecked="{Binding IsClientTab, Mode=OneWay}" Command="{Binding ShowClientCommand}" />
     </StackPanel>
 

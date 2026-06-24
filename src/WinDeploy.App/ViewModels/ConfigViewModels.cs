@@ -4,6 +4,7 @@ using WinDeploy.Core;
 using WinDeploy.Core.Config;
 using WinDeploy.Core.Engine;
 using WinDeploy.Core.Engine.Installers;
+using WinDeploy.Core.I18n;
 using WinDeploy.Core.Models;
 
 namespace WinDeploy.App.ViewModels;
@@ -98,7 +99,7 @@ public sealed class ConfigSyncViewModel : ConfigPageBase
         if (Catalog == null) return;
         foreach (var it in Catalog.Items.Where(i => i.Config != null))
             Items.Add(new ConfigRowViewModel { Name = it.Name, ApplyWhen = it.Config!.ApplyWhen, Target = it.Config.Target ?? "—" });
-        Items.Add(new ConfigRowViewModel { Name = "环境变量", ApplyWhen = "always", Target = "用户环境 / PATH" });
+        Items.Add(new ConfigRowViewModel { Name = Localizer.T("cfgsync.envVars"), ApplyWhen = "always", Target = Localizer.T("cfgsync.envVars.target") });
     }
 
     private async Task ApplyAsync()

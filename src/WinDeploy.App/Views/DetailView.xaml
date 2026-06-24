@@ -8,7 +8,7 @@
       <RowDefinition Height="*" />
     </Grid.RowDefinitions>
 
-    <Button Grid.Row="0" Content="← 返回" Command="{Binding BackCommand}"
+    <Button Grid.Row="0" Content="{DynamicResource S.detail.back}" Command="{Binding BackCommand}"
             HorizontalAlignment="Left" Style="{StaticResource PrimaryButton}" />
 
     <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,16,0,0">
@@ -40,11 +40,11 @@
        <StackPanel>
         <Grid Margin="0,0,0,12">
           <Grid.ColumnDefinitions><ColumnDefinition Width="96" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-          <TextBlock Grid.Column="0" Text="版本" FontSize="13" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" />
+          <TextBlock Grid.Column="0" Text="{DynamicResource S.detail.field.version}" FontSize="13" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" />
           <StackPanel Grid.Column="1" Orientation="Horizontal"
                       Visibility="{Binding CanChooseVersion, Converter={StaticResource BoolToVis}}">
             <ComboBox ItemsSource="{Binding Versions}" SelectedItem="{Binding SelectedVersion}" Width="180"
-                      ToolTip="选择要安装的版本（默认最新）" />
+                      ToolTip="{DynamicResource S.detail.version.tip}" />
             <TextBlock Text="{Binding InstalledNote}" FontSize="12" Foreground="{DynamicResource TextTertiary}"
                        VerticalAlignment="Center" Margin="10,0,0,0" />
           </StackPanel>
@@ -53,41 +53,41 @@
         </Grid>
         <Grid Margin="0,0,0,12">
           <Grid.ColumnDefinitions><ColumnDefinition Width="96" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-          <TextBlock Grid.Column="0" Text="大小" FontSize="13" Foreground="{DynamicResource TextSecondary}" />
+          <TextBlock Grid.Column="0" Text="{DynamicResource S.detail.field.size}" FontSize="13" Foreground="{DynamicResource TextSecondary}" />
           <TextBlock Grid.Column="1" Text="{Binding Size}" FontSize="13" />
         </Grid>
         <Grid Margin="0,0,0,12">
           <Grid.ColumnDefinitions><ColumnDefinition Width="96" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-          <TextBlock Grid.Column="0" Text="安装日期" FontSize="13" Foreground="{DynamicResource TextSecondary}" />
+          <TextBlock Grid.Column="0" Text="{DynamicResource S.detail.field.installDate}" FontSize="13" Foreground="{DynamicResource TextSecondary}" />
           <TextBlock Grid.Column="1" Text="{Binding InstallDate}" FontSize="13" />
         </Grid>
         <Grid Margin="0,0,0,12" Visibility="{Binding HasInstallLocation, Converter={StaticResource BoolToVis}}">
           <Grid.ColumnDefinitions><ColumnDefinition Width="96" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-          <TextBlock Grid.Column="0" Text="安装位置" FontSize="13" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" />
+          <TextBlock Grid.Column="0" Text="{DynamicResource S.detail.field.installLocation}" FontSize="13" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" />
           <StackPanel Grid.Column="1" Orientation="Horizontal">
             <TextBlock Text="{Binding InstallLocation}" FontSize="13" FontFamily="Consolas" TextTrimming="CharacterEllipsis"
                        VerticalAlignment="Center" MaxWidth="300" ToolTip="{Binding InstallLocation}" />
-            <Button Content="打开" Style="{StaticResource MiniButton}" Command="{Binding OpenLocationCommand}" Margin="10,0,0,0" />
+            <Button Content="{DynamicResource S.common.open}" Style="{StaticResource MiniButton}" Command="{Binding OpenLocationCommand}" Margin="10,0,0,0" />
           </StackPanel>
         </Grid>
         <Grid Margin="0,0,0,12">
           <Grid.ColumnDefinitions><ColumnDefinition Width="96" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-          <TextBlock Grid.Column="0" Text="发布者" FontSize="13" Foreground="{DynamicResource TextSecondary}" />
+          <TextBlock Grid.Column="0" Text="{DynamicResource S.detail.field.publisher}" FontSize="13" Foreground="{DynamicResource TextSecondary}" />
           <TextBlock Grid.Column="1" Text="{Binding Publisher}" FontSize="13" TextTrimming="CharacterEllipsis" />
         </Grid>
         <Grid Margin="0,0,0,12">
           <Grid.ColumnDefinitions><ColumnDefinition Width="96" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-          <TextBlock Grid.Column="0" Text="来源" FontSize="13" Foreground="{DynamicResource TextSecondary}" />
+          <TextBlock Grid.Column="0" Text="{DynamicResource S.detail.field.source}" FontSize="13" Foreground="{DynamicResource TextSecondary}" />
           <TextBlock Grid.Column="1" Text="{Binding Source}" FontSize="13" />
         </Grid>
         <Grid Margin="0,0,0,12">
           <Grid.ColumnDefinitions><ColumnDefinition Width="96" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-          <TextBlock Grid.Column="0" Text="标识" FontSize="13" Foreground="{DynamicResource TextSecondary}" />
+          <TextBlock Grid.Column="0" Text="{DynamicResource S.detail.field.id}" FontSize="13" Foreground="{DynamicResource TextSecondary}" />
           <TextBlock Grid.Column="1" Text="{Binding PackageId}" FontSize="13" FontFamily="Consolas" TextTrimming="CharacterEllipsis" />
         </Grid>
         <Grid>
           <Grid.ColumnDefinitions><ColumnDefinition Width="96" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-          <TextBlock Grid.Column="0" Text="官网" FontSize="13" Foreground="{DynamicResource TextSecondary}" />
+          <TextBlock Grid.Column="0" Text="{DynamicResource S.detail.field.homepage}" FontSize="13" Foreground="{DynamicResource TextSecondary}" />
           <TextBlock Grid.Column="1" FontSize="13" TextTrimming="CharacterEllipsis">
             <Hyperlink Command="{Binding OpenHomepageCommand}"><Run Text="{Binding Homepage, Mode=OneWay}" /></Hyperlink>
           </TextBlock>
@@ -97,44 +97,44 @@
 
       <Border Style="{StaticResource Card}" Padding="18" Margin="0,14,0,0">
         <StackPanel>
-          <TextBlock Text="操作" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,10" />
+          <TextBlock Text="{DynamicResource S.detail.actions}" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,10" />
 
           <StackPanel Margin="0,0,0,12" Visibility="{Binding CanSetPath, Converter={StaticResource BoolToVis}}">
-            <TextBlock Text="安装路径" FontSize="12" Foreground="{DynamicResource TextSecondary}" />
+            <TextBlock Text="{DynamicResource S.detail.installPath}" FontSize="12" Foreground="{DynamicResource TextSecondary}" />
             <TextBox Text="{Binding InstallPath, UpdateSourceTrigger=PropertyChanged}" Height="32" VerticalContentAlignment="Center" Padding="8,0" Margin="0,3,0,0" />
             <TextBlock Text="{Binding PathHint}" FontSize="11" Foreground="{DynamicResource TextTertiary}" Margin="0,3,0,0" TextWrapping="Wrap" />
           </StackPanel>
 
           <!-- 运行：启动（绿）/ 结束进程（红，仅运行时）/ 重启（蓝） -->
           <StackPanel Orientation="Horizontal" Margin="0,0,0,10" Visibility="{Binding CanLaunch, Converter={StaticResource BoolToVis}}">
-            <Button Content="▶ 启动" Style="{StaticResource OkButton}" Command="{Binding LaunchCommand}" Margin="0,0,8,0" ToolTip="启动该软件" />
-            <Button Content="■ 结束进程" Style="{StaticResource DangerButton}" Command="{Binding StopCommand}" Margin="0,0,8,0"
-                    Visibility="{Binding CanStop, Converter={StaticResource BoolToVis}}" ToolTip="结束该软件的所有进程" />
-            <Button Content="↻ 重启" Style="{StaticResource InfoButton}" Command="{Binding RestartCommand}" ToolTip="结束后重新启动" />
+            <Button Content="{DynamicResource S.detail.launch}" Style="{StaticResource OkButton}" Command="{Binding LaunchCommand}" Margin="0,0,8,0" ToolTip="{DynamicResource S.detail.launch.tip}" />
+            <Button Content="{DynamicResource S.detail.stop}" Style="{StaticResource DangerButton}" Command="{Binding StopCommand}" Margin="0,0,8,0"
+                    Visibility="{Binding CanStop, Converter={StaticResource BoolToVis}}" ToolTip="{DynamicResource S.detail.stop.tip}" />
+            <Button Content="{DynamicResource S.detail.restart}" Style="{StaticResource InfoButton}" Command="{Binding RestartCommand}" ToolTip="{DynamicResource S.detail.restart.tip}" />
           </StackPanel>
 
           <!-- 管理：前往官网下载 / 安装 / 检查更新（蓝）/ 降级（橙）/ 卸载（红） · 随版本选择器联动 -->
           <StackPanel Orientation="Horizontal">
-            <Button Content="前往官网下载" Style="{StaticResource PrimaryButton}" Command="{Binding OpenHomepageCommand}" Margin="0,0,8,0"
+            <Button Content="{DynamicResource S.detail.manualDownload}" Style="{StaticResource PrimaryButton}" Command="{Binding OpenHomepageCommand}" Margin="0,0,8,0"
                     Visibility="{Binding ShowManualDownload, Converter={StaticResource BoolToVis}}"
-                    ToolTip="该软件需从官网手动下载安装" />
-            <Button Content="安装" Style="{StaticResource PrimaryButton}" Command="{Binding InstallCommand}" Margin="0,0,8,0"
-                    Visibility="{Binding ShowInstall, Converter={StaticResource BoolToVis}}" ToolTip="按所选版本安装该软件" />
-            <Button Content="检查 / 更新" Style="{StaticResource InfoButton}" Command="{Binding UpdateCommand}" Margin="0,0,8,0"
+                    ToolTip="{DynamicResource S.detail.manualDownload.tip}" />
+            <Button Content="{DynamicResource S.detail.install}" Style="{StaticResource PrimaryButton}" Command="{Binding InstallCommand}" Margin="0,0,8,0"
+                    Visibility="{Binding ShowInstall, Converter={StaticResource BoolToVis}}" ToolTip="{DynamicResource S.detail.install.tip}" />
+            <Button Content="{DynamicResource S.detail.update}" Style="{StaticResource InfoButton}" Command="{Binding UpdateCommand}" Margin="0,0,8,0"
                     Visibility="{Binding ShowUpdate, Converter={StaticResource BoolToVis}}"
-                    ToolTip="winget upgrade / git pull / 便携包重拉，更新到最新版本" />
-            <Button Content="降级" Style="{StaticResource WarnButton}" Command="{Binding DowngradeCommand}" Margin="0,0,8,0"
+                    ToolTip="{DynamicResource S.detail.update.tip}" />
+            <Button Content="{DynamicResource S.detail.downgrade}" Style="{StaticResource WarnButton}" Command="{Binding DowngradeCommand}" Margin="0,0,8,0"
                     Visibility="{Binding ShowDowngrade, Converter={StaticResource BoolToVis}}"
-                    ToolTip="安装所选的较低版本（仅 winget）" />
-            <Button Content="卸载…" Style="{StaticResource DangerButton}" Command="{Binding UninstallCommand}"
-                    Visibility="{Binding CanUninstall, Converter={StaticResource BoolToVis}}" ToolTip="卸载该软件" />
+                    ToolTip="{DynamicResource S.detail.downgrade.tip}" />
+            <Button Content="{DynamicResource S.detail.uninstall}" Style="{StaticResource DangerButton}" Command="{Binding UninstallCommand}"
+                    Visibility="{Binding CanUninstall, Converter={StaticResource BoolToVis}}" ToolTip="{DynamicResource S.detail.uninstall.tip}" />
           </StackPanel>
 
           <!-- 开发环境：手动配置环境变量（PATH / JAVA_HOME 等） -->
           <StackPanel Margin="0,12,0,0" Visibility="{Binding ShowEnvButton, Converter={StaticResource BoolToVis}}">
-            <Button Content="设置环境变量 …" Style="{StaticResource MiniButton}" Command="{Binding EnvVarsCommand}"
-                    HorizontalAlignment="Left" ToolTip="打开环境变量页，手动配置 PATH / JAVA_HOME 等" />
-            <TextBlock Text="开发工具链：winget 安装通常会自动加入 PATH；如需 JAVA_HOME / ANDROID_HOME 等可在此手动配置。"
+            <Button Content="{DynamicResource S.detail.envVars}" Style="{StaticResource MiniButton}" Command="{Binding EnvVarsCommand}"
+                    HorizontalAlignment="Left" ToolTip="{DynamicResource S.detail.envVars.tip}" />
+            <TextBlock Text="{DynamicResource S.detail.envVars.hint}"
                        FontSize="11" Foreground="{DynamicResource TextTertiary}" TextWrapping="Wrap" Margin="0,4,0,0" />
           </StackPanel>
         </StackPanel>

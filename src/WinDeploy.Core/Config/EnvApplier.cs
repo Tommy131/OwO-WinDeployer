@@ -1,4 +1,5 @@
 using System.Text.Json;
+using WinDeploy.Core.I18n;
 using WinDeploy.Core.Models;
 using WinDeploy.Core.Util;
 
@@ -10,14 +11,14 @@ public static class EnvApplier
     public static ConfigResult Apply(string repoRoot, PathResolver pr)
     {
         var file = Path.Combine(repoRoot, "configs", "env", "env.json");
-        if (!File.Exists(file)) return ConfigResult.Skip("环境变量", "无 env.json");
+        if (!File.Exists(file)) return ConfigResult.Skip(Localizer.T("engine.env.name"), Localizer.T("engine.env.noEnvJson"));
 
         EnvConfig env;
         try { env = JsonSerializer.Deserialize<EnvConfig>(File.ReadAllText(file), CatalogLoader.Json) ?? new(); }
-        catch (Exception ex) { return ConfigResult.Fail("环境变量", ex.Message); }
+        catch (Exception ex) { return ConfigResult.Fail(Localizer.T("engine.env.name"), ex.Message); }
 
         foreach (var kv in env.Vars) EnvPath.SetUserVar(kv.Key, pr.Resolve(kv.Value));
         var added = env.Path.Count(p => EnvPath.AddToUserPath(pr.Resolve(p)));
-        return ConfigResult.Ok("环境变量", $"{env.Vars.Count} 变量 · 新增 {added} 个 PATH");
+        return ConfigResult.Ok(Localizer.T("engine.env.name"), Localizer.Format("engine.env.summary", env.Vars.Count, added));
     }
 }

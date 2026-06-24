@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using WinDeploy.Core;
 using WinDeploy.Core.Engine;
+using WinDeploy.Core.I18n;
 using WinDeploy.Core.Models;
 
 namespace WinDeploy.App.Services;
@@ -176,7 +177,7 @@ public static class ServiceConfig
                         SvcAction.Reload => RunWait(Path.Combine(s.Dir, "nginx.exe"), "-s reload", s.Dir),
                         SvcAction.Restart => Restart(() => RunWait(Path.Combine(s.Dir, "nginx.exe"), "-s stop", s.Dir),
                                                      () => Launch(Path.Combine(s.Dir, "nginx.exe"), "", s.Dir, false)),
-                        _ => (false, "不支持"),
+                        _ => (false, Localizer.T("svc.run.notSupported")),
                     };
                 case "apache":
                     var httpd = Path.Combine(s.Dir, "bin", "httpd.exe");
@@ -185,20 +186,20 @@ public static class ServiceConfig
                         SvcAction.Start => Launch("cmd.exe", $"/k \"\"{httpd}\"\"", s.Dir, true),
                         SvcAction.Stop => Kill("httpd"),
                         SvcAction.Restart => Restart(() => Kill("httpd"), () => Launch("cmd.exe", $"/k \"\"{httpd}\"\"", s.Dir, true)),
-                        _ => (false, "不支持"),
+                        _ => (false, Localizer.T("svc.run.notSupported")),
                     };
                 case "tomcat":
                     return action switch
                     {
                         SvcAction.Start => Launch(Path.Combine(s.Dir, "bin", "startup.bat"), "", s.Dir, true),
                         SvcAction.Stop => Launch(Path.Combine(s.Dir, "bin", "shutdown.bat"), "", s.Dir, true),
-                        _ => (false, "不支持"),
+                        _ => (false, Localizer.T("svc.run.notSupported")),
                     };
                 default:
-                    return (false, "该服务无可用操作");
+                    return (false, Localizer.T("svc.run.noActions"));
             }
         }
-        catch (Win32Exception) { return (false, "已取消授权或启动失败"); }
+        catch (Win32Exception) { return (false, Localizer.T("svc.run.cancelled")); }
         catch (Exception ex) { return (false, ex.Message); }
     }
 
@@ -212,19 +213,19 @@ public static class ServiceConfig
     private static (bool, string) Launch(string exe, string args, string wd, bool visible)
     {
         if (!File.Exists(exe) && !exe.Equals("cmd.exe", StringComparison.OrdinalIgnoreCase))
-            return (false, "未找到可执行文件：" + exe);
+            return (false, Localizer.Format("svc.run.notFound", exe));
         var psi = new ProcessStartInfo(exe) { Arguments = args, WorkingDirectory = wd, UseShellExecute = visible, CreateNoWindow = !visible };
         Process.Start(psi);
-        return (true, "已启动");
+        return (true, Localizer.T("svc.run.started"));
     }
 
     private static (bool, string) RunWait(string exe, string args, string wd)
     {
-        if (!File.Exists(exe)) return (false, "未找到可执行文件：" + exe);
+        if (!File.Exists(exe)) return (false, Localizer.Format("svc.run.notFound", exe));
         var psi = new ProcessStartInfo(exe) { Arguments = args, WorkingDirectory = wd, UseShellExecute = false, CreateNoWindow = true };
         using var p = Process.Start(psi);
         p?.WaitForExit(8000);
-        return (p is { ExitCode: 0 }) ? (true, "完成") : (true, "已发送命令");
+        return (p is { ExitCode: 0 }) ? (true, Localizer.T("svc.run.done")) : (true, Localizer.T("svc.run.sent"));
     }
 
     private static (bool, string) Kill(string procName)
@@ -232,6 +233,6 @@ public static class ServiceConfig
         var n = 0;
         foreach (var p in Process.GetProcessesByName(procName))
             try { p.Kill(entireProcessTree: true); n++; } catch { } finally { p.Dispose(); }
-        return (true, n > 0 ? $"已停止 {n} 个进程" : "没有正在运行的进程");
+        return (true, n > 0 ? Localizer.Format("svc.run.killed", n) : Localizer.T("svc.run.noProcess"));
     }
 }

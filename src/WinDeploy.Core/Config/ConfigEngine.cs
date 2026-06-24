@@ -1,4 +1,5 @@
 using WinDeploy.Core.Engine.Installers;
+using WinDeploy.Core.I18n;
 using WinDeploy.Core.Models;
 using WinDeploy.Core.Util;
 
@@ -21,7 +22,7 @@ public sealed class ConfigEngine
                 "ask" => includeAsk,
                 _ => await isInstalled(item),
             };
-            if (!go) { results.Add(ConfigResult.Skip(item.Name, $"applyWhen={when}，跳过")); continue; }
+            if (!go) { results.Add(ConfigResult.Skip(item.Name, Localizer.Format("engine.configEngine.skipApplyWhen", when))); continue; }
             results.Add(ConfigSync.Apply(item, ctx));
         }
         results.Add(EnvApplier.Apply(ctx.RepoRoot, ctx.Path));
@@ -35,7 +36,7 @@ public sealed class ConfigEngine
         var results = new List<ConfigResult>();
         foreach (var item in cat.Items.Where(i => i.Config?.Files != null))
         {
-            if (!await isInstalled(item)) { results.Add(ConfigResult.Skip(item.Name, "未安装，跳过采集")); continue; }
+            if (!await isInstalled(item)) { results.Add(ConfigResult.Skip(item.Name, Localizer.T("engine.configEngine.notInstalled"))); continue; }
             results.Add(ConfigSync.Export(item, ctx));
         }
 
@@ -51,7 +52,7 @@ public sealed class ConfigEngine
                 {
                     var file = ctx.ResolveRepo(vscode.Config!.Extensions!);
                     var count = r.StdOut.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Length;
-                    var content = "# VS Code 扩展清单（导出自本机）。以 # 开头或空行会被忽略。" + Environment.NewLine + r.StdOut;
+                    var content = Localizer.T("engine.configEngine.vscodeExtHeader") + Environment.NewLine + r.StdOut;
                     await File.WriteAllTextAsync(file, content, ctx.Ct);
                     var info = new ConfigFileInfo
                     {
@@ -59,7 +60,7 @@ public sealed class ConfigEngine
                         Size = new FileInfo(file).Length,
                         Preview = ConfigSync.MakePreview(content),
                     };
-                    results.Add(ConfigResult.Ok("VS Code 扩展", $"采集 {count} 个", new List<ConfigFileInfo> { info }));
+                    results.Add(ConfigResult.Ok(Localizer.T("engine.configEngine.vscodeName"), Localizer.Format("engine.configEngine.vscodeCaptured", count), new List<ConfigFileInfo> { info }));
                 }
             }
         }

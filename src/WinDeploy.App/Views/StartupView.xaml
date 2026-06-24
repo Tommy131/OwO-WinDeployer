@@ -9,13 +9,13 @@
     </Grid.RowDefinitions>
 
     <StackPanel Grid.Row="0">
-      <TextBlock Text="启动项" FontSize="20" FontWeight="SemiBold" />
-      <TextBlock Text="管理 Windows 开机自启动（注册表 Run 键 + 启动文件夹）：启用 / 禁用 / 删除。HKLM 与公共启动项需以管理员身份运行。"
+      <TextBlock Text="{DynamicResource S.startup.title}" FontSize="20" FontWeight="SemiBold" />
+      <TextBlock Text="{DynamicResource S.startup.subtitle}"
                  FontSize="13" Foreground="{DynamicResource TextSecondary}" Margin="0,3,0,0" TextWrapping="Wrap" />
     </StackPanel>
 
     <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,12,0,0">
-      <Button Content="↻ 刷新" Style="{StaticResource MiniButton}" Command="{Binding RefreshCommand}" />
+      <Button Content="{DynamicResource S.startup.refresh}" Style="{StaticResource MiniButton}" Command="{Binding RefreshCommand}" />
       <TextBlock Text="{Binding Summary}" FontSize="12" Foreground="{DynamicResource TextTertiary}"
                  VerticalAlignment="Center" Margin="16,0,0,0" />
     </StackPanel>
@@ -56,15 +56,15 @@
                     </Border>
                     <Border CornerRadius="6" Padding="6,1" Margin="5,0,0,0" Background="{DynamicResource OkBg}" VerticalAlignment="Center"
                             Visibility="{Binding Enabled, Converter={StaticResource BoolToVis}}">
-                      <TextBlock Text="已启用" FontSize="10" Foreground="{DynamicResource OkFg}" />
+                      <TextBlock Text="{DynamicResource S.startup.badge.enabled}" FontSize="10" Foreground="{DynamicResource OkFg}" />
                     </Border>
                     <Border CornerRadius="6" Padding="6,1" Margin="5,0,0,0" Background="{DynamicResource FailBg}" VerticalAlignment="Center"
                             Visibility="{Binding Disabled, Converter={StaticResource BoolToVis}}">
-                      <TextBlock Text="已禁用" FontSize="10" Foreground="{DynamicResource FailFg}" />
+                      <TextBlock Text="{DynamicResource S.startup.badge.disabled}" FontSize="10" Foreground="{DynamicResource FailFg}" />
                     </Border>
                     <Border CornerRadius="6" Padding="6,1" Margin="5,0,0,0" Background="{DynamicResource WarnBg}" VerticalAlignment="Center"
-                            Visibility="{Binding NeedsAdmin, Converter={StaticResource BoolToVis}}" ToolTip="修改此项需以管理员身份运行">
-                      <TextBlock Text="需管理员" FontSize="10" Foreground="{DynamicResource WarnFg}" />
+                            Visibility="{Binding NeedsAdmin, Converter={StaticResource BoolToVis}}" ToolTip="{DynamicResource S.startup.badge.needAdmin.tip}">
+                      <TextBlock Text="{DynamicResource S.startup.badge.needAdmin}" FontSize="10" Foreground="{DynamicResource WarnFg}" />
                     </Border>
                   </StackPanel>
                   <TextBlock Text="{Binding Command}" FontSize="11.5" FontFamily="Consolas" Foreground="{DynamicResource TextTertiary}"
@@ -76,10 +76,10 @@
                   <Button Content="{Binding ToggleLabel}" Style="{StaticResource MiniButton}"
                           Command="{Binding DataContext.ToggleCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                           CommandParameter="{Binding}" />
-                  <Button Content="打开位置" Style="{StaticResource MiniButton}" Margin="8,0,0,0"
+                  <Button Content="{DynamicResource S.startup.openLocation}" Style="{StaticResource MiniButton}" Margin="8,0,0,0"
                           Command="{Binding DataContext.OpenLocationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                           CommandParameter="{Binding}" />
-                  <Button Content="删除" Style="{StaticResource DangerButton}" Margin="8,0,0,0"
+                  <Button Content="{DynamicResource S.common.delete}" Style="{StaticResource DangerButton}" Margin="8,0,0,0"
                           Command="{Binding DataContext.RemoveCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                           CommandParameter="{Binding}" />
                 </StackPanel>

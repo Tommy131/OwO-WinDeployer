@@ -8,8 +8,8 @@
     </Grid.RowDefinitions>
 
     <StackPanel Grid.Row="0">
-      <TextBlock Text="系统维护" FontSize="20" FontWeight="SemiBold" />
-      <TextBlock Text="常用系统修复命令、垃圾清理与最近错误/崩溃事件——修电脑的常用工具台。带「需管理员」的项会弹出 UAC。"
+      <TextBlock Text="{DynamicResource S.maint.title}" FontSize="20" FontWeight="SemiBold" />
+      <TextBlock Text="{DynamicResource S.maint.subtitle}"
                  FontSize="13" Foreground="{DynamicResource TextSecondary}" Margin="0,3,0,0" TextWrapping="Wrap" />
     </StackPanel>
 
@@ -18,7 +18,7 @@
       <StackPanel>
 
         <!-- ① Repair commands -->
-        <TextBlock Text="一键修复" FontSize="15" FontWeight="SemiBold" Margin="2,0,0,8" />
+        <TextBlock Text="{DynamicResource S.maint.repair.title}" FontSize="15" FontWeight="SemiBold" Margin="2,0,0,8" />
         <ItemsControl ItemsSource="{Binding Repairs}">
           <ItemsControl.ItemTemplate>
             <DataTemplate>
@@ -33,16 +33,16 @@
                       <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" />
                       <Border CornerRadius="6" Padding="6,1" Margin="8,0,0,0" Background="{DynamicResource WarnBg}" VerticalAlignment="Center"
                               Visibility="{Binding NeedsAdmin, Converter={StaticResource BoolToVis}}">
-                        <TextBlock Text="需管理员" FontSize="10" Foreground="{DynamicResource WarnFg}" />
+                        <TextBlock Text="{DynamicResource S.maint.repair.adminBadge}" FontSize="10" Foreground="{DynamicResource WarnFg}" />
                       </Border>
                       <Border CornerRadius="6" Padding="6,1" Margin="5,0,0,0" Background="{DynamicResource FailBg}" VerticalAlignment="Center"
                               Visibility="{Binding Risky, Converter={StaticResource BoolToVis}}">
-                        <TextBlock Text="谨慎" FontSize="10" Foreground="{DynamicResource FailFg}" />
+                        <TextBlock Text="{DynamicResource S.maint.repair.riskyBadge}" FontSize="10" Foreground="{DynamicResource FailFg}" />
                       </Border>
                     </StackPanel>
                     <TextBlock Text="{Binding Detail}" FontSize="11.5" Foreground="{DynamicResource TextSecondary}" Margin="0,4,0,0" TextWrapping="Wrap" />
                   </StackPanel>
-                  <Button Grid.Column="1" Content="执行" Style="{StaticResource InfoButton}" VerticalAlignment="Center"
+                  <Button Grid.Column="1" Content="{DynamicResource S.maint.repair.run}" Style="{StaticResource InfoButton}" VerticalAlignment="Center"
                           Command="{Binding DataContext.RunRepairCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                           CommandParameter="{Binding}" />
                 </Grid>
@@ -52,10 +52,10 @@
         </ItemsControl>
 
         <!-- ② Junk cleaner -->
-        <TextBlock Text="垃圾清理" FontSize="15" FontWeight="SemiBold" Margin="2,18,0,8" />
+        <TextBlock Text="{DynamicResource S.maint.junk.title}" FontSize="15" FontWeight="SemiBold" Margin="2,18,0,8" />
         <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-          <Button Content="扫描" Style="{StaticResource MiniButton}" Command="{Binding ScanJunkCommand}" />
-          <Button Content="清理选中" Style="{StaticResource WarnButton}" Margin="8,0,0,0" Command="{Binding CleanJunkCommand}" />
+          <Button Content="{DynamicResource S.maint.scan}" Style="{StaticResource MiniButton}" Command="{Binding ScanJunkCommand}" />
+          <Button Content="{DynamicResource S.maint.junk.cleanSelected}" Style="{StaticResource WarnButton}" Margin="8,0,0,0" Command="{Binding CleanJunkCommand}" />
           <TextBlock Text="{Binding JunkNote}" FontSize="12" Foreground="{DynamicResource TextTertiary}" VerticalAlignment="Center" Margin="14,0,0,0" />
         </StackPanel>
         <ItemsControl ItemsSource="{Binding Junk}">
@@ -81,9 +81,9 @@
         </ItemsControl>
 
         <!-- ③ Event log -->
-        <TextBlock Text="最近错误 / 崩溃" FontSize="15" FontWeight="SemiBold" Margin="2,18,0,8" />
+        <TextBlock Text="{DynamicResource S.maint.events.title}" FontSize="15" FontWeight="SemiBold" Margin="2,18,0,8" />
         <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-          <Button Content="刷新" Style="{StaticResource MiniButton}" Command="{Binding RefreshEventsCommand}" />
+          <Button Content="{DynamicResource S.common.refresh}" Style="{StaticResource MiniButton}" Command="{Binding RefreshEventsCommand}" />
           <TextBlock Text="{Binding EventNote}" FontSize="12" Foreground="{DynamicResource TextTertiary}" VerticalAlignment="Center" Margin="14,0,0,0" />
         </StackPanel>
         <ItemsControl ItemsSource="{Binding Events}">
@@ -97,7 +97,7 @@
                     </Border>
                     <Border CornerRadius="6" Padding="6,1" Margin="5,0,0,0" Background="{DynamicResource WarnBg}" VerticalAlignment="Center"
                             Visibility="{Binding IsCrash, Converter={StaticResource BoolToVis}}">
-                      <TextBlock Text="崩溃/异常关机" FontSize="10" Foreground="{DynamicResource WarnFg}" />
+                      <TextBlock Text="{DynamicResource S.maint.event.crashBadge}" FontSize="10" Foreground="{DynamicResource WarnFg}" />
                     </Border>
                     <TextBlock Text="{Binding Source}" FontSize="12" FontWeight="SemiBold" Margin="8,0,0,0" VerticalAlignment="Center"
                                TextTrimming="CharacterEllipsis" MaxWidth="280" />

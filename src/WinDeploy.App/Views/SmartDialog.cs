@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using WinDeploy.App.Services;
+using WinDeploy.Core.I18n;
 
 namespace WinDeploy.App.Views;
 
@@ -32,7 +33,7 @@ public sealed class SmartDialog : Window
         // DockPanel keeps the 关闭 button pinned to the bottom (never clipped), while the body scrolls.
         var dock = new DockPanel { Margin = new Thickness(18) };
 
-        var close = new Button { Content = "关闭", MinWidth = 72, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 12, 0, 0), IsCancel = true };
+        var close = new Button { Content = Localizer.T("common.close"), MinWidth = 72, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 12, 0, 0), IsCancel = true };
         if (Application.Current.TryFindResource("MiniButton") is Style s) close.Style = s;
         close.Click += (_, _) => Close();
         DockPanel.SetDock(close, Dock.Bottom);
@@ -40,10 +41,10 @@ public sealed class SmartDialog : Window
 
         var content = new StackPanel();
         content.Children.Add(new TextBlock { Text = title, FontSize = 15, FontWeight = FontWeights.SemiBold, Foreground = Brush("TextPrimary"), TextTrimming = TextTrimming.CharacterEllipsis });
-        content.Children.Add(new TextBlock { Text = "SMART / 磁盘健康诊断", FontSize = 12, Foreground = Brush("TextTertiary"), Margin = new Thickness(0, 2, 0, 0) });
+        content.Children.Add(new TextBlock { Text = Localizer.T("sysov.smart.heading"), FontSize = 12, Foreground = Brush("TextTertiary"), Margin = new Thickness(0, 2, 0, 0) });
 
         _body = new StackPanel { Margin = new Thickness(0, 12, 0, 0) };
-        _body.Children.Add(Row("读取中 …", ""));
+        _body.Children.Add(Row(Localizer.T("sysov.smart.reading"), ""));
         content.Children.Add(_body);
 
         // Margin right -18 / Padding right 10: cancels the DockPanel's 18px right margin so the scrollbar sits
@@ -65,50 +66,52 @@ public sealed class SmartDialog : Window
 
         if (!s.Ok)
         {
-            _body.Children.Add(Row("无法读取", "未能识别该磁盘"));
+            _body.Children.Add(Row(Localizer.T("sysov.smart.unableRead"), Localizer.T("sysov.smart.unableRead.detail")));
             return;
         }
 
-        _body.Children.Add(Row("型号", s.Model ?? s.Friendly));
+        var na = Localizer.T("sysov.smart.na");
+        var unknown = Localizer.T("common.unknown");
+        _body.Children.Add(Row(Localizer.T("sysov.smart.model"), s.Model ?? s.Friendly));
         _body.Children.Add(SerialRow(s));
-        _body.Children.Add(Row("容量", s.SizeBytes > 0 ? Gb(s.SizeBytes) : "未知"));
-        _body.Children.Add(Row("健康状态", s.Health ?? "未知", healthy: string.Equals(s.Health, "Healthy", StringComparison.OrdinalIgnoreCase)));
-        _body.Children.Add(Row("介质 / 总线", $"{s.Media ?? "未知"} · {s.Bus ?? "未知"}"));
-        _body.Children.Add(Row("温度", s.Temperature is int t ? $"{t} °C" : "不可用"));
-        _body.Children.Add(Row("通电时间", s.PowerOnHours is long h ? $"{h} 小时（约 {h / 24} 天）" : "不可用"));
-        _body.Children.Add(Row("通电次数", s.PowerCycles?.ToString() ?? "不可用"));
+        _body.Children.Add(Row(Localizer.T("sysov.smart.capacity"), s.SizeBytes > 0 ? Gb(s.SizeBytes) : unknown));
+        _body.Children.Add(Row(Localizer.T("sysov.smart.health"), s.Health ?? unknown, healthy: string.Equals(s.Health, "Healthy", StringComparison.OrdinalIgnoreCase)));
+        _body.Children.Add(Row(Localizer.T("sysov.smart.mediaBus"), $"{s.Media ?? unknown} · {s.Bus ?? unknown}"));
+        _body.Children.Add(Row(Localizer.T("sysov.smart.temperature"), s.Temperature is int t ? $"{t} °C" : na));
+        _body.Children.Add(Row(Localizer.T("sysov.smart.poh"), s.PowerOnHours is long h ? Localizer.Format("sysov.smart.poh.value", h, h / 24) : na));
+        _body.Children.Add(Row(Localizer.T("sysov.smart.powerCycles"), s.PowerCycles?.ToString() ?? na));
 
         if (s.IsSsd)
         {
-            _body.Children.Add(Row("剩余寿命", s.RemainingLifePercent is int life ? $"{life}%" : "不可用",
+            _body.Children.Add(Row(Localizer.T("sysov.smart.remainingLife"), s.RemainingLifePercent is int life ? $"{life}%" : na,
                 danger: s.RemainingLifePercent is int lp && lp <= 10));
             if (s.IsNvme && s.PercentageUsed is int pu)
-                _body.Children.Add(Row("已用寿命", $"{pu}%", danger: pu >= 90));
+                _body.Children.Add(Row(Localizer.T("sysov.smart.usedLife"), $"{pu}%", danger: pu >= 90));
             // Some SATA SSDs (e.g. Samsung 860 EVO) only expose Total LBAs Written (0xF1) and omit reads (0xF2);
             // distinguish "drive doesn't report it" from a read failure. NVMe always reports both.
-            _body.Children.Add(Row("累计写入", s.HostWritesBytes is long hw ? Gb(hw) : s.IsNvme ? "不可用" : "该型号未上报 (0xF1)"));
-            _body.Children.Add(Row("累计读取", s.HostReadsBytes is long hr ? Gb(hr) : s.IsNvme ? "不可用" : "该型号未上报 (0xF2)"));
+            _body.Children.Add(Row(Localizer.T("sysov.smart.writesTotal"), s.HostWritesBytes is long hw ? Gb(hw) : s.IsNvme ? na : Localizer.T("sysov.smart.writesTotal.unreported")));
+            _body.Children.Add(Row(Localizer.T("sysov.smart.readsTotal"), s.HostReadsBytes is long hr ? Gb(hr) : s.IsNvme ? na : Localizer.T("sysov.smart.readsTotal.unreported")));
             if (s.IsNvme)
             {
                 if (s.AvailableSpare is int sp)
-                    _body.Children.Add(Row("可用备件", $"{sp}%" + (s.AvailableSpareThreshold is int th ? $"（阈值 {th}%）" : ""),
+                    _body.Children.Add(Row(Localizer.T("sysov.smart.ssd.availSpare"), $"{sp}%" + (s.AvailableSpareThreshold is int th ? Localizer.Format("sysov.smart.spareThreshold.suffix", th) : ""),
                         danger: s.AvailableSpareThreshold is int t2 && t2 > 0 && sp < t2));
-                _body.Children.Add(Row("介质 / 完整性错误", s.MediaErrors?.ToString() ?? "不可用", danger: (s.MediaErrors ?? 0) > 0));
-                _body.Children.Add(Row("不安全关机", s.UnsafeShutdowns?.ToString() ?? "不可用"));
-                _body.Children.Add(Row("错误日志条目", s.ErrorLogEntries?.ToString() ?? "不可用"));
-                _body.Children.Add(Row("严重警告", NvmeWarn(s.CriticalWarning), danger: (s.CriticalWarning ?? 0) != 0));
+                _body.Children.Add(Row(Localizer.T("sysov.smart.nvmeMediaErrors"), s.MediaErrors?.ToString() ?? na, danger: (s.MediaErrors ?? 0) > 0));
+                _body.Children.Add(Row(Localizer.T("sysov.smart.nvmeUnsafeShutdowns"), s.UnsafeShutdowns?.ToString() ?? na));
+                _body.Children.Add(Row(Localizer.T("sysov.smart.nvmeErrorLog"), s.ErrorLogEntries?.ToString() ?? na));
+                _body.Children.Add(Row(Localizer.T("sysov.smart.nvmeSevereWarning"), NvmeWarn(s.CriticalWarning), danger: (s.CriticalWarning ?? 0) != 0));
             }
         }
         else
         {
-            _body.Children.Add(Row("重映射扇区 (05)", s.Reallocated?.ToString() ?? "不可用", danger: (s.Reallocated ?? 0) > 0));
-            _body.Children.Add(Row("当前待映射 (C5)", s.Pending?.ToString() ?? "不可用", danger: (s.Pending ?? 0) > 0));
-            _body.Children.Add(Row("无法纠正 (C6)", s.Uncorrectable?.ToString() ?? "不可用", danger: (s.Uncorrectable ?? 0) > 0));
-            _body.Children.Add(Row("UDMA CRC (C7)", s.Crc?.ToString() ?? "不可用", danger: (s.Crc ?? 0) > 0));
+            _body.Children.Add(Row(Localizer.T("sysov.smart.hdd.reallocated"), s.Reallocated?.ToString() ?? na, danger: (s.Reallocated ?? 0) > 0));
+            _body.Children.Add(Row(Localizer.T("sysov.smart.hdd.pending"), s.Pending?.ToString() ?? na, danger: (s.Pending ?? 0) > 0));
+            _body.Children.Add(Row(Localizer.T("sysov.smart.hdd.uncorrectable"), s.Uncorrectable?.ToString() ?? na, danger: (s.Uncorrectable ?? 0) > 0));
+            _body.Children.Add(Row(Localizer.T("sysov.smart.hdd.crc"), s.Crc?.ToString() ?? na, danger: (s.Crc ?? 0) > 0));
         }
 
         if (s.HasWarning)
-            _body.Children.Add(Banner("⚠ 检测到高危项（重映射 / 待映射 / 无法纠正扇区 > 0），建议尽快备份数据。"));
+            _body.Children.Add(Banner(Localizer.T("sysov.smart.banner.highRisk")));
 
         if (s.Attributes.Count > 0) _body.Children.Add(AttributeTable(s));
         else if (s.IsNvme && s.HasCounters) _body.Children.Add(NvmeAttributeTable(s));
@@ -119,31 +122,31 @@ public sealed class SmartDialog : Window
             {
                 // Already admin: the initial read already used full privileges, so re-elevating can't help —
                 // this drive / controller simply doesn't expose standard ATA SMART (some USB / RAID / NVMe bridges).
-                _body.Children.Add(Note("该驱动器 / 控制器未提供 SMART 属性（部分 USB / RAID / NVMe 桥接控制器不支持标准 ATA SMART 读取）。"));
+                _body.Children.Add(Note(Localizer.T("sysov.smart.note.elevated")));
             }
             else if (IsExternalBus(s.Bus))
             {
                 // USB / external bridge: the per-read WMI elevation can't reach it — only the in-process SAT
                 // (SCSI/ATA) pass-through can, and that needs the whole app elevated. Offer to relaunch as admin.
-                _body.Children.Add(Note("USB / 外接硬盘的 SMART 需以管理员身份运行本程序后读取（经 SCSI / ATA 直通）。"));
-                var relaunch = new Button { Content = "🛡 以管理员身份运行本程序", Margin = new Thickness(0, 10, 0, 0), HorizontalAlignment = HorizontalAlignment.Left };
+                _body.Children.Add(Note(Localizer.T("sysov.smart.note.external")));
+                var relaunch = new Button { Content = Localizer.T("sysov.adminRun.full"), Margin = new Thickness(0, 10, 0, 0), HorizontalAlignment = HorizontalAlignment.Left };
                 if (Application.Current.TryFindResource("WarnButton") is Style ws) relaunch.Style = ws;
                 relaunch.Click += (_, _) => RelaunchAsAdmin();
                 _body.Children.Add(relaunch);
             }
             else
             {
-                _body.Children.Add(Note("温度 / 寿命 / SMART 属性需要管理员权限才能读取（机械盘 C5/C6、固态盘读写量等）。"));
+                _body.Children.Add(Note(Localizer.T("sysov.smart.note.local")));
                 if (offerElevate)
                 {
-                    var btn = new Button { Content = "以管理员身份读取完整 SMART", Margin = new Thickness(0, 10, 0, 0), HorizontalAlignment = HorizontalAlignment.Left };
+                    var btn = new Button { Content = Localizer.T("sysov.smart.elevateBtn"), Margin = new Thickness(0, 10, 0, 0), HorizontalAlignment = HorizontalAlignment.Left };
                     if (Application.Current.TryFindResource("InfoButton") is Style st) btn.Style = st;
                     btn.Click += async (_, _) =>
                     {
-                        btn.IsEnabled = false; btn.Content = "读取中 …";
+                        btn.IsEnabled = false; btn.Content = Localizer.T("sysov.smart.reading");
                         var s2 = await SystemInfo.GetSmartElevatedAsync(_deviceId);
                         if (s2.HasCounters) Render(s2, offerElevate: false);
-                        else { Render(s, offerElevate: false); _body.Children.Add(Note("未获取到 SMART 属性（已取消授权，或该控制器/驱动器不支持 ATA SMART，如部分 NVMe / USB / RAID）。")); }
+                        else { Render(s, offerElevate: false); _body.Children.Add(Note(Localizer.T("sysov.smart.note.noAttr"))); }
                     };
                     _body.Children.Add(btn);
                 }
@@ -158,13 +161,13 @@ public sealed class SmartDialog : Window
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-        grid.Children.Add(Col(new TextBlock { Text = "序列号", FontSize = 13, Foreground = Brush("TextSecondary"), VerticalAlignment = VerticalAlignment.Center }, 0));
+        grid.Children.Add(Col(new TextBlock { Text = Localizer.T("sysov.smart.serial"), FontSize = 13, Foreground = Brush("TextSecondary"), VerticalAlignment = VerticalAlignment.Center }, 0));
         var serial = string.IsNullOrWhiteSpace(s.Serial) ? null : s.Serial;
-        var shown = serial == null ? "不可用" : _showSerial ? serial : new string('•', Math.Min(16, Math.Max(6, serial.Length)));
+        var shown = serial == null ? Localizer.T("sysov.smart.na") : _showSerial ? serial : new string('•', Math.Min(16, Math.Max(6, serial.Length)));
         grid.Children.Add(Col(new TextBlock { Text = shown, FontSize = 13, FontFamily = new FontFamily("Consolas"), Foreground = Brush("TextPrimary"), VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis }, 1));
         if (serial != null)
         {
-            var toggle = new Button { Content = _showSerial ? "隐藏" : "显示", FontSize = 11, Padding = new Thickness(8, 2, 8, 2), VerticalAlignment = VerticalAlignment.Center };
+            var toggle = new Button { Content = _showSerial ? Localizer.T("sysov.smart.serial.hide") : Localizer.T("sysov.smart.serial.show"), FontSize = 11, Padding = new Thickness(8, 2, 8, 2), VerticalAlignment = VerticalAlignment.Center };
             if (Application.Current.TryFindResource("MiniButton") is Style st) toggle.Style = st;
             toggle.Click += (_, _) => { _showSerial = !_showSerial; if (_last != null) Render(_last, _offerElevate); };
             grid.Children.Add(Col(toggle, 2));
@@ -175,8 +178,8 @@ public sealed class SmartDialog : Window
     private Border AttributeTable(SmartInfo s)
     {
         var outer = new StackPanel { Margin = new Thickness(0, 12, 0, 0) };
-        outer.Children.Add(new TextBlock { Text = "SMART 属性", FontSize = 13, FontWeight = FontWeights.SemiBold, Foreground = Brush("TextPrimary"), Margin = new Thickness(0, 0, 0, 6) });
-        outer.Children.Add(MakeRow("ID", "属性", "当前", "最差", "阈值", "原始值", header: true, critical: false));
+        outer.Children.Add(new TextBlock { Text = Localizer.T("sysov.smart.attrTable.title"), FontSize = 13, FontWeight = FontWeights.SemiBold, Foreground = Brush("TextPrimary"), Margin = new Thickness(0, 0, 0, 6) });
+        outer.Children.Add(MakeRow("ID", Localizer.T("sysov.smart.attr.name"), Localizer.T("sysov.smart.attr.cur"), Localizer.T("sysov.smart.attr.worst"), Localizer.T("sysov.smart.attr.thr"), Localizer.T("sysov.smart.attr.raw"), header: true, critical: false));
 
         foreach (var a in s.Attributes)
             outer.Children.Add(MakeRow(a.IdHex, a.Name, a.Current.ToString(), a.Worst.ToString(),
@@ -190,8 +193,8 @@ public sealed class SmartDialog : Window
     private Border NvmeAttributeTable(SmartInfo s)
     {
         var outer = new StackPanel { Margin = new Thickness(0, 12, 0, 0) };
-        outer.Children.Add(new TextBlock { Text = "SMART 属性（NVMe Health Log · 0x02）", FontSize = 13, FontWeight = FontWeights.SemiBold, Foreground = Brush("TextPrimary"), Margin = new Thickness(0, 0, 0, 6) });
-        outer.Children.Add(NvmeRow("字段", "值", header: true, danger: false));
+        outer.Children.Add(new TextBlock { Text = Localizer.T("sysov.smart.nvme.tableTitle"), FontSize = 13, FontWeight = FontWeights.SemiBold, Foreground = Brush("TextPrimary"), Margin = new Thickness(0, 0, 0, 6) });
+        outer.Children.Add(NvmeRow(Localizer.T("sysov.smart.nvme.field"), Localizer.T("sysov.smart.nvme.value"), header: true, danger: false));
         foreach (var (name, value, danger) in NvmeRows(s))
             outer.Children.Add(NvmeRow(name, value, header: false, danger: danger));
         return new Border { Child = outer };
@@ -215,22 +218,22 @@ public sealed class SmartDialog : Window
         var rows = new List<(string, string, bool)>();
         void Add(string name, string? value, bool danger = false) { if (!string.IsNullOrEmpty(value)) rows.Add((name, value!, danger)); }
 
-        Add("严重警告", s.CriticalWarning is int cw ? $"0x{cw:X2} · {NvmeWarn(cw)}" : null, (s.CriticalWarning ?? 0) != 0);
-        Add("复合温度", s.Temperature is int t ? $"{t} °C" : null);
-        Add("可用备件", s.AvailableSpare is int sp ? $"{sp}%" : null, s.AvailableSpareThreshold is int t0 && t0 > 0 && (s.AvailableSpare ?? 100) < t0);
-        Add("可用备件阈值", s.AvailableSpareThreshold is int th ? $"{th}%" : null);
-        Add("已用寿命", s.PercentageUsed is int pu ? $"{pu}%" : null, (s.PercentageUsed ?? 0) >= 90);
-        Add("剩余寿命", s.RemainingLifePercent is int life ? $"{life}%" : null, (s.RemainingLifePercent ?? 100) <= 10);
-        Add("数据写入量", s.HostWritesBytes is long hw ? Gb(hw) : null);
-        Add("数据读取量", s.HostReadsBytes is long hr ? Gb(hr) : null);
-        Add("主机写入命令数", s.HostWriteCommands?.ToString("N0"));
-        Add("主机读取命令数", s.HostReadCommands?.ToString("N0"));
-        Add("控制器繁忙时间", s.ControllerBusyMinutes is long cb ? $"{cb:N0} 分钟" : null);
-        Add("通电周期", s.PowerCycles?.ToString("N0"));
-        Add("通电时间", s.PowerOnHours is long poh ? $"{poh:N0} 小时" : null);
-        Add("不安全关机", s.UnsafeShutdowns?.ToString("N0"));
-        Add("介质与完整性错误", s.MediaErrors?.ToString("N0"), (s.MediaErrors ?? 0) > 0);
-        Add("错误信息日志条目数", s.ErrorLogEntries?.ToString("N0"));
+        Add(Localizer.T("sysov.smart.nvme.criticalWarning"), s.CriticalWarning is int cw ? $"0x{cw:X2} · {NvmeWarn(cw)}" : null, (s.CriticalWarning ?? 0) != 0);
+        Add(Localizer.T("sysov.smart.nvme.compositeTemp"), s.Temperature is int t ? $"{t} °C" : null);
+        Add(Localizer.T("sysov.smart.nvme.availSpare"), s.AvailableSpare is int sp ? $"{sp}%" : null, s.AvailableSpareThreshold is int t0 && t0 > 0 && (s.AvailableSpare ?? 100) < t0);
+        Add(Localizer.T("sysov.smart.nvme.availSpareThreshold"), s.AvailableSpareThreshold is int th ? $"{th}%" : null);
+        Add(Localizer.T("sysov.smart.nvme.usedLife"), s.PercentageUsed is int pu ? $"{pu}%" : null, (s.PercentageUsed ?? 0) >= 90);
+        Add(Localizer.T("sysov.smart.remainingLife"), s.RemainingLifePercent is int life ? $"{life}%" : null, (s.RemainingLifePercent ?? 100) <= 10);
+        Add(Localizer.T("sysov.smart.nvme.dataWritten"), s.HostWritesBytes is long hw ? Gb(hw) : null);
+        Add(Localizer.T("sysov.smart.nvme.dataRead"), s.HostReadsBytes is long hr ? Gb(hr) : null);
+        Add(Localizer.T("sysov.smart.nvme.hostWriteCmds"), s.HostWriteCommands?.ToString("N0"));
+        Add(Localizer.T("sysov.smart.nvme.hostReadCmds"), s.HostReadCommands?.ToString("N0"));
+        Add(Localizer.T("sysov.smart.nvme.controllerBusy"), s.ControllerBusyMinutes is long cb ? Localizer.Format("sysov.smart.nvme.minutes", cb.ToString("N0")) : null);
+        Add(Localizer.T("sysov.smart.nvme.powerCycles"), s.PowerCycles?.ToString("N0"));
+        Add(Localizer.T("sysov.smart.nvme.powerOnHours"), s.PowerOnHours is long poh ? Localizer.Format("sysov.smart.nvmeHours", poh.ToString("N0")) : null);
+        Add(Localizer.T("sysov.smart.nvme.unsafeShutdowns"), s.UnsafeShutdowns?.ToString("N0"));
+        Add(Localizer.T("sysov.smart.nvme.mediaErrors"), s.MediaErrors?.ToString("N0"), (s.MediaErrors ?? 0) > 0);
+        Add(Localizer.T("sysov.smart.nvme.errorLog"), s.ErrorLogEntries?.ToString("N0"));
         return rows;
     }
 
@@ -280,16 +283,16 @@ public sealed class SmartDialog : Window
     /// <summary>Decode the NVMe Critical Warning bitfield (byte 0 of the health log) into a readable summary.</summary>
     private static string NvmeWarn(int? cw)
     {
-        if (cw is not int w) return "不可用";
-        if (w == 0) return "正常";
+        if (cw is not int w) return Localizer.T("sysov.smart.na");
+        if (w == 0) return Localizer.T("sysov.smart.warn.normal");
         var bits = new List<string>();
-        if ((w & 0x01) != 0) bits.Add("可用备件不足");
-        if ((w & 0x02) != 0) bits.Add("温度越限");
-        if ((w & 0x04) != 0) bits.Add("可靠性下降");
-        if ((w & 0x08) != 0) bits.Add("介质只读");
-        if ((w & 0x10) != 0) bits.Add("备份电容失效");
-        if ((w & 0x20) != 0) bits.Add("持久内存异常");
-        return bits.Count > 0 ? string.Join("、", bits) : $"0x{w:X2}";
+        if ((w & 0x01) != 0) bits.Add(Localizer.T("sysov.smart.warn.spareLow"));
+        if ((w & 0x02) != 0) bits.Add(Localizer.T("sysov.smart.warn.tempExceeded"));
+        if ((w & 0x04) != 0) bits.Add(Localizer.T("sysov.smart.warn.reliabilityDegraded"));
+        if ((w & 0x08) != 0) bits.Add(Localizer.T("sysov.smart.warn.mediaReadOnly"));
+        if ((w & 0x10) != 0) bits.Add(Localizer.T("sysov.smart.warn.backupCapFail"));
+        if ((w & 0x20) != 0) bits.Add(Localizer.T("sysov.smart.warn.persistentMem"));
+        return bits.Count > 0 ? string.Join(Localizer.T("sysov.smart.warn.sep"), bits) : $"0x{w:X2}";
     }
 
     private static string Gb(long bytes) => bytes >= 1024L * 1024 * 1024 * 1024

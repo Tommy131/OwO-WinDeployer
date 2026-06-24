@@ -2,6 +2,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using WinDeploy.Core.I18n;
 
 namespace WinDeploy.App.Services;
 
@@ -58,7 +59,7 @@ public sealed class CloudflareClient
     /// Global API Key → <c>GET /user</c> (the token-verify endpoint is token-only).</summary>
     public async Task<CfVerifyResult> VerifyAsync()
     {
-        if (!HasToken) return new(false, "", "未填写 API 令牌 / 密钥");
+        if (!HasToken) return new(false, "", Localizer.T("cloud.token.notFilled"));
         try
         {
             using var http = New();
@@ -69,7 +70,7 @@ public sealed class CloudflareClient
             if (GlobalKey) return new(true, "active", null);   // /user succeeded → key + email are valid
             var status = root.TryGetProperty("result", out var r) && r.TryGetProperty("status", out var s)
                 ? s.GetString() ?? "" : "";
-            return new(status == "active", status, status == "active" ? null : $"令牌状态：{status}");
+            return new(status == "active", status, status == "active" ? null : Localizer.Format("cloud.token.status", status));
         }
         catch (Exception ex) { return new(false, "", Friendly(ex)); }
     }
@@ -130,7 +131,7 @@ public sealed class CloudflareClient
             using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
             var root = doc.RootElement;
             if (!Success(root, out var err)) return (false, err, null);
-            return (true, "已创建解析记录", ParseRecord(root.GetProperty("result")));
+            return (true, Localizer.T("cloud.record.created"), ParseRecord(root.GetProperty("result")));
         }
         catch (Exception ex) { return (false, Friendly(ex), null); }
     }
@@ -146,7 +147,7 @@ public sealed class CloudflareClient
             { Content = Body(type, name, content, proxied, ttl) };
             using var resp = await http.SendAsync(req);
             using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
-            return Success(doc.RootElement, out var err) ? (true, "已更新") : (false, err);
+            return Success(doc.RootElement, out var err) ? (true, Localizer.T("cloud.record.updated")) : (false, err);
         }
         catch (Exception ex) { return (false, Friendly(ex)); }
     }
@@ -194,9 +195,9 @@ public sealed class CloudflareClient
                     }
                 if (!string.IsNullOrWhiteSpace(part)) msgs.Add(part!);
             }
-            error = msgs.Count > 0 ? string.Join("；", msgs) : "Cloudflare API 调用失败";
+            error = msgs.Count > 0 ? string.Join("；", msgs) : Localizer.T("cloud.api.callFailed");
         }
-        else error = "Cloudflare API 调用失败（无响应内容）";
+        else error = Localizer.T("cloud.api.callFailedNoBody");
         return false;
     }
 
@@ -211,8 +212,8 @@ public sealed class CloudflareClient
 
     private static string Friendly(Exception ex) => ex switch
     {
-        TaskCanceledException => "请求超时（请检查网络连接）",
-        HttpRequestException h => "网络错误：" + h.Message,
+        TaskCanceledException => Localizer.T("cloud.net.timeout"),
+        HttpRequestException h => Localizer.Format("cloud.net.error", h.Message),
         _ => ex.Message,
     };
 

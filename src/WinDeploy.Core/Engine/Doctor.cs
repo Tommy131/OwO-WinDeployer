@@ -1,3 +1,4 @@
+using WinDeploy.Core.I18n;
 using WinDeploy.Core.Models;
 using WinDeploy.Core.Util;
 
@@ -28,7 +29,7 @@ public static class Doctor
         if (catalog != null) await CheckInstalledOnPathAsync(catalog, pr, f);
 
         if (f.All(x => x.Level == HealthLevel.Ok))
-            f.Add(new HealthFinding(HealthLevel.Ok, "环境正常", "未发现 PATH / 环境变量问题。"));
+            f.Add(new HealthFinding(HealthLevel.Ok, Localizer.T("engine.doctor.envOk"), Localizer.T("engine.doctor.envOkDetail")));
         return f;
     }
 
@@ -48,18 +49,18 @@ public static class Doctor
 
         var dups = seen.Where(kv => kv.Value > 1).Select(kv => kv.Key).ToList();
         if (dups.Count > 0)
-            f.Add(new HealthFinding(HealthLevel.Warn, "PATH 重复项",
-                $"{dups.Count} 个目录在 PATH 中重复：\n" + string.Join("\n", dups.Take(8).Select(d => "· " + d)),
-                "去重可加快命令解析；可在「环境变量」页清理。"));
+            f.Add(new HealthFinding(HealthLevel.Warn, Localizer.T("engine.doctor.pathDupTitle"),
+                Localizer.Format("engine.doctor.pathDupDetail", dups.Count, string.Join("\n", dups.Take(8).Select(d => "· " + d))),
+                Localizer.T("engine.doctor.pathDupFix")));
 
         var missing = user.Concat(machine)
             .Select(Norm).Where(p => p.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase)
             .Where(p => !p.Contains('%') && !Directory.Exists(ExpandSafe(p)))
             .ToList();
         if (missing.Count > 0)
-            f.Add(new HealthFinding(HealthLevel.Warn, "PATH 失效目录",
-                $"{missing.Count} 个 PATH 目录不存在：\n" + string.Join("\n", missing.Take(8).Select(d => "· " + d)),
-                "删除这些条目可消除 shell 启动告警。"));
+            f.Add(new HealthFinding(HealthLevel.Warn, Localizer.T("engine.doctor.pathMissingTitle"),
+                Localizer.Format("engine.doctor.pathMissingDetail", missing.Count, string.Join("\n", missing.Take(8).Select(d => "· " + d))),
+                Localizer.T("engine.doctor.pathMissingFix")));
     }
 
     private static void CheckHomeVars(List<HealthFinding> f)
@@ -72,9 +73,9 @@ public static class Doctor
             var path = ExpandSafe(val);
             // GOPATH/ANDROID_HOME may legitimately not exist yet; only flag the *_HOME roots that must exist.
             if (!Directory.Exists(path) && !File.Exists(path))
-                f.Add(new HealthFinding(HealthLevel.Error, $"{name} 指向无效路径",
-                    $"{name} = {val}\n该目录不存在，依赖它的工具会报错。",
-                    $"更新或删除环境变量 {name}。"));
+                f.Add(new HealthFinding(HealthLevel.Error, Localizer.Format("engine.doctor.homeInvalidTitle", name),
+                    Localizer.Format("engine.doctor.homeInvalidDetail", name, val),
+                    Localizer.Format("engine.doctor.homeInvalidFix", name)));
         }
     }
 
@@ -88,9 +89,9 @@ public static class Doctor
             if (string.IsNullOrWhiteSpace(cmd)) continue;
             if (CommandFinder.Exists(cmd!)) continue;
             if (!await Detection.IsInstalledAsync(item, pr)) continue;
-            f.Add(new HealthFinding(HealthLevel.Warn, $"{item.Name} 不在 PATH",
-                $"检测到已安装，但命令 `{cmd}` 无法解析。",
-                "重新登录或将其 bin 目录加入 PATH。"));
+            f.Add(new HealthFinding(HealthLevel.Warn, Localizer.Format("engine.doctor.notOnPathTitle", item.Name),
+                Localizer.Format("engine.doctor.notOnPathDetail", cmd),
+                Localizer.T("engine.doctor.notOnPathFix")));
         }
     }
 

@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using WinDeploy.Core.I18n;
 
 namespace WinDeploy.App.Views;
 
@@ -9,7 +10,7 @@ public sealed class DevModeConfirmDialog : Window
 {
     public DevModeConfirmDialog()
     {
-        Title = "开启开发人员模式";
+        Title = Localizer.T("dialog.devmode.title");
         Width = 480;
         SizeToContent = SizeToContent.Height;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
@@ -49,7 +50,7 @@ public sealed class DevModeConfirmDialog : Window
         Grid.SetColumn(bannerText, 1);
         bannerText.Children.Add(new TextBlock
         {
-            Text = "开发人员模式会解锁高级系统功能",
+            Text = Localizer.T("dialog.devmode.bannerTitle"),
             FontSize = 13,
             FontWeight = FontWeights.SemiBold,
             Foreground = Brush("WarnFg"),
@@ -57,7 +58,7 @@ public sealed class DevModeConfirmDialog : Window
         });
         bannerText.Children.Add(new TextBlock
         {
-            Text = "这些功能可直接修改系统设置、管理进程和启动项，操作不当可能导致系统不稳定或数据丢失。请确认您了解相关风险。",
+            Text = Localizer.T("dialog.devmode.bannerBody"),
             FontSize = 12,
             Foreground = Brush("WarnFg"),
             TextWrapping = TextWrapping.Wrap,
@@ -71,7 +72,7 @@ public sealed class DevModeConfirmDialog : Window
         // ── feature list ────────────────────────────────────────────────
         root.Children.Add(new TextBlock
         {
-            Text = "开启后将解锁以下功能：",
+            Text = Localizer.T("dialog.devmode.featuresTitle"),
             FontSize = 13,
             FontWeight = FontWeights.SemiBold,
             Foreground = Brush("TextPrimary"),
@@ -80,9 +81,9 @@ public sealed class DevModeConfirmDialog : Window
 
         foreach (var item in new[]
         {
-            ("", "完整软件列表（开发工具链、IDE、AI、数据库等所有分类）"),
-            ("", "终端 · 服务配置 · FTP 传输 · WSL · 系统调优 · 高级工具"),
-            ("", "系统维护 · 进程管理 · 启动项管理 · 环境变量编辑"),
+            ("", Localizer.T("dialog.devmode.feat1")),
+            ("", Localizer.T("dialog.devmode.feat2")),
+            ("", Localizer.T("dialog.devmode.feat3")),
         })
         {
             var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 3, 0, 0) };
@@ -108,7 +109,7 @@ public sealed class DevModeConfirmDialog : Window
 
         root.Children.Add(new TextBlock
         {
-            Text = "此设置可随时在「设置 → 开发者选项」中关闭。",
+            Text = Localizer.T("dialog.devmode.footer"),
             FontSize = 12,
             Foreground = Brush("TextTertiary"),
             Margin = new Thickness(0, 14, 0, 0),
@@ -121,11 +122,11 @@ public sealed class DevModeConfirmDialog : Window
             HorizontalAlignment = HorizontalAlignment.Right,
             Margin = new Thickness(0, 20, 0, 0),
         };
-        var cancel = new Button { Content = "取消", MinWidth = 72, IsCancel = true };
+        var cancel = new Button { Content = Localizer.T("common.cancel"), MinWidth = 72, IsCancel = true };
         if (Application.Current.TryFindResource("MiniButton") is Style cancelStyle) cancel.Style = cancelStyle;
         cancel.Click += (_, _) => DialogResult = false;
 
-        var confirm = new Button { Content = "确认开启", MinWidth = 96, Margin = new Thickness(10, 0, 0, 0), IsDefault = true };
+        var confirm = new Button { Content = Localizer.T("dialog.devmode.confirm"), MinWidth = 96, Margin = new Thickness(10, 0, 0, 0), IsDefault = true };
         if (Application.Current.TryFindResource("PrimaryButton") is Style confirmStyle) confirm.Style = confirmStyle;
         confirm.Click += (_, _) => DialogResult = true;
 

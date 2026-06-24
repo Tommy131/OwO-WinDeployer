@@ -1,0 +1,18 @@
+{
+  "svc.view.listSubtitle": "管理本机 Web 服务端：配置文件、SSL 证书、站点 (vhost) 与进程启停。点击任一服务端进入管理。",
+  "svc.view.openInstallDir": "打开安装目录",
+  "svc.view.uptime": "运行时长",
+  "svc.view.configFiles": "配置文件",
+  "svc.view.vhosts": "站点 (vhost)",
+  "svc.view.newVhost": "+ 新建站点",
+  "svc.view.dir": "目录",
+  "svc.view.noVhosts": "暂无站点。点击「新建站点」创建（自动写入主配置 include）。",
+  "svc.view.sslCerts": "SSL 证书",
+  "svc.view.genSelfSigned": "生成自签名",
+  "svc.view.import": "导入",
+  "svc.view.noCerts": "SSL 目录暂无证书。可「生成自签名」或「导入」现有证书 / 私钥。",
+  "svc.view.collect": "采集",
+  "svc.view.view": "查看",
+  "svc.view.clear": "清空",
+  "svc.view.noLogs": "未发现日志文件（服务启动后会生成）。"
+}

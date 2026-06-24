@@ -1,0 +1,10 @@
+{
+  "app.adminSuffix": "  (Administrator)",
+  "tray.open": "Open main window",
+  "tray.exit": "Exit",
+  "tray.minimizedTitle": "Still running in the background",
+  "tray.minimizedBody": "OwO! Win Deployer has been minimized to the tray. Double-click the icon to reopen, or right-click to quickly manage terminals / services and exit.",
+  "crash.dialogTitle": "An error occurred",
+  "crash.dialogBody": "An error occurred (logged to crash.log; the app will keep running):\n\n{0}\n\n{1}",
+  "update.selfFoundBody": "A new version of {0} v{1} is available (current v{2}).\n\nGo to the releases page to download the update?"
+}
