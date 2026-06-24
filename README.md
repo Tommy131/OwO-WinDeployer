@@ -1,583 +1,625 @@
 # OwO! Win Deployer (owo-win-deployer)
 
 > [!CAUTION]
-> # ⛔ 请不要 Fork 本项目！⛔
+> # ⛔ Please Do Not Fork This Repository ⛔
 >
-> **当前处于不稳定版本更新阶段，可能会重写 Git 历史提交记录、增删文件。**
+> **This project is in an unstable active-development phase. Git history may be rewritten and files may be added or removed at any time.**
 >
-> - 🚫 **不要提交 Pull Request** —— 本项目**不会处理任何不受信任的 Pull Request**。
-> - ✅ 使用过程中遇到问题，请**直接提交 [Issue](../../issues)**。
-> - ⚠️ Fork 后随时可能因历史重写而与上游彻底冲突，请勿 Fork。
+> - 🚫 **Do NOT submit Pull Requests** — unsolicited PRs will not be accepted.
+> - ✅ If you encounter a problem, please [open an Issue](../../issues) instead.
+> - ⚠️ Forks may permanently diverge from upstream due to history rewrites.
 
 ---
 
-一键在任意 Windows 设备上**复刻开发环境、应用与个人配置**，并集成系统管理、终端、FTP、进程/服务管理等专业工具。完整设计文档见 [`docs/DESIGN.md`](docs/DESIGN.md)。
+Replicate your entire Windows development environment, applications, and personal dotfiles on any new machine with a single command — plus an integrated suite of system-administration, terminal, FTP, Cloudflare DDNS, and monitoring tools.
 
-## 目录
+Supports **Chinese (zh) / English (en) / Deutsch (de)** with live in-app language switching.
 
-- [界面预览](#界面预览-screenshots)
-- [功能概览](#功能概览)
-- [项目架构](#项目架构)
-- [快速开始](#快速开始)
-- [构建与开发](#构建与开发需要-net-sdk-10)
-- [CLI 命令参考](#cli-命令参考)
-- [软件目录](#软件目录-catalog)
-- [使用须知](#使用须知)
-- [版权许可](#版权许可-license)
+> **Current version: v1.2.1** &nbsp;|&nbsp; 🌐 [中文说明](README_CH.md)
+
+## Table of Contents
+
+- [Screenshots](#screenshots)
+- [Features](#features)
+  - [Multilingual Support](#multilingual-support-v120)
+  - [Cloudflare DDNS](#cloudflare-ddns-developer-mode)
+  - [Security Hardening](#security-hardening-v121)
+- [Architecture](#architecture)
+- [Quick Start](#quick-start)
+- [Build & Development](#build--development-requires-net-sdk-10)
+- [CLI Reference](#cli-reference)
+- [Software Catalog](#software-catalog)
+- [Usage Notes](#usage-notes)
+- [License](#license)
 
 ---
 
-## 界面预览 Screenshots
+## Screenshots
 
-| 软件安装中心（卡片勾选 · 右键菜单） | 运行进度（实时下载 / 安装日志） |
+| Software Install Center (card grid · right-click menu) | Installation Progress (live download / log) |
 | :---: | :---: |
-| ![软件安装中心](assets/images/install-center.png) | ![运行进度](assets/images/progress.png) |
-| **进程管理（按软件分组）** | **进程管理（展开进程树 · CPU / 内存）** |
-| ![进程管理](assets/images/process-manager.png) | ![进程管理展开](assets/images/process-manager-expanded.png) |
-| **启动项管理** | **配置导出（自动脱敏）** |
-| ![启动项](assets/images/startup-items.png) | ![配置导出](assets/images/export.png) |
-| **设置 · 主题 / 路径变量 / 仓库** | **关于 / 开发者** |
-| ![设置](assets/images/settings.png) | ![关于开发者](assets/images/about.png) |
-| **运行日志** | |
-| ![运行日志](assets/images/logs.png) | |
+| ![Install Center](assets/images/install-center.png) | ![Progress](assets/images/progress.png) |
+| **Process Manager (grouped by app)** | **Process Manager (expanded tree · CPU / RAM)** |
+| ![Process Manager](assets/images/process-manager.png) | ![Process Manager expanded](assets/images/process-manager-expanded.png) |
+| **Startup Item Manager** | **Config Export (auto-redaction)** |
+| ![Startup](assets/images/startup-items.png) | ![Export](assets/images/export.png) |
+| **Settings · Theme / Path Vars / Repository** | **About / Developer** |
+| ![Settings](assets/images/settings.png) | ![About](assets/images/about.png) |
+| **Run Log** | |
+| ![Logs](assets/images/logs.png) | |
 
 ---
 
-## 功能概览
+## Features
 
-所有里程碑均已完成：
+All milestones are complete:
 
-| 里程碑 | 核心内容 | 状态 |
+| Milestone | Summary | Status |
 |:---:|---|:---:|
-| M1 | 安装引擎（winget / portable / git / conda / vscode-ext / script）+ 幂等检测 + 路径变量 + CLI | ✅ |
-| M2 | 配置套用 / 采集 + 导出脱敏 + 环境变量管理 + SSH 每台独立生成 | ✅ |
-| M3 | WPF 软件安装中心（图标卡片逐项勾选）+ 实时进度 + 配置 / 导出页面 | ✅ |
-| M4 | 自包含单文件发布 + Release CI + 多机同步（sync / save）+ 版本锁定 | ✅ |
-| M5 | 系统管理与专业工具（终端 · FTP · 进程 · 服务 · 概览 · 维护 · WSL · 调优）+ 开发人员模式 | ✅ |
+| M1 | Install engine (winget / portable / git / conda / vscode-ext / script) + idempotent detection + path variables + CLI | ✅ |
+| M2 | Config apply/capture + secret redaction + env-var management + per-device SSH key generation | ✅ |
+| M3 | WPF Software Install Center (icon cards, per-item checkboxes) + live progress + config/export pages | ✅ |
+| M4 | Self-contained single-EXE publish + Release CI + multi-machine sync (sync/save) + version locking | ✅ |
+| M5 | System management suite (terminal · FTP · processes · services · overview · maintenance · WSL · tweaks · Cloudflare DDNS) + Developer Mode gate | ✅ |
 
-### 软件安装中心（M1 · M3）
+### Software Install Center (M1 · M3)
 
-- **450+ 软件**按类别以图标卡片展示，逐项勾选或整组选择
-- **搜索**过滤 + **预设 Profile** 一键切换（`dev` / `full` / `ai-station`）
-- **安装方式**：winget · winget-bundle · portable · git · conda · vscode-ext · exe · script · github-release · local · manual
-- **幂等安装**：检测已装则自动跳过，支持 dry-run 预演
-- 右键菜单：安装 / 卸载 / 启动 / 停止 / 重启 / 更新 / 查看日志
-- 实时进度：下载速度、ETA、单项状态、滚动日志尾
+- **142 software packages** (15 categories) displayed as icon cards — check individually or select by group
+- **Search** filter + **Profile** switcher (`dev` / `full` / `ai-station`) in one click
+- **Install methods**: winget · winget-bundle · portable · git · conda · vscode-ext · exe · script · github-release · local · manual
+- **Idempotent**: detects already-installed items and skips them; supports dry-run preview
+- Right-click menu: Install / Uninstall / Launch / Stop / Restart / Update / View log
+- Live progress: download speed, ETA, per-item status, scrolling log tail
 
-### 配置同步（M2）
+### Config Sync (M2)
 
-- **套用 / 采集**双向：VS Code · Git · SSH · 环境变量 · Windows Terminal · PowerShell · npm · conda · pip
-- 导出自动**脱敏**（token / 密钥 / API key），自定义脱敏关键词
-- SSH 密钥**每台设备独立生成**（ed25519），支持一键登记到 GitHub，私钥永不入库
-- 套用前自动备份（`.bak.yyyyMMdd-HHmmss`）
+- **Bidirectional apply / capture**: VS Code · Git · SSH · env vars · Windows Terminal · PowerShell · npm · conda · pip
+- Export auto-**redacts** tokens, passwords, and API keys; customizable redaction keywords
+- SSH keys **generated fresh per device** (ed25519), one-click register to GitHub, private keys never stored in the repo
+- Automatic backup before apply (`.bak.yyyyMMdd-HHmmss`)
 
-### 多机同步（M4）
+### Multi-Machine Sync (M4)
 
-- `catalog/lock.json` 锁定版本，跨机可复现
-- `git pull` → 套用配置 + 显示安装计划（`sync` 命令）
-- 主机名 → 预设映射（`catalog/hosts.json`），多机自动识别角色
-- 迁移工具包：一键打包 configs + 软件清单，迁移到新机器
+- `catalog/lock.json` pins installed versions for reproducible installs across machines
+- `git pull` → apply configs + show install plan (`sync` command)
+- Hostname → profile mapping (`catalog/hosts.json`), automatically picks the right preset per machine
+- Migration kit: pack configs + software list into a ZIP for transfer to a new device
 
-### 终端（M5）
+### Terminal (M5)
 
-- **ConPTY 伪控制台**：完整支持 PowerShell / cmd / ssh / vim 等交互式程序与密码输入
-- **VT100/ANSI 模拟器**：16 色 / 256 色 / 24 位真彩色，滚动缓冲 5000 行
-- **多会话**：标签式多终端，内置 Shell 目录（可配置 PowerShell / cmd / WSL 等），会话可命名编辑
-- **视觉特效**：Hacker-FX（绿磷光 · 辉光 · 扫描线）+ CodeRain 数字雨，可在设置中独立切换并持久化
-- Shell 切换、调整终端尺寸（自动通知 PTY resize）；关闭前确认弹窗防止误关
+- **ConPTY pseudo-console**: full interactive support for PowerShell / cmd / ssh / vim, including password prompts
+- **VT100/ANSI emulator**: 16-color, 256-color, 24-bit true color, 5,000-line scrollback
+- **Multi-session**: tabbed terminals, a configurable shell catalog (PowerShell / cmd / WSL etc.), named sessions with an edit dialog
+- **Visual effects**: Hacker-FX (green phosphor · glow · scanlines) + CodeRain matrix rain — toggle each independently in settings, persisted across restarts
+- Shell switching, live PTY resize; close-confirmation dialog to prevent accidental tab close
 
-### FTP 服务器 & 客户端（M5）
+### FTP Server & Client (M5)
 
-- **自托管 FTP/FTPS 服务器**：自定义端口、主被动模式、TLS 加密、并发数限制
-- **用户 / 权限组管理**：精细化读写权限，MLSD 权限位预告知客户端（自动禁用无权限操作）
-- **自动签发 TLS 证书**（自签名 X.509 RSA 2048-bit，无需手动 openssl）
-- **FTP 客户端**：双栏文件浏览，本地 / 远程双侧右键菜单（打开 / 上传 / 下载 / 重命名 / 删除）
-- **多选批量传输**：Ctrl/Shift 多选文件夹与文件，批量上传 / 下载 / 删除；资源管理器风格右键保持多选
-- **实时传输速度 + ETA**：预扫描总大小，每 0.5 秒采样刷新进度
-- **站点管理器（Saved Logins）**：保存常用登录信息，密码经 DPAPI 加密存储，快速重连
-- 15 秒连接 / TLS 超时保护；配置持久化（端口 / TLS / 编码 / 限速等）
+- **Self-hosted FTP/FTPS server**: custom port, active/passive mode, TLS encryption, concurrent connection limit
+- **User & permission group management**: fine-grained read/write permissions; MLSD perm facts advertised to the client (disables unavailable actions automatically)
+- **Auto-generated TLS certificate** (self-signed X.509 RSA 2048-bit, no manual openssl required)
+- **FTP client**: dual-pane file browser with local/remote context menus (open / upload / download / rename / delete)
+- **Multi-select batch transfer**: Ctrl/Shift-select files and folders; batch upload / download / delete; Explorer-style right-click preserves multi-selection
+- **Live transfer speed + ETA**: pre-scans total size, samples progress every 0.5 s
+- **Site manager (Saved Logins)**: saved credentials encrypted with DPAPI for quick reconnect
+- **FTPS trust-on-first-use (TOFU)**: records the certificate SHA-256 on first connect (`ftp_trust.json`); a changed cert is refused as a potential MITM
+- 15-second connect/TLS timeout; persistent config (port / TLS / encoding / rate limit etc.)
 
-### 进程管理（M5）
+### Process Manager (M5)
 
-- **按软件分组树状视图**：CPU / 内存实时显示
-- 支持过滤、批量操作（启动 / 杀进程 / 重启）
-- 从运行中进程提取图标，分组归类
+- **Tree view grouped by application**: real-time CPU / RAM display
+- Filter, bulk actions (launch / kill / restart)
+- Icons extracted from running processes, automatically grouped
 
-### 系统概览（M5）
+### System Overview (M5)
 
-- CPU · 内存 · 磁盘（含 NVMe S.M.A.R.T.）· 电池 · Windows 激活状态
-- NVMe SMART 详细属性表 + 健康日志
-- 磁盘类型识别：NVMe / SSD / HDD / USB
-- 一键导出本机软件清单（CSV / HTML / JSON）
+- CPU · RAM · disk · battery · Windows activation status at a glance
+- **Enhanced SMART**: bundled `smartctl` (ships with every release) reads internal NVMe/SATA **and external USB** drives; auto-detects ASMedia / JMicron / Realtek USB bridge chips; NVMe health log + full ATA attribute table; prompts admin relaunch when permissions are insufficient
+- Disk type badge: NVMe / SSD / HDD / USB
+- **Safe USB eject**: per-card eject button; offers force-eject (dismount volumes + release handles) when the OS rejects the request; removes the card from the UI immediately on success
+- One-click export of installed software inventory (CSV / HTML / JSON)
 
-### 系统维护（M5）
+### System Maintenance (M5)
 
-- **修复工具**：一键 SFC · DISM /RestoreHealth · chkdsk（按需 UAC 提权）
-- **网络重置**：重置 TCP/IP 栈 · Winsock · DNS 缓存
-- **缓存清理**：Temp · Windows Update 缓存 · 缩略图 · Windows.old
-- **图标缓存重建**
-- **事件速诊**：最近 7 天严重 / 错误事件摘要
+- **Repair tools**: one-click SFC · DISM /RestoreHealth · chkdsk (UAC elevated on demand)
+- **Network reset**: TCP/IP stack · Winsock · DNS cache
+- **Cache cleanup**: Temp · Windows Update cache · thumbnails · Windows.old
+- Icon cache rebuild
+- **Event log digest**: last 7 days of critical/error events summarized
 
-### WSL（M5 · 开发人员模式）
+### WSL (M5 · Developer Mode)
 
-- 发行版列表 · 在线安装 · 设为默认 · 启动 / 停止
-- 导出备份（TAR）· 注销
+- Distribution list · online install · set default · start / stop
+- Export backup (TAR) · unregister
 
-### 系统调优（M5 · 开发人员模式）
+### System Tweaks (M5 · Developer Mode)
 
-- 可逆注册表调整，实时读取当前状态，一键开关：
-  - 显示文件扩展名 / 显示隐藏文件
-  - 深色 / 浅色模式
-  - 经典右键菜单（Win11）
-  - 关闭遥测 · 其他常用 Explorer 选项
+- Reversible registry toggles — live-reads current state before each change:
+  - Show file extensions / show hidden files
+  - Dark / light mode
+  - Classic context menu (Win 11)
+  - Disable telemetry · other common Explorer options
 
-### 服务管理（M5）
+### Service Manager (M5)
 
-- Windows 服务启动类型配置（自动 / 手动 / 禁用）
-- 启动 · 停止 · 重启 · 状态实时监控
+- Configure Windows service startup type (Automatic / Manual / Disabled)
+- Start · stop · restart · real-time status monitoring
 
-### 启动项管理（M5）
+### Startup Items (M5)
 
-- 读写注册表 `Run` / `RunOnce`（HKCU + HKLM）
-- 启用 / 禁用，审计记录
+- Read/write registry `Run` / `RunOnce` (HKCU + HKLM)
+- Enable / disable with audit log
 
-### 高级工具（M5 · 开发人员模式）
+### Advanced Tools (M5 · Developer Mode)
 
-- 环境体检（PATH 重复 / 失效 · `*_HOME` 变量验证）
-- catalog 校验（CI 友好，异常退出码 1）
-- 生成 `lock.json`（版本快照）
-- 导出 `winget configure` DSC YAML（供 Intune / GPO / SCCM）
-- 离线部署包（预下载 + 打包）
-- 迁移工具包导出 / 还原
+- Environment health check (duplicate/broken PATH entries, missing `*_HOME` vars)
+- `catalog.json` validation (CI-friendly, exit code 1 on error)
+- Generate `lock.json` (version snapshot)
+- Export `winget configure` DSC YAML (for Intune / GPO / SCCM)
+- Offline deployment kit (pre-download + bundle)
+- Migration kit export / restore
 
-### 系统托盘（M5）
+### System Tray (M5)
 
-- 最小化到托盘后台运行，不占任务栏
-- 托盘右键快捷菜单：一键启动 / 停止 / 重启 FTP 服务器，显示缓存的服务运行状态（异步探测）
-- 快速导航到主窗口各功能页
+- Minimize to tray for background operation
+- Right-click quick menu: start / stop / restart FTP server, cached web-service status (async probed)
+- Quick-navigate to any main-window page
 
-### 应用稳定性
+### Multilingual Support (v1.2.0+)
 
-- **全局崩溃处理器**：捕获 UI 线程、AppDomain 及 Task 中的未处理异常，写入 `crash.log` 并弹出错误对话框，确保程序不无故退出到桌面
+- **Live language switching**: Chinese (zh) / English (en) / Deutsch (de) — no restart required, all UI text updates instantly
+- **First-run auto-detect**: follows the OS UI language (zh / de preferred; otherwise defaults to English)
+- **CLI**: `--lang zh/en/de` flag or `WINDEPLOY_LANG` environment variable
+- Software catalog summaries translated via `catalog/i18n/{en,de}.json` sidecars; 1,450 UI keys × 3 languages
+- Confirm dialogs use localized button labels (not fixed to the OS language)
+- `scripts/check-i18n.ps1` enforces key-set and placeholder parity across all three languages
 
-### 设置与外观
+### Cloudflare DDNS (Developer Mode)
 
-- 浅色 / 深色主题，实时切换
-- 路径变量配置（`${DevRoot}` / `${ToolsDir}`）
-- 配置仓库地址、镜像源
-- 脱敏关键词自定义
-- **开发人员模式**门控（解锁 WSL · 调优 · 高级工具 · 终端高级功能）
+- Manage DNS records (A / AAAA / CNAME / MX / TXT etc.) via the Cloudflare API
+- **Auto DDNS**: polls the machine's public IP on a timer and updates the designated A record when the IP changes — ideal for residential dynamic-IP connections
+- Multiple domains / records supported; toggle Cloudflare proxy (orange cloud) per record
+- Config (API token · Zone · records) stored locally with encryption; tray menu shows current DDNS status
+
+### Security Hardening (v1.2.1)
+
+- **FTPS certificate pinning (TOFU)**: first-connect fingerprint recorded; subsequent mismatch is refused with a clear warning
+- **WSL injection protection**: WSL operations invoke `wsl.exe` directly via `ArgumentList` (no cmd shell), distribution names validated against a strict allowlist
+- **Web server config injection protection**: vhost `server_name` / document root / cert paths reject `;{}#"` and newline characters, preventing directive injection into nginx/Apache configs
+- **EXE installer SHA-256 verification**: when the catalog provides a `sha256` field, the downloaded installer is verified before execution
+- **ViewModel event leak fix**: transient VMs (software detail, service detail) are properly disposed on navigate-away, eliminating static `CultureChanged` subscription leaks
+
+### App Reliability
+
+- **Global crash handler**: catches unhandled exceptions on the UI thread, AppDomain, and Tasks; writes `crash.log` and shows an error dialog — the app stays alive instead of silently crashing to the desktop
+
+### Settings & Appearance
+
+- Light / dark theme, live toggle
+- Path variable configuration (`${DevRoot}` / `${ToolsDir}`)
+- Repository URL and mirror source
+- Custom redaction keywords
+- **Language picker**: instant switch between zh / en / de in the settings page
+- **Developer Mode** gate (unlocks WSL · Tweaks · Advanced Tools · Cloudflare DDNS · terminal FX)
 
 ---
 
-## 项目架构
+## Architecture
 
 ```
 owo-win-deployer/
 ├── src/
-│   ├── WinDeploy.Core/          # 纯库：安装引擎、配置同步、数据模型
-│   │   ├── Catalog/             # JSON 解析、Profile 解析
-│   │   ├── Engine/              # 安装编排、检测、方法派发
-│   │   ├── Config/              # 配置套用 / 采集 / 脱敏
-│   │   ├── Export/              # DSC 导出、软件清单、迁移包
-│   │   ├── Models/              # 数据模型
-│   │   └── Util/                # 日志、进程、路径工具
-│   ├── WinDeploy.Cli/           # CLI 入口（薄包装，转发到 Core）
-│   └── WinDeploy.App/           # WPF GUI（自包含单文件）
-│       ├── Views/               # 20+ 页面 + 对话框
-│       ├── ViewModels/          # 对应 ViewModel（MVVM）
-│       ├── Services/            # 40+ 系统集成服务
-│       └── Behaviors/           # 自定义 UI 行为
+│   ├── WinDeploy.Core/          # Pure library: install engine, config sync, data models, i18n
+│   │   ├── Catalog/             # JSON parsing, profile resolution
+│   │   ├── Engine/              # Install orchestration, detection, method dispatch
+│   │   ├── Config/              # Config apply / capture / redaction
+│   │   ├── Export/              # DSC export, software inventory, migration kit
+│   │   ├── I18n/                # Localizer (zh/en/de embedded JSON, runtime switching)
+│   │   ├── Models/              # Data models
+│   │   └── Util/                # Logging, process helpers, path utilities
+│   ├── WinDeploy.Cli/           # CLI entry point (thin wrapper over Core)
+│   └── WinDeploy.App/           # WPF GUI (self-contained single EXE)
+│       ├── Views/               # 20+ pages + dialogs (folder = sub-namespace)
+│       │   ├── Deploy/          # Install center, progress, config sync, export
+│       │   ├── Sys/             # System overview, maintenance, WSL, tweaks
+│       │   ├── Ftp/             # FTP server, client, config
+│       │   ├── Cloudflare/      # Cloudflare DDNS page + dialogs
+│       │   ├── Server/          # Web server management
+│       │   ├── Terminal/        # ConPTY terminal + session dialogs
+│       │   ├── Tools/           # Advanced tools, startup items
+│       │   ├── Shell/           # Log view, settings
+│       │   └── Common/          # Shared dialogs (MessageDialog, ChoiceDialog, …)
+│       ├── ViewModels/          # Matching ViewModels (MVVM)
+│       │   ├── Deploy/  Sys/  Ftp/  Net/  Terminal/  Tools/  Shell/
+│       │   └── (root)   # MainViewModel, ObservableObject, LocalizedObject
+│       ├── Services/            # 40+ system integration services
+│       │   ├── Sys/             # System info, SMART, WSL, process, tweaks, eject
+│       │   ├── Net/             # Cloudflare, server manager, service config
+│       │   ├── Software/        # Icons, ARP, store apps, update checker
+│       │   ├── Terminal/        # ConPty, VtScreen, TerminalFx
+│       │   ├── Ftp/             # FTP server, client, session, cert, trust store
+│       │   └── Infra/           # Theme, toast, tray, DPAPI, audit log, settings
+│       └── Behaviors/           # Custom WPF input behaviors (InputFilter, MenuTidy)
 ├── catalog/
-│   ├── catalog.json             # 软件主清单（450+ 条目）
-│   ├── profiles/                # 安装预设（dev · full · ai-station）
-│   └── hosts.example.json       # 主机名→预设映射模板
-├── configs/                     # 配置仓库（与安装状态解耦）
-│   ├── vscode/                  # settings.json · keybindings.json
-│   ├── git/                     # .gitconfig
-│   ├── ssh/                     # config · known_hosts（无私钥）
-│   ├── env/                     # env.json（自定义 PATH / 环境变量）
-│   ├── pwsh/                    # PowerShell Profile
-│   ├── windows-terminal/        # settings.json
-│   ├── nodejs/                  # .npmrc
-│   ├── python/                  # pip.ini
-│   └── miniconda/               # .condarc
-├── bootstrap/
-│   └── bootstrap.ps1            # 裸机引导脚本
+│   ├── catalog.json             # 142-item software manifest (JSONC)
+│   ├── i18n/{en,de}.json        # Catalog summary translations
+│   ├── profiles/                # Install presets (dev · full · ai-station)
+│   └── hosts.example.json       # Hostname → preset mapping template
+├── configs/                     # Dotfile repository (decoupled from install state)
+├── tools/                       # Bundled binaries (smartctl, drivedb.h)
+├── bootstrap/bootstrap.ps1      # Bare-metal bootstrap (one-liner)
 ├── scripts/
-│   └── publish.ps1              # 构建发布（自包含单 EXE）
-├── docs/
-│   └── DESIGN.md                # 完整设计文档（权威来源）
-├── assets/                      # 图片 · 图标资源
-├── .github/
-│   └── workflows/release.yml   # Release CI（打 tag 自动构建）
+│   ├── publish.ps1              # Build self-contained EXEs
+│   └── check-i18n.ps1           # Validate zh/en/de key parity
+├── docs/DESIGN.md               # Full design document (authoritative source)
 └── WinDeploy.sln
 ```
 
-### 分层说明
+### Layer Summary
 
-| 层 | 项目 | 说明 |
+| Layer | Project | Notes |
 |---|---|---|
-| 引擎层 | `WinDeploy.Core` | 纯 .NET 10 库，**不依赖注册表 / WMI**（CLI 和 GUI 均可调用） |
-| CLI 层 | `WinDeploy.Cli` | 薄包装，暴露 13 条命令，适合脚本 / CI 场景 |
-| GUI 层 | `WinDeploy.App` | WPF MVVM，系统集成（WMI · ConPTY · P/Invoke）仅在此层 |
+| Engine | `WinDeploy.Core` | Pure .NET 10 library; no registry/WMI dependency (usable in CLI and GUI) |
+| CLI | `WinDeploy.Cli` | Thin wrapper exposing 14 commands; suitable for scripts and CI |
+| GUI | `WinDeploy.App` | WPF MVVM; system integration (WMI · ConPTY · P/Invoke) isolated to this layer |
 
-### 关键设计原则
+### Key Design Principles
 
-- **数据 / 引擎分离**：`catalog.json` 只是数据，加软件只改 JSON 不动引擎
-- **幂等安装**：先检测再安装，重复运行安全
-- **路径变量化**：`${DevRoot}` / `${ToolsDir}` 首次设定，跨机通用
-- **安全优先**：SSH 私钥每台独立生成永不入库；导出 token / 密钥自动脱敏
-- **开发人员模式门控**：注册表 / WSL / 高级功能通过确认弹窗二次验证
+- **Data / engine separation**: `catalog.json` is pure data; adding software requires no engine changes
+- **Idempotent installs**: detect-then-install; safe to re-run
+- **Path variables**: `${DevRoot}` / `${ToolsDir}` set once on first run, work across machines
+- **Security-first**: SSH private keys generated per device, never committed; exports auto-redact secrets
+- **Developer Mode gate**: registry / WSL / advanced features require a confirmation dialog
 
 ---
 
-## 快速开始
+## Quick Start
 
-### 裸机引导（目标机无需预装 .NET）
+### Bare-Metal Bootstrap (no .NET required on target machine)
 
 ```powershell
 irm https://raw.githubusercontent.com/Tommy131/owo-win-deployer/main/bootstrap/bootstrap.ps1 | iex
 ```
 
-脚本会自动确认 winget 可用、从 GitHub Release 下载最新版 `WinDeploy.exe` 并启动。
+The script verifies winget, downloads the latest `WinDeploy.exe` from GitHub Releases, and launches it.
 
-### 直接下载
+### Direct Download
 
-前往 [Releases](../../releases) 页面，下载 `WinDeploy.exe`（GUI）或 `windeploy.exe`（CLI）。
+Visit the [Releases](../../releases) page and download `WinDeploy.exe` (GUI) or `windeploy.exe` (CLI).
 
-> **推荐下载 ZIP 版**：ZIP 内为文件夹版（exe + 运行库），触发杀软启发式的概率低于单文件自解压版。
+> **Prefer the ZIP package**: the folder-based ZIP is less likely to trigger antivirus heuristics than the single-file self-extracting EXE.
 
 ---
 
-## 构建与开发（需要 .NET SDK 10）
+## Build & Development (requires .NET SDK 10)
 
 ```powershell
-# 构建整个解决方案
+# Build the full solution
 dotnet build WinDeploy.sln
 
-# 运行 GUI（软件安装中心）
+# Run the GUI
 dotnet run --project src/WinDeploy.App
 
-# 运行 CLI
+# Run the CLI
 dotnet run --project src/WinDeploy.Cli -- list
 dotnet run --project src/WinDeploy.Cli -- plan  --profile dev
 dotnet run --project src/WinDeploy.Cli -- apply --profile dev --yes
 ```
 
-### 发布（自包含单文件，目标机免装 .NET）
+### Publish (self-contained single EXE, no .NET required on target)
 
 ```powershell
 pwsh -File scripts/publish.ps1
-# 产出：artifacts/app/WinDeploy.exe（GUI）
-#       artifacts/cli/windeploy.exe（CLI）
+# Output: artifacts/app/WinDeploy.exe (GUI)
+#         artifacts/cli/windeploy.exe (CLI)
 ```
 
-推送 `v*` tag 后，`.github/workflows/release.yml` 自动构建并挂到 GitHub Release。
+Pushing a `v*` tag triggers `.github/workflows/release.yml`, which builds and attaches both EXEs to a GitHub Release automatically.
 
 ---
 
-## CLI 命令参考
+## CLI Reference
 
 ```
-windeploy <命令> [选项]
+windeploy <command> [options]
 ```
 
-| 命令 | 说明 |
+| Command | Description |
 |---|---|
-| `list` | 列出 catalog 全部软件（可加 `--category` 筛选） |
-| `plan` | 显示安装 / 已装计划（不执行，dry-run） |
-| `apply` | 执行安装（`--silent` 无人值守 · `--locked` 按 lock.json 钉版本 · `--log <文件>` 落日志） |
-| `apply-config` | 套用配置（VS Code / Git / env… 按 `applyWhen` 策略） |
-| `export` | 采集本机配置回写仓库（自动脱敏 token / 密钥） |
-| `ssh-setup [--register]` | 生成本机 ed25519 SSH 密钥并套用 ssh 配置（`--register` 自动登记到 GitHub） |
-| `sync` | `git pull` → 套用配置 + 显示安装计划 |
-| `save [--message m] [--push]` | 提交 configs 改动（`--push` 推送远程） |
-| `doctor` | 环境体检：PATH 重复 / 失效、`*_HOME` 失效、已装但不在 PATH |
-| `validate` | 校验 catalog.json（CI 友好，有错误时退出码 1） |
-| `lock` | 采集已装版本写入 `catalog/lock.json`（跨机可复现） |
-| `export-dsc [--out f]` | 导出为 `winget configure` DSC YAML，供 Intune / GPO / SCCM 无人值守 |
-| `inventory [--format csv\|json\|html] [--out f]` | 导出本机已装软件清单 |
-| `download-only [--out d]` | 仅预下载所选软件安装包（离线 / U 盘部署） |
-| `migrate --export <目录> \| --import <目录>` | 迁移工具包导出 / 还原（configs + 软件清单） |
+| `list` | List all catalog software (optional `--category` filter) |
+| `plan` | Show install / already-installed plan (no execution, dry-run) |
+| `apply` | Execute installation (`--silent` unattended · `--locked` pin to lock.json versions · `--log <file>` write log) |
+| `apply-config` | Apply configs (VS Code / Git / env… according to `applyWhen` policy) |
+| `export` | Capture local configs back to the repository (auto-redacts tokens / keys) |
+| `ssh-setup [--register]` | Generate a per-device ed25519 SSH key and apply SSH config (`--register` adds it to GitHub) |
+| `sync` | `git pull` → apply configs + show install plan |
+| `save [--message m] [--push]` | Commit config changes (`--push` to push to remote) |
+| `doctor` | Environment health check: duplicate/broken PATH entries, invalid `*_HOME` vars |
+| `validate` | Validate `catalog.json` (CI-friendly, exit code 1 on error) |
+| `lock` | Snapshot installed versions to `catalog/lock.json` (reproducible across machines) |
+| `export-dsc [--out f]` | Export as `winget configure` DSC YAML for Intune / GPO / SCCM |
+| `inventory [--format csv\|json\|html] [--out f]` | Export installed software inventory |
+| `download-only [--out d]` | Pre-download installer packages only (offline / USB deployment) |
+| `migrate --export <dir> \| --import <dir>` | Export / restore migration kit (configs + software list) |
 
-### 常用选项
+### Common Options
 
-| 选项 | 说明 |
+| Option | Description |
 |---|---|
-| `--profile <名称>` | 指定预设（`dev` / `full` / `ai-station`） |
-| `--select <id,…>` | 追加选择软件（支持 `@category:dev`） |
-| `--deselect <id,…>` | 排除软件 |
-| `--yes` / `-y` | 跳过确认提示 |
-| `--silent` | 静默安装（传 `--silent` 给 winget） |
-| `--locked` | 按 `lock.json` 中的固定版本安装 |
+| `--profile <name>` | Select a preset (`dev` / `full` / `ai-station`) |
+| `--select <id,…>` | Additional items to select (supports `@category:dev`) |
+| `--deselect <id,…>` | Items to exclude |
+| `--yes` / `-y` | Skip confirmation prompts |
+| `--silent` | Silent install (passes `--silent` to winget) |
+| `--locked` | Install versions pinned in `lock.json` |
+| `--lang zh\|en\|de` | Override UI / output language |
 
 ---
 
-## 软件目录 Catalog
+## Software Catalog
 
-`catalog/catalog.json` 包含 **142 个软件条目**，覆盖 15 个类别。标注 `★` 的条目在 `dev` / `full` 预设中默认选中。
+`catalog/catalog.json` contains **142 software packages** across 15 categories. Items marked `★` are selected by default in the `dev` / `full` presets.
 
-### 安装方式分布
+### Install Method Distribution
 
-| 方式 | 说明 | 数量 |
+| Method | Description | Count |
 |---|---|:---:|
-| `winget` | Windows 包管理器（自动静默） | 94 |
-| `manual` | 官网手动下载（无自动安装源） | 11 |
-| `portable` | 下载 ZIP 自动解压 + 加入 PATH | 9 |
-| `github-release` | 从 GitHub Release 自动选版下载 | 6 |
-| `winget-bundle` | 批量 winget（多个 ID） | 1 |
-| `vscode-ext` | VS Code 扩展批量安装 | 1 |
-| `git` | git clone + 加入 PATH | 1 |
-| `exe` | 直接下载安装包运行 | 1 |
-| `local` | 预置本地安装包 | 1 |
+| `winget` | Windows Package Manager (silent, automatic) | 94 |
+| `manual` | Official website download (no automated source available) | 11 |
+| `portable` | Download ZIP, auto-extract, add to PATH | 9 |
+| `github-release` | Auto-select version from GitHub Releases | 6 |
+| `winget-bundle` | Batch winget (multiple IDs in one pass) | 1 |
+| `vscode-ext` | VS Code extension bulk install | 1 |
+| `git` | `git clone` + add to PATH | 1 |
+| `exe` | Download and run installer directly | 1 |
+| `local` | Pre-staged local installer package | 1 |
 
-### 完整软件列表
+### Full Software List
 
 <details>
-<summary><b>🛠 dev — 开发工具链（23 项）</b></summary>
+<summary><b>🛠 dev — Development Toolchain (23 items)</b></summary>
 
-| ID | 名称 | 说明 | 方式 |
+| ID | Name | Description | Method |
 |---|---|---|---|
-| ★ git | Git | 分布式版本控制 | winget |
-| ★ gh | GitHub CLI | GitHub 命令行工具 | winget |
-| ★ nodejs | Node.js 24 | JavaScript 运行时 | winget |
-| ★ python | Python 3.10 | Python 解释器 | winget |
-| ★ miniconda | Miniconda3 | Python 环境与包管理 | winget |
-| pwsh | PowerShell 7 | 跨平台 PowerShell（同步 $PROFILE 配置） | winget |
-| ★ jdk17 | Oracle JDK 17 | Java 开发套件 | winget |
-| ★ go | Go | Go 语言工具链 | winget |
-| ★ dotnet-sdk | .NET SDK 10 | .NET 软件开发工具包 | winget |
-| ★ cmake | CMake | 跨平台构建系统 | winget |
-| ★ ffmpeg | FFmpeg | 音视频处理工具 | winget |
-| ★ pandoc | Pandoc | 文档格式转换 | winget |
-| mingw | MinGW-w64 (WinLibs) | GCC/G++ 工具链（自动选版下载） | portable |
-| mingw-builds | MinGW-builds (niXman) | GCC/G++ 工具链 niXman 构建（需 7-Zip） | portable |
-| flutter | Flutter + Dart | 跨平台 UI SDK（移动开发） | git |
-| docker-desktop | Docker Desktop | 容器开发环境 | winget |
-| rust | Rust | Rust 工具链 (rustup) | winget |
-| php | PHP | PHP 解释器（多版本，自动设置 PHP_HOME） | portable |
-| lua | Lua | Lua 解释器（自动设置 LUA_HOME） | winget |
+| ★ git | Git | Distributed version control | winget |
+| ★ gh | GitHub CLI | GitHub command-line tool | winget |
+| ★ nodejs | Node.js 24 | JavaScript runtime | winget |
+| ★ python | Python 3.10 | Python interpreter | winget |
+| ★ miniconda | Miniconda3 | Python environment & package manager | winget |
+| pwsh | PowerShell 7 | Cross-platform PowerShell (syncs $PROFILE) | winget |
+| ★ jdk17 | Oracle JDK 17 | Java Development Kit | winget |
+| ★ go | Go | Go language toolchain | winget |
+| ★ dotnet-sdk | .NET SDK 10 | .NET software development kit | winget |
+| ★ cmake | CMake | Cross-platform build system | winget |
+| ★ ffmpeg | FFmpeg | Audio/video processing | winget |
+| ★ pandoc | Pandoc | Document format converter | winget |
+| mingw | MinGW-w64 (WinLibs) | GCC/G++ toolchain (auto-select build) | portable |
+| mingw-builds | MinGW-builds (niXman) | GCC/G++ toolchain niXman build (needs 7-Zip) | portable |
+| flutter | Flutter + Dart | Cross-platform UI SDK (mobile) | git |
+| docker-desktop | Docker Desktop | Container development environment | winget |
+| rust | Rust | Rust toolchain (rustup) | winget |
+| php | PHP | PHP interpreter (multi-version, sets PHP_HOME) | portable |
+| lua | Lua | Lua interpreter (sets LUA_HOME) | winget |
 
-> ★ = dev / full 预设默认选中
+> ★ = selected by default in the `dev` / `full` presets
 </details>
 
 <details>
-<summary><b>⚙️ system — 系统基础（3 项）</b></summary>
+<summary><b>⚙️ system — System Essentials (3 items)</b></summary>
 
-| ID | 名称 | 说明 | 方式 |
+| ID | Name | Description | Method |
 |---|---|---|---|
-| ★ vcredist | VC++ 运行库合集 | Visual C++ 运行库 2010–2015+ | winget-bundle |
-| ★ windows-terminal | Windows Terminal | 现代终端（同步 settings.json） | winget |
-| huorong | 火绒安全 | 安全 / 杀毒软件（官网手动下载） | manual |
+| ★ vcredist | VC++ Runtime Pack | Visual C++ runtimes 2010–2015+ | winget-bundle |
+| ★ windows-terminal | Windows Terminal | Modern terminal (syncs settings.json) | winget |
+| huorong | Huorong Security | Antivirus / security (manual download) | manual |
 </details>
 
 <details>
-<summary><b>💻 ide — 编辑器 & IDE（10 项）</b></summary>
+<summary><b>💻 ide — Editors & IDEs (10 items)</b></summary>
 
-| ID | 名称 | 说明 | 方式 |
+| ID | Name | Description | Method |
 |---|---|---|---|
-| ★ vscode | VS Code | 轻量代码编辑器 | winget |
-| ★ vscode-ext | VS Code 扩展 | 批量安装约 80 个扩展 | vscode-ext |
-| cursor | Cursor | AI 代码编辑器 | winget |
-| visual-studio | Visual Studio 2022 | 重型 C++/.NET IDE（社区版） | winget |
-| vs2026 | Visual Studio 2026 | 重型 C++/.NET IDE（预览版） | winget |
-| android-studio | Android Studio | Android 开发 IDE | winget |
-| arduino | Arduino IDE | Arduino 开发环境 | winget |
-| unity-hub | Unity Hub | Unity 游戏引擎管理器 | winget |
-| sublime-merge | Sublime Merge | Git 图形客户端 | winget |
-| sublime-text | Sublime Text | 文本 / 代码编辑器 | winget |
+| ★ vscode | VS Code | Lightweight code editor | winget |
+| ★ vscode-ext | VS Code Extensions | Bulk-install ~80 extensions | vscode-ext |
+| cursor | Cursor | AI code editor | winget |
+| visual-studio | Visual Studio 2022 | Full C++/.NET IDE (Community Edition) | winget |
+| vs2026 | Visual Studio 2026 | Full C++/.NET IDE (Preview) | winget |
+| android-studio | Android Studio | Android development IDE | winget |
+| arduino | Arduino IDE | Arduino development environment | winget |
+| unity-hub | Unity Hub | Unity game engine launcher | winget |
+| sublime-merge | Sublime Merge | Git GUI client | winget |
+| sublime-text | Sublime Text | Text / code editor | winget |
 </details>
 
 <details>
-<summary><b>🤖 ai — AI 工具（10 项）</b></summary>
+<summary><b>🤖 ai — AI Tools (10 items)</b></summary>
 
-| ID | 名称 | 说明 | 方式 |
+| ID | Name | Description | Method |
 |---|---|---|---|
-| comfyui | ComfyUI Desktop | AI 绘画工作流 | winget |
-| lmstudio | LM Studio | 本地大模型运行（含 GUI） | winget |
-| ollama | Ollama | 本地大模型运行 | winget |
-| llama-cpp | llama.cpp | C++ 大模型推理引擎（llama-cli / llama-server） | winget |
-| claude | Claude | Anthropic Claude AI 助手桌面端 | winget |
-| windsurf | Windsurf | AI 代码编辑器 | winget |
-| hermes-agent | Hermes Agent | Nous Research AI 智能体桌面端 | exe |
-| codex | Codex CLI | OpenAI Codex 命令行编码助手 | winget |
-| codex-app | Codex (GUI) | OpenAI Codex 图形界面（官网手动下载） | manual |
-| ima-copilot | ima.copilot | 腾讯 ima 智能工作台（官网手动下载） | manual |
+| comfyui | ComfyUI Desktop | AI image generation workflow | winget |
+| lmstudio | LM Studio | Local LLM runner (with GUI) | winget |
+| ollama | Ollama | Local LLM runner | winget |
+| llama-cpp | llama.cpp | C++ LLM inference engine (llama-cli / llama-server) | winget |
+| claude | Claude | Anthropic Claude AI assistant desktop app | winget |
+| windsurf | Windsurf | AI code editor | winget |
+| hermes-agent | Hermes Agent | Nous Research AI agent desktop app | exe |
+| codex | Codex CLI | OpenAI Codex command-line coding assistant | winget |
+| codex-app | Codex (GUI) | OpenAI Codex GUI (manual download) | manual |
+| ima-copilot | ima.copilot | Tencent ima AI workspace (manual download) | manual |
 </details>
 
 <details>
-<summary><b>💬 office — 办公 & 通讯（14 项）</b></summary>
+<summary><b>💬 office — Office & Messaging (14 items)</b></summary>
 
-| ID | 名称 | 说明 | 方式 |
+| ID | Name | Description | Method |
 |---|---|---|---|
-| wechat | 微信 | 即时通讯 | winget |
-| qq | QQ | 腾讯 QQ 即时通讯 | winget |
-| tim | TIM | QQ 办公简洁版 | winget |
-| discord | Discord | 语音 / 文字社群 | winget |
-| telegram | Telegram | 即时通讯 | winget |
-| whatsapp | WhatsApp | 即时通讯 | winget |
-| zoom | Zoom | 视频会议 | winget |
-| wecom | 企业微信 | 企业通讯协作 | winget |
-| feishu | 飞书 | 协作办公（字节跳动） | winget |
-| tencent-meeting | 腾讯会议 | 视频会议 | winget |
-| dingtalk | 钉钉 | 阿里钉钉 办公协作 | winget |
-| wps | WPS Office | 金山办公套件（文字 / 表格 / 演示） | winget |
-| foxmail | Foxmail | 邮件客户端 | winget |
+| wechat | WeChat | Instant messaging | winget |
+| qq | QQ | Tencent QQ instant messaging | winget |
+| tim | TIM | QQ lite (office) | winget |
+| discord | Discord | Voice / text community platform | winget |
+| telegram | Telegram | Instant messaging | winget |
+| whatsapp | WhatsApp | Instant messaging | winget |
+| zoom | Zoom | Video conferencing | winget |
+| wecom | WeCom (Enterprise WeChat) | Enterprise communication | winget |
+| feishu | Feishu (Lark) | Collaborative office suite | winget |
+| tencent-meeting | Tencent Meeting | Video conferencing | winget |
+| dingtalk | DingTalk | Alibaba enterprise collaboration | winget |
+| wps | WPS Office | Kingsoft office suite (Writer / Spreadsheet / Presentation) | winget |
+| foxmail | Foxmail | Email client | winget |
 </details>
 
 <details>
-<summary><b>🎬 media — 媒体 & 娱乐（13 项）</b></summary>
+<summary><b>🎬 media — Media & Entertainment (13 items)</b></summary>
 
-| ID | 名称 | 说明 | 方式 |
+| ID | Name | Description | Method |
 |---|---|---|---|
-| obs | OBS Studio | 录屏 / 直播 | winget |
-| vlc | VLC | 多媒体播放器 | winget |
-| potplayer | PotPlayer | 多媒体播放器 | winget |
-| irfanview | IrfanView | 轻量看图工具 | winget |
-| handbrake | HandBrake | 视频转码 | winget |
-| netease-music | 网易云音乐 | 音乐播放 | winget |
-| qq-music | QQ音乐 | 音乐播放 | winget |
-| foobar2000 | foobar2000 | 轻量音频播放器 | winget |
-| spotify | Spotify | 流媒体音乐 | winget |
-| itunes | iTunes | 苹果媒体管理 | winget |
-| bilibili | 哔哩哔哩 | B 站桌面端 | winget |
-| douyin | 抖音 | 短视频桌面版 | winget |
+| obs | OBS Studio | Screen recording / streaming | winget |
+| vlc | VLC | Multimedia player | winget |
+| potplayer | PotPlayer | Multimedia player | winget |
+| irfanview | IrfanView | Lightweight image viewer | winget |
+| handbrake | HandBrake | Video transcoder | winget |
+| netease-music | NetEase Cloud Music | Music player | winget |
+| qq-music | QQ Music | Music player | winget |
+| foobar2000 | foobar2000 | Lightweight audio player | winget |
+| spotify | Spotify | Music streaming | winget |
+| itunes | iTunes | Apple media manager | winget |
+| bilibili | Bilibili | Bilibili desktop client | winget |
+| douyin | Douyin (TikTok) | Short-video desktop app | winget |
 </details>
 
 <details>
-<summary><b>🗄 db-api — 数据库 & API（8 项）</b></summary>
+<summary><b>🗄 db-api — Databases & API Tools (8 items)</b></summary>
 
-| ID | 名称 | 说明 | 方式 |
+| ID | Name | Description | Method |
 |---|---|---|---|
-| dbgate | DbGate | 通用数据库客户端 | winget |
-| dbeaver | DBeaver | 通用数据库客户端（含 ER 图） | winget |
-| heidisql | HeidiSQL | MySQL / MariaDB 客户端 | winget |
-| redis-insight | Redis Insight | Redis 可视化客户端 | winget |
-| mongodb-compass | MongoDB Compass | MongoDB 图形客户端 | winget |
-| apifox | Apifox | API 设计 / 调试 / Mock | winget |
-| postman | Postman | API 调试 | winget |
-| winscp | WinSCP | SFTP / SCP / FTP 客户端 | winget |
+| dbgate | DbGate | Universal database client | winget |
+| dbeaver | DBeaver | Universal database client (with ER diagram) | winget |
+| heidisql | HeidiSQL | MySQL / MariaDB client | winget |
+| redis-insight | Redis Insight | Redis GUI client | winget |
+| mongodb-compass | MongoDB Compass | MongoDB GUI client | winget |
+| apifox | Apifox | API design / debug / mock | winget |
+| postman | Postman | API debugging | winget |
+| winscp | WinSCP | SFTP / SCP / FTP client | winget |
 </details>
 
 <details>
-<summary><b>🌐 server — 服务器组件（3 项）</b></summary>
+<summary><b>🌐 server — Server Components (3 items)</b></summary>
 
-| ID | 名称 | 说明 | 方式 |
+| ID | Name | Description | Method |
 |---|---|---|---|
-| nginx | nginx | 高性能 Web 服务器 / 反向代理（便携版） | portable |
-| apache | Apache HTTP Server | Apache 2.4 Web 服务器（Apache Lounge Win64 构建） | portable |
-| tomcat | Apache Tomcat 10 | Java Servlet 容器（便携版，自动设置 CATALINA_HOME） | portable |
+| nginx | nginx | High-performance web server / reverse proxy (portable) | portable |
+| apache | Apache HTTP Server | Apache 2.4 web server (Apache Lounge Win64 build) | portable |
+| tomcat | Apache Tomcat 10 | Java servlet container (portable, sets CATALINA_HOME) | portable |
 </details>
 
 <details>
-<summary><b>🖥 vm — 虚拟化（1 项）</b></summary>
+<summary><b>🖥 vm — Virtualization (1 item)</b></summary>
 
-| ID | 名称 | 说明 | 方式 |
+| ID | Name | Description | Method |
 |---|---|---|---|
-| vmware | VMware Workstation | 虚拟机（有本地安装包则自动安装，否则手动） | local |
+| vmware | VMware Workstation | VM platform (auto-installs if local package found, else manual) | local |
 </details>
 
 <details>
-<summary><b>🎮 games — 游戏平台（9 项）</b></summary>
+<summary><b>🎮 games — Game Platforms (9 items)</b></summary>
 
-| ID | 名称 | 说明 | 方式 |
+| ID | Name | Description | Method |
 |---|---|---|---|
-| steam | Steam | Steam 游戏平台客户端 | winget |
-| epic | Epic Games | Epic 游戏平台客户端 | winget |
-| ubisoft-connect | Ubisoft Connect | 育碧游戏平台 | winget |
-| ea-app | EA app | EA 游戏平台 | winget |
-| battlenet | Battle.net | 暴雪游戏平台 | winget |
-| gog-galaxy | GOG Galaxy | GOG 游戏平台 | winget |
-| watt-toolkit | Watt Toolkit | Steam++ 游戏 / 网络加速（自动选版下载） | github-release |
-| openspeedy | OpenSpeedy | 游戏 / 程序变速工具（自动选版下载） | github-release |
-| creaminstaller | CreamInstaller | Steam/Epic DLC 解锁工具（自动选版下载） | github-release |
+| steam | Steam | Steam game platform client | winget |
+| epic | Epic Games | Epic Games Store client | winget |
+| ubisoft-connect | Ubisoft Connect | Ubisoft game platform | winget |
+| ea-app | EA app | EA game platform | winget |
+| battlenet | Battle.net | Blizzard game platform | winget |
+| gog-galaxy | GOG Galaxy | GOG game platform | winget |
+| watt-toolkit | Watt Toolkit | Steam++ network accelerator (auto-select version) | github-release |
+| openspeedy | OpenSpeedy | Game / app speed modifier (auto-select version) | github-release |
+| creaminstaller | CreamInstaller | Steam/Epic DLC unlocker (auto-select version) | github-release |
 </details>
 
 <details>
-<summary><b>🌍 browser — 浏览器（4 项）</b></summary>
+<summary><b>🌍 browser — Browsers (4 items)</b></summary>
 
-| ID | 名称 | 说明 | 方式 |
+| ID | Name | Description | Method |
 |---|---|---|---|
-| chrome | Google Chrome | 网页浏览器 | winget |
-| firefox | Mozilla Firefox | 网页浏览器 | winget |
-| edge | Microsoft Edge | 网页浏览器 | winget |
-| qq-browser | QQ浏览器 | 网页浏览器 | winget |
+| chrome | Google Chrome | Web browser | winget |
+| firefox | Mozilla Firefox | Web browser | winget |
+| edge | Microsoft Edge | Web browser | winget |
+| qq-browser | QQ Browser | Web browser | winget |
 </details>
 
 <details>
-<summary><b>🔀 proxy — 代理工具（2 项）</b></summary>
+<summary><b>🔀 proxy — Proxy Tools (2 items)</b></summary>
 
-| ID | 名称 | 说明 | 方式 |
+| ID | Name | Description | Method |
 |---|---|---|---|
-| v2rayn | v2rayN | 代理 / 科学上网客户端 | winget |
-| cc-switch | CC Switch | AI 服务本地代理 / API 渠道切换（自动选版下载） | github-release |
+| v2rayn | v2rayN | Proxy client | winget |
+| cc-switch | CC Switch | AI service local proxy / API routing (auto-select version) | github-release |
 </details>
 
 <details>
-<summary><b>📖 dict — 词典（1 项）</b></summary>
+<summary><b>📖 dict — Dictionary (1 item)</b></summary>
 
-| ID | 名称 | 说明 | 方式 |
+| ID | Name | Description | Method |
 |---|---|---|---|
-| de-assist | 德语助手 | 德语词典 / 学习工具 | winget |
+| de-assist | German Assistant | German dictionary / learning tool | winget |
 </details>
 
 <details>
-<summary><b>🔧 hwmon — 硬件监控 & 超频（10 项）</b></summary>
+<summary><b>🔧 hwmon — Hardware Monitoring & Overclocking (10 items)</b></summary>
 
-| ID | 名称 | 说明 | 方式 |
+| ID | Name | Description | Method |
 |---|---|---|---|
-| hwinfo | HWiNFO | 硬件信息 / 传感器监控 | winget |
-| cpu-z | CPU-Z | CPU / 主板 / 内存详细信息 | winget |
-| gpu-z | GPU-Z | 显卡信息 / 传感器 | winget |
-| crystaldiskinfo | CrystalDiskInfo | 硬盘 S.M.A.R.T 健康监测 | winget |
-| crystaldiskmark | CrystalDiskMark | 磁盘读写跑分 | winget |
-| furmark | FurMark 2 | GPU 烤机 / 压力测试 | winget |
-| msi-afterburner | MSI Afterburner | 显卡超频 / 风扇 / 监控 | winget |
-| rtss | RivaTuner Statistics Server | 帧率显示 / 帧数限制 / 屏幕叠加 | winget |
-| ryzen-dram-calc | Ryzen DRAM Calculator | 锐龙内存超频时序计算器（官网手动下载） | manual |
-| ntpwedit | NTPWEdit | Windows 本地账户密码重置（自动选版下载） | github-release |
+| hwinfo | HWiNFO | Hardware info / sensor monitoring | winget |
+| cpu-z | CPU-Z | CPU / motherboard / RAM detailed info | winget |
+| gpu-z | GPU-Z | GPU info / sensors | winget |
+| crystaldiskinfo | CrystalDiskInfo | Disk S.M.A.R.T. health monitoring | winget |
+| crystaldiskmark | CrystalDiskMark | Disk read/write benchmark | winget |
+| furmark | FurMark 2 | GPU burn-in / stress test | winget |
+| msi-afterburner | MSI Afterburner | GPU overclocking / fan / monitoring | winget |
+| rtss | RivaTuner Statistics Server | Frame rate display / limiter / OSD | winget |
+| ryzen-dram-calc | Ryzen DRAM Calculator | AMD Ryzen memory OC timing calculator (manual) | manual |
+| ntpwedit | NTPWEdit | Windows local account password reset (auto-select version) | github-release |
 </details>
 
 <details>
-<summary><b>🧰 tools — 实用工具（22 项）</b></summary>
+<summary><b>🧰 tools — Utilities (22 items)</b></summary>
 
-| ID | 名称 | 说明 | 方式 |
+| ID | Name | Description | Method |
 |---|---|---|---|
-| snipaste | Snipaste | 截图 / 贴图工具 | winget |
-| screentogif | ScreenToGif | 录屏转 GIF | winget |
-| sharex | ShareX | 截图 / 录屏 / 文件分享 | winget |
-| 7zip | 7-Zip | 压缩 / 解压工具 | winget |
-| winrar | WinRAR | 压缩 / 解压（含 RAR 格式） | winget |
-| bandizip | Bandizip | 压缩 / 解压工具 | winget |
-| everything | Everything | 极速文件名搜索 | winget |
-| powertoys | PowerToys | 微软 Windows 实用工具集（自动选版） | github-release |
-| dism-plus | Dism++ | 系统精简 / 清理 / 维护（自动选版） | github-release |
-| notepad-plus-plus | Notepad++ | 文本 / 代码编辑器 | winget |
-| typora | Typora | Markdown 编辑器（官网手动下载） | manual |
-| utools | uTools | 效率工具箱 / 启动器（官网手动下载） | manual |
-| thunder | 迅雷 | 下载工具 | winget |
-| baidu-netdisk | 百度网盘 | 云存储 | winget |
-| aliyundrive | 阿里云盘 | 云存储 | winget |
-| anydesk | AnyDesk | 远程桌面 | winget |
-| todesk | ToDesk | 远程桌面 | winget |
-| teamviewer | TeamViewer | 远程桌面 | winget |
-| geek-uninstaller | Geek Uninstaller | 彻底卸载工具 | winget |
-| little-navmap | Little Navmap | 飞行模拟导航地图（官网手动下载） | manual |
-| m365-e5-renew | Microsoft365 E5 Renew Plus | M365 E5 开发者订阅自动续订 | manual |
+| snipaste | Snipaste | Screenshot / pin-to-screen tool | winget |
+| screentogif | ScreenToGif | Screen recorder to GIF | winget |
+| sharex | ShareX | Screenshot / screen recording / file sharing | winget |
+| 7zip | 7-Zip | Archive / extraction | winget |
+| winrar | WinRAR | Archive / extraction (RAR support) | winget |
+| bandizip | Bandizip | Archive / extraction | winget |
+| everything | Everything | Instant file-name search | winget |
+| powertoys | PowerToys | Microsoft Windows utility pack (auto-select version) | github-release |
+| dism-plus | Dism++ | System slimming / cleanup / maintenance (auto-select) | github-release |
+| notepad-plus-plus | Notepad++ | Text / code editor | winget |
+| typora | Typora | Markdown editor (manual download) | manual |
+| utools | uTools | Productivity launcher (manual download) | manual |
+| thunder | Xunlei (Thunder) | Download manager | winget |
+| baidu-netdisk | Baidu Netdisk | Cloud storage | winget |
+| aliyundrive | Aliyun Drive | Cloud storage | winget |
+| anydesk | AnyDesk | Remote desktop | winget |
+| todesk | ToDesk | Remote desktop | winget |
+| teamviewer | TeamViewer | Remote desktop | winget |
+| geek-uninstaller | Geek Uninstaller | Clean uninstall tool | winget |
+| little-navmap | Little Navmap | Flight simulator navigation map (manual) | manual |
+| m365-e5-renew | Microsoft365 E5 Renew Plus | M365 E5 developer subscription auto-renewal | manual |
 </details>
 
-### 内置预设 Profile
+### Built-in Profiles
 
-| 预设 | 包含 | 典型场景 |
+| Profile | Includes | Typical Use Case |
 |---|---|---|
-| `dev` | dev + system + vscode + vscode-ext + windows-terminal | 精简开发工作站 |
-| `full` | 全部条目（排除 steam / epic 等游戏客户端） | 全功能主力机器 |
-| `ai-station` | dev + system + ai + vscode + vscode-ext | AI 推理 / 训练工作站 |
+| `dev` | dev + system + vscode + vscode-ext + windows-terminal | Lean developer workstation |
+| `full` | All items (excludes steam / epic game clients) | Full-featured primary machine |
+| `ai-station` | dev + system + ai + vscode + vscode-ext | AI inference / training workstation |
 
-### 扩展 catalog
+### Extending the Catalog
 
-只需编辑 `catalog/catalog.json`，引擎无需修改。每条目示例：
+Just edit `catalog/catalog.json` — no engine changes required. Example entry:
 
 ```jsonc
 {
@@ -597,100 +639,104 @@ windeploy <命令> [选项]
 
 ---
 
-## 使用须知
+## Usage Notes
 
-### 运行环境与系统要求
+### Runtime & System Requirements
 
-#### 最低要求（运行 GUI / CLI）
+#### Minimum Requirements (GUI / CLI)
 
-| 项目 | 要求 |
+| Item | Requirement |
 |---|---|
-| 操作系统 | Windows 10 1809（Build 17763）及以上 |
-| 架构 | x64（仅 64 位） |
-| 运行时依赖 | **无**（自包含发布，免装 .NET 运行时） |
-| 磁盘空间 | GUI EXE ≈ 80 MB；CLI EXE ≈ 20 MB |
+| OS | Windows 10 1809 (Build 17763) or later |
+| Architecture | x64 only |
+| Runtime dependency | **None** (self-contained publish, no .NET runtime installation needed) |
+| Disk space | GUI EXE ≈ 80 MB · CLI EXE ≈ 20 MB |
 
-#### 功能依赖
+#### Feature Dependencies
 
-| 功能 | 依赖 / 条件 |
+| Feature | Dependency / Condition |
 |---|---|
-| **winget 安装** | Windows 10 21H1+ 或手动安装 [App Installer](https://aka.ms/getwinget) |
-| **ConPTY 终端** | Windows 10 Build 17763+（1809 Redstone 5，自动在旧版上禁用此页） |
-| **WSL 管理** | 已启用 WSL 2（`wsl --install`），需开发人员模式 |
-| **SSH 登记到 GitHub** | 已登录 `gh` CLI（`gh auth login`） |
-| **conda 环境** | Miniconda / Anaconda 已安装并在 PATH 中 |
-| **vscode-ext 安装** | VS Code 已安装（`code` 命令可用） |
-| **SFC / DISM / chkdsk** | 管理员权限（程序按需弹出 UAC） |
-| **SMART 详情（NVMe）** | 管理员权限（调用 NVMe 驱动 IOCTL） |
-| **FTP TLS 自动证书** | 无额外依赖（程序内置 X.509 生成） |
-| **DPAPI 凭据加密** | Windows 内置，无需额外依赖 |
+| **winget installation** | Windows 10 21H1+ or [App Installer](https://aka.ms/getwinget) manually installed |
+| **ConPTY terminal** | Windows 10 Build 17763+ (1809 Redstone 5; disabled automatically on older builds) |
+| **WSL management** | WSL 2 enabled (`wsl --install`), requires Developer Mode |
+| **SSH register to GitHub** | `gh` CLI signed in (`gh auth login`) |
+| **conda environment** | Miniconda / Anaconda installed and on PATH |
+| **vscode-ext install** | VS Code installed (`code` command available) |
+| **SFC / DISM / chkdsk** | Administrator privileges (app prompts UAC on demand) |
+| **NVMe SMART (internal)** | Administrator privileges (NVMe driver IOCTL) |
+| **External drive SMART** | Bundled `smartctl.exe` (ships in `tools/`); admin may be needed |
+| **FTP TLS auto-cert** | No extra dependency (X.509 generation is built in) |
+| **DPAPI credential encryption** | Windows built-in; no extra dependency |
 
-#### 构建要求（仅开发者）
+#### Build Requirements (developers only)
 
-| 项目 | 要求 |
+| Item | Requirement |
 |---|---|
 | SDK | [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) |
-| IDE（可选） | Visual Studio 2022+ 或 VS Code + C# Dev Kit |
-| 发布脚本 | PowerShell 7（`pwsh`）或 Windows PowerShell 5.1 |
+| IDE (optional) | Visual Studio 2022+ or VS Code + C# Dev Kit |
+| Publish script | PowerShell 7 (`pwsh`) or Windows PowerShell 5.1 |
 
-### 被 Windows 拦截 / 提示「未知发布者」怎么办
+### Windows Blocked the App / "Unknown Publisher" Warning
 
-本程序目前**未做代码签名**，属于「自动装软件」类工具，Windows SmartScreen / Defender 可能拦截或提示「未知发布者」。**这不是病毒**（源码与构建流水线全部公开）。
+This application is **not code-signed**. Windows SmartScreen / Defender may block it or warn "Unknown Publisher". **This is not malware** (full source code and CI pipeline are public).
 
-| 情况 | 处理方式 |
+| Situation | Resolution |
 |---|---|
-| SmartScreen 蓝色弹窗 | 点「更多信息 → 仍要运行」 |
-| 优先下载 ZIP 版 | 解压后运行文件夹内 `WinDeploy.exe`，比单文件版触发杀软的概率低 |
-| Defender 删除 / 隔离 | 「Windows 安全中心 → 病毒和威胁防护 → 保护历史记录」恢复文件；可在 [Microsoft 误报提交](https://www.microsoft.com/wdsi/filesubmission) 报告 |
-| 彻底解决（开发者） | 配置仓库 Secrets：`SIGN_PFX_BASE64` + `SIGN_PFX_PASSWORD`，Release CI 已内置 Authenticode 签名步骤 |
+| SmartScreen blue dialog | Click "More info → Run anyway" |
+| Prefer the ZIP package | Extract and run `WinDeploy.exe` from the folder — less likely to trigger heuristics than the single-file EXE |
+| Defender quarantined the file | Go to "Windows Security → Virus & threat protection → Protection history" and restore the file; you can also submit a false-positive report at [Microsoft WDSI](https://www.microsoft.com/wdsi/filesubmission) |
+| Permanent fix (developers) | Set repository secrets `SIGN_PFX_BASE64` + `SIGN_PFX_PASSWORD` — the Release CI already includes an Authenticode signing step |
 
-### 开发人员模式
+### Developer Mode
 
-WSL、系统调优、高级工具等专业功能通过**开发人员模式**门控。在「设置 → 开发者选项」启用后，左侧导航立即出现对应页面。启用时会弹出二次确认弹窗，请仔细阅读提示后再操作。
+WSL, System Tweaks, Advanced Tools, Cloudflare DDNS, and other advanced features are gated behind **Developer Mode**. Enable it in Settings → Developer Options — the left navigation panel updates instantly. A confirmation dialog is shown before activation; please read it carefully.
 
-### 安全说明
+### Security Notes
 
-- **SSH 私钥**：每台设备独立生成，绝不写入 `configs/` 仓库
-- **配置脱敏**：导出时自动识别并删除 token、password、api_key、secret 等字段，可在「设置 → 脱敏关键词」自定义
-- **注册表操作**：系统调优页面所有改动均可在同一页面**一键复原**
-- **UAC 提权**：仅在需要时（SFC / DISM / 系统级 PATH 写入）发起，不长期持有管理员权限
+- **SSH private keys**: generated fresh per device, never written to `configs/`
+- **Config redaction**: tokens, passwords, `api_key`, `secret` fields auto-removed on export; keywords are customizable
+- **Registry tweaks**: all changes on the Tweaks page can be reversed from the same page
+- **UAC elevation**: requested only when needed (SFC / DISM / system-level PATH writes); not held persistently
+- **FTPS**: trust-on-first-use certificate pinning; changed certs are refused
+- **WSL**: distro names validated against an allowlist before use in any shell invocation
+- **Server configs**: vhost paths reject shell-injection metacharacters
 
-### 已知限制
+### Known Limitations
 
-- `mingw` 条目含占位 URL，使用前请在 `catalog.json` 中补全实际下载地址
-- ConPTY 终端功能需要 Windows 10 Build 17763+，更旧系统终端页面不可用
-- 部分 winget ID 以 `TODO:` 标注，安装前请先 `validate` 校验
+- The `mingw` catalog entry contains a placeholder URL — fill in the real download URL in `catalog.json` before use
+- ConPTY terminal requires Windows 10 Build 17763+; the terminal page is disabled on older builds
+- Some winget IDs are marked `TODO:` — run `validate` before applying
 
 ---
 
-## 版权许可 License
+## License
 
-本项目对外采用 **CC BY-NC-SA 4.0**（署名 - 非商业性使用 - 相同方式共享 4.0 国际）许可，完整条款见 [`LICENSE`](LICENSE)。
+This project is released to the public under the **CC BY-NC-SA 4.0** (Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International) license. Full terms: [`LICENSE`](LICENSE).
 
-### 许可摘要
+### License Summary
 
-| 权利 | 说明 |
+| Right | Description |
 |---|---|
-| **署名（BY）** | 使用须保留作者版权声明，并注明是否有改动 |
-| **非商业（NC）** | 禁止将本项目或其衍生作品用于商业用途 |
-| **相同方式共享（SA）** | 修改 / 二次开发后再发布，必须以相同许可证开源 |
+| **Attribution (BY)** | You must credit the author and indicate whether changes were made |
+| **NonCommercial (NC)** | You may not use this project or derivatives for commercial purposes |
+| **ShareAlike (SA)** | Modified / derivative works must be released under the same license |
 
-### 允许的使用
+### Permitted Uses
 
-- 个人学习、研究、非商业项目
-- 在遵守上述三项条件的前提下复制、修改、再分发
+- Personal learning, research, and non-commercial projects
+- Copying, modifying, and redistributing under the three conditions above
 
-### 禁止的使用
+### Prohibited Uses
 
-- 将本项目或其衍生版本用于任何商业产品、服务或盈利目的
-- 以闭源方式发布基于本项目的修改版本
-- 移除或篡改版权声明
+- Using this project or any derivative in commercial products, services, or for profit
+- Publishing a modified version as closed-source
+- Removing or altering copyright notices
 
-### 作者特权
+### Author's Reserved Rights
 
-作者 **Tommy131** 为唯一版权持有人，**不受「非商业」限制约束**，保留包括商业使用与另行授权（双重许可）在内的全部权利。
+**Tommy131** is the sole copyright holder and is **not bound by the NonCommercial restriction**. The author retains all rights, including commercial use and the right to issue the software under different terms (dual-licensing).
 
-**商业授权咨询**：hanskijay@owoblog.com
+**Commercial licensing inquiries**: hanskijay@owoblog.com
 
 ---
 
