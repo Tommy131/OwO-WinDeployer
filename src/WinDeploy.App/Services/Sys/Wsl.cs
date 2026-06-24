@@ -11,10 +11,19 @@ public sealed record WslDistro(string Name, string State, int Version, bool Defa
 public sealed record WslOnline(string Name, string Friendly);
 
 /// <summary>Thin wrapper over wsl.exe for the WSL management page: list installed/available distros, set
-/// default, terminate, shut down, export (backup) and unregister. Capture goes through `cmd` with
-/// WSL_UTF8=1 because wsl.exe otherwise emits UTF-16; long/interactive actions open their own window.</summary>
+/// default, terminate, shut down, export (backup) and unregister. Non-interactive calls invoke wsl.exe
+/// directly via Proc (ArgumentList — no shell, so a distro name can't inject) with WSL_UTF8=1 so output is
+/// UTF-8 instead of UTF-16; long/interactive actions open their own window with a validated distro name.</summary>
 public static class Wsl
 {
+    // wsl.exe emits UTF-16 unless WSL_UTF8=1; set it on the child env so we can drop the cmd shell entirely.
+    private static readonly Dictionary<string, string> Utf8Env = new() { ["WSL_UTF8"] = "1" };
+
+    // WSL distro names are letters/digits/._-+ and spaces; reject anything else so a name from `--list`/`--online`
+    // can't smuggle shell metacharacters into the visible-window (cmd /k) launch paths.
+    private static readonly Regex DistroName = new(@"^[A-Za-z0-9][A-Za-z0-9._+ -]{0,62}$", RegexOptions.Compiled);
+    private static bool ValidName(string? n) => n != null && DistroName.IsMatch(n.Trim());
+
     public static bool IsAvailable() => CommandFinder.Find("wsl") != null;
 
     /// <summary>Whether the "适用于 Linux 的 Windows 子系统" optional feature is actually enabled. wsl.exe
@@ -61,17 +70,16 @@ public static class Wsl
     public static (bool Ok, string Msg) EnableFeatureVisible()
         => LaunchVisible("--install --no-distribution", elevate: true);
 
-    private static async Task<string> CaptureAsync(string wslArgs, CancellationToken ct)
+    private static async Task<string> CaptureAsync(string[] wslArgs, CancellationToken ct)
     {
-        // WSL_UTF8=1 makes wsl.exe emit UTF-8 so Proc's UTF-8 reader doesn't garble the table.
-        var r = await Proc.RunAsync("cmd", new[] { "/c", $"set WSL_UTF8=1 && wsl {wslArgs}" }, ct: ct);
+        var r = await Proc.RunAsync("wsl", wslArgs, ct: ct, env: Utf8Env);
         return r.StdOut;
     }
 
     public static async Task<List<WslDistro>> ListAsync(CancellationToken ct = default)
     {
         var list = new List<WslDistro>();
-        var outp = await CaptureAsync("--list --verbose", ct);
+        var outp = await CaptureAsync(new[] { "--list", "--verbose" }, ct);
         foreach (var raw in outp.Split('\n'))
         {
             var line = raw.TrimEnd('\r');
@@ -92,7 +100,7 @@ public static class Wsl
     public static async Task<List<WslOnline>> ListOnlineAsync(CancellationToken ct = default)
     {
         var list = new List<WslOnline>();
-        var outp = await CaptureAsync("--list --online", ct);
+        var outp = await CaptureAsync(new[] { "--list", "--online" }, ct);
         var started = false;
         foreach (var raw in outp.Split('\n'))
         {
@@ -107,20 +115,28 @@ public static class Wsl
         return list;
     }
 
-    public static async Task<(bool Ok, string Msg)> RunAsync(string args, CancellationToken ct = default)
+    private static async Task<(bool Ok, string Msg)> RunAsync(string[] args, CancellationToken ct = default)
     {
         try
         {
-            var r = await Proc.RunAsync("cmd", new[] { "/c", $"set WSL_UTF8=1 && wsl {args}" }, ct: ct);
+            var r = await Proc.RunAsync("wsl", args, ct: ct, env: Utf8Env);
             return r.Ok ? (true, "完成") : (false, $"wsl 退出码 {r.ExitCode}");
         }
         catch (Exception ex) { return (false, ex.Message); }
     }
 
-    public static Task<(bool Ok, string Msg)> SetDefaultAsync(string name) => RunAsync($"--set-default \"{name}\"");
-    public static Task<(bool Ok, string Msg)> TerminateAsync(string name) => RunAsync($"--terminate \"{name}\"");
-    public static Task<(bool Ok, string Msg)> ShutdownAsync() => RunAsync("--shutdown");
-    public static Task<(bool Ok, string Msg)> UnregisterAsync(string name) => RunAsync($"--unregister \"{name}\"");
+    // Name-taking actions validate the name (defense in depth) and pass it as a separate argv entry —
+    // ArgumentList quotes it and there is no shell, so injection is impossible.
+    public static Task<(bool Ok, string Msg)> SetDefaultAsync(string name)
+        => ValidName(name) ? RunAsync(new[] { "--set-default", name }) : InvalidName();
+    public static Task<(bool Ok, string Msg)> TerminateAsync(string name)
+        => ValidName(name) ? RunAsync(new[] { "--terminate", name }) : InvalidName();
+    public static Task<(bool Ok, string Msg)> ShutdownAsync() => RunAsync(new[] { "--shutdown" });
+    public static Task<(bool Ok, string Msg)> UnregisterAsync(string name)
+        => ValidName(name) ? RunAsync(new[] { "--unregister", name }) : InvalidName();
+
+    private static Task<(bool Ok, string Msg)> InvalidName()
+        => Task.FromResult((false, Localizer.T("wsl.msg.invalidName")));
 
     public static async Task<(bool Ok, string Msg)> ExportAsync(string name, string tarPath, CancellationToken ct = default)
     {
@@ -132,9 +148,18 @@ public static class Wsl
         catch (Exception ex) { return (false, ex.Message); }
     }
 
-    /// <summary>Install a distro in a visible window (first install enables the WSL feature and may prompt UAC).</summary>
+    /// <summary>Install a distro in a visible window (first install enables the WSL feature and may prompt UAC).
+    /// The name is validated so it can't inject into the cmd /k launch.</summary>
     public static (bool Ok, string Msg) InstallVisible(string name)
-        => LaunchVisible($"--install -d {name}", elevate: true);
+        => ValidName(name)
+            ? LaunchVisible($"--install -d \"{name}\"", elevate: true)
+            : (false, Localizer.T("wsl.msg.invalidName"));
+
+    /// <summary>Open a validated distro's shell in a new console window.</summary>
+    public static (bool Ok, string Msg) LaunchDistroShell(string name)
+        => ValidName(name)
+            ? LaunchVisible($"-d \"{name}\"")
+            : (false, Localizer.T("wsl.msg.invalidName"));
 
     /// <summary>Open a distro's shell in a new console window.</summary>
     public static (bool Ok, string Msg) LaunchVisible(string args, bool elevate = false)

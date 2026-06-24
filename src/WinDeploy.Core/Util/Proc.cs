@@ -12,9 +12,9 @@ public sealed record ProcResult(int ExitCode, string StdOut, string StdErr)
 public static class Proc
 {
     public static async Task<ProcResult> RunAsync(string file, IEnumerable<string> args,
-        string? cwd = null, CancellationToken ct = default)
+        string? cwd = null, CancellationToken ct = default, IReadOnlyDictionary<string, string>? env = null)
     {
-        var psi = BuildPsi(file, args, cwd);
+        var psi = BuildPsi(file, args, cwd, env);
         using var p = new Process { StartInfo = psi };
         var so = new StringBuilder();
         var se = new StringBuilder();
@@ -83,7 +83,8 @@ public static class Proc
         }
     }
 
-    private static ProcessStartInfo BuildPsi(string file, IEnumerable<string> args, string? cwd)
+    private static ProcessStartInfo BuildPsi(string file, IEnumerable<string> args, string? cwd,
+        IReadOnlyDictionary<string, string>? env = null)
     {
         // Resolve a bare command name (e.g. "winget") to a full path on PATH.
         if (!Path.IsPathRooted(file) && string.IsNullOrEmpty(Path.GetExtension(file)))
@@ -118,6 +119,7 @@ public static class Proc
         psi.UseShellExecute = false;
         psi.CreateNoWindow = true;
         if (cwd != null) psi.WorkingDirectory = cwd;
+        if (env != null) foreach (var kv in env) psi.Environment[kv.Key] = kv.Value;
         return psi;
     }
 }

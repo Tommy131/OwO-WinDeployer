@@ -43,7 +43,7 @@ public sealed class WslViewModel : LocalizedObject
         TerminateCommand = new RelayCommand(p => { if (p is WslDistroRowViewModel r) _ = ActAsync(Wsl.TerminateAsync(r.Name), Localizer.Format("wsl.msg.terminated", r.Name)); });
         ExportCommand = new RelayCommand(p => { if (p is WslDistroRowViewModel r) _ = ExportAsync(r); });
         UnregisterCommand = new RelayCommand(p => { if (p is WslDistroRowViewModel r) _ = UnregisterAsync(r); });
-        LaunchCommand = new RelayCommand(p => { if (p is WslDistroRowViewModel r) Wsl.LaunchVisible($"-d \"{r.Name}\""); });
+        LaunchCommand = new RelayCommand(p => { if (p is WslDistroRowViewModel r) Wsl.LaunchDistroShell(r.Name); });
         OpenFeaturesCommand = new RelayCommand(_ => { var (_, m) = Wsl.OpenWindowsFeatures(); Note = Localizer.Format("wsl.msg.featuresOpenedHint", m); });
         EnableFeatureCommand = new RelayCommand(_ => { var (ok, m) = Wsl.EnableFeatureVisible(); Note = ok ? Localizer.T("wsl.msg.enabling") : m; });
         _ = LoadAsync();

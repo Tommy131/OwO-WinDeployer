@@ -171,6 +171,7 @@
   "wsl.msg.featuresOpenedHint": "{0}: „Windows-Subsystem für Linux“ und „Plattform für virtuelle Computer“ anhaken, bestätigen, neu starten, dann zu dieser Seite zurückkehren und aktualisieren.",
   "wsl.msg.installed": "{0} Distributionen installiert{1}",
   "wsl.msg.installing": "{0} wird in einem neuen Fenster installiert (nach Abschluss auf Aktualisieren klicken)",
+  "wsl.msg.invalidName": "Ungültiger Distributionsname.",
   "wsl.msg.loading": "WSL-Distributionen werden gelesen …",
   "wsl.msg.noVmPlatform": " (Hinweis: „Plattform für virtuelle Computer“ ist nicht aktiviert, daher ist WSL2 nicht verfügbar; Sie können sie in den Windows-Features nachträglich anhaken)",
   "wsl.msg.ranInNewWindow": "In einem neuen Fenster ausgeführt",

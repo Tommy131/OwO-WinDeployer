@@ -171,6 +171,7 @@
   "wsl.msg.featuresOpenedHint": "{0}: tick “Windows Subsystem for Linux” and “Virtual Machine Platform”, confirm, restart, then return to this page and refresh.",
   "wsl.msg.installed": "{0} distributions installed{1}",
   "wsl.msg.installing": "Installing {0} in a new window (click Refresh when done)",
+  "wsl.msg.invalidName": "Invalid distribution name.",
   "wsl.msg.loading": "Reading WSL distributions …",
   "wsl.msg.noVmPlatform": " (note: “Virtual Machine Platform” is not enabled, so WSL2 is unavailable; you can add it in Windows features)",
   "wsl.msg.ranInNewWindow": "Executed in a new window",

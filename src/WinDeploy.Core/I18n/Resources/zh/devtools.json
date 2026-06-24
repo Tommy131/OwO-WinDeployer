@@ -171,6 +171,7 @@
   "wsl.msg.featuresOpenedHint": "{0}：勾选「适用于 Linux 的 Windows 子系统」与「虚拟机平台」，确定后重启，再回到本页点刷新。",
   "wsl.msg.installed": "已安装 {0} 个发行版{1}",
   "wsl.msg.installing": "已在新窗口中安装 {0}（完成后点刷新）",
+  "wsl.msg.invalidName": "无效的发行版名称。",
   "wsl.msg.loading": "正在读取 WSL 发行版 …",
   "wsl.msg.noVmPlatform": "（注意：未启用「虚拟机平台」，WSL2 不可用，可在 Windows 功能中补勾选）",
   "wsl.msg.ranInNewWindow": "已在新窗口中执行",

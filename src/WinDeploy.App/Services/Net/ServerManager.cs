@@ -262,10 +262,18 @@ public static class ServerManager
         return list;
     }
 
+    // nginx/apache config metacharacters: a server_name/root/path containing these could inject arbitrary
+    // directives into a config the web server runs (with its own privileges) on reload. Reject them.
+    private static readonly char[] NameBad = { ';', '{', '}', '#', '\r', '\n', '"', '\'' };
+    private static readonly char[] PathBad = { ';', '{', '}', '\r', '\n', '"' };
+
     public static (bool Ok, string Msg) CreateVhost(ServerInfo s, VhostSpec spec)
     {
         if (string.IsNullOrWhiteSpace(spec.ServerName)) return (false, "请填写域名 / server_name");
         if (string.IsNullOrWhiteSpace(spec.Root)) return (false, "请填写站点根目录");
+        if (spec.ServerName.IndexOfAny(NameBad) >= 0 || spec.Root.IndexOfAny(PathBad) >= 0
+            || (spec.CertPath?.IndexOfAny(PathBad) ?? -1) >= 0 || (spec.KeyPath?.IndexOfAny(PathBad) ?? -1) >= 0)
+            return (false, "域名 / 路径含非法字符（; { } # \" 或换行），已拒绝以防注入");
         try
         {
             Directory.CreateDirectory(s.VhostDir);

@@ -253,6 +253,20 @@ public sealed class ExeInstaller : IInstaller
         ctx.Step(Localizer.Format("engine.install.downloadInstaller", ins.Url));
         await Download.ToFileAsync(ins.Url, tmp, ctx, ctx.Ct);
 
+        // Integrity: this binary is about to be EXECUTED, so verify it against the catalog sha256 when set.
+        // Absent a hash, warn loudly (but proceed, for catalog compatibility — matches PortableInstaller).
+        if (ins.Sha256 is { Length: > 0 } sha && sha != "…")
+        {
+            ctx.Step(Localizer.T("engine.install.sha256"));
+            var actual = Convert.ToHexString(SHA256.HashData(await File.ReadAllBytesAsync(tmp, ctx.Ct)));
+            if (!string.Equals(actual, sha, StringComparison.OrdinalIgnoreCase))
+            {
+                try { File.Delete(tmp); } catch { /* don't leave a mismatched installer behind */ }
+                return StepOutcome.Fail($"sha256 mismatch ({actual[..12]}…)");
+            }
+        }
+        else Log.Warn($"{item.Id}: no sha256 set — running installer without an integrity check");
+
         ctx.Step(Localizer.T("engine.install.runInstaller"));
         var args = string.IsNullOrWhiteSpace(ins.Args)
             ? Array.Empty<string>()

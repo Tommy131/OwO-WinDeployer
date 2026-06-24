@@ -4,7 +4,10 @@ using System.Net;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Security.Authentication;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using WinDeploy.Core.I18n;
 
 namespace WinDeploy.App.Services.Ftp;
 
@@ -19,6 +22,7 @@ public sealed class FtpClient : IDisposable
     private TcpClient? _tcp;
     private Stream _ctrl = Stream.Null;
     private string _host = "";
+    private int _port;
     private bool _secure;
     private readonly byte[] _rbuf = new byte[4096];
     private int _rpos, _rlen;
@@ -30,6 +34,7 @@ public sealed class FtpClient : IDisposable
     public async Task ConnectAsync(string host, int port, string tlsMode, string user, string pass, CancellationToken ct)
     {
         _host = host;
+        _port = port;
         _tcp = new TcpClient { NoDelay = true };
         using (var to = LinkTimeout(ct)) await _tcp.ConnectAsync(host, port, to.Token);
         _ctrl = _tcp.GetStream();
@@ -71,8 +76,7 @@ public sealed class FtpClient : IDisposable
 
     private async Task UpgradeTlsAsync(CancellationToken ct)
     {
-        var ssl = new SslStream(_ctrl, leaveInnerStreamOpen: false,
-            (_, _, _, _) => true);   // accept self-signed — ad-hoc personal usage
+        var ssl = new SslStream(_ctrl, leaveInnerStreamOpen: false, ValidateServerCert);
         using (var to = LinkTimeout(ct))
             await ssl.AuthenticateAsClientAsync(new SslClientAuthenticationOptions
             {
@@ -82,6 +86,30 @@ public sealed class FtpClient : IDisposable
         _ctrl = ssl;
         _secure = true;
         _rpos = _rlen = 0;
+    }
+
+    // Trust-on-first-use validation: a CA-trusted chain is accepted outright; a self-signed (or otherwise
+    // untrusted) cert is pinned per host:port on first sight and accepted, but a *different* cert on a later
+    // connect is rejected as a possible MITM. This keeps the self-signed workflow usable while no longer
+    // blindly accepting any certificate (the old "(_, _, _, _) => true").
+    private bool ValidateServerCert(object sender, X509Certificate? cert, X509Chain? chain, SslPolicyErrors errors)
+    {
+        if (errors == SslPolicyErrors.None) return true;   // chain valid and host matches → trust
+        if (cert is null) return false;                    // no cert to pin → cannot establish trust
+
+        var key = $"{_host}:{_port}";
+        var thumb = Convert.ToHexString(SHA256.HashData(cert.GetRawCertData()));
+        var pinned = FtpTrustStore.Get(key);
+        if (pinned is null)
+        {
+            FtpTrustStore.Set(key, thumb);
+            Log?.Invoke(Localizer.Format("ftp.client.trustNewCert", _host, thumb[..16]));
+            return true;
+        }
+        if (string.Equals(pinned, thumb, StringComparison.OrdinalIgnoreCase)) return true;
+
+        Log?.Invoke(Localizer.Format("ftp.client.certChanged", _host));
+        return false;   // pinned cert changed → refuse the connection
     }
 
     // ── browsing ───────────────────────────────────────────────────────────────
