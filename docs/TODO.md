@@ -5,35 +5,28 @@
 
 ## 🥇 第一档：补全已经开了头的能力（顺手、闭环）
 
-- [ ] **智能体会话备份（Option A：只采小而关键的部分）**
-  - 给 `EnvCapture` 扩展一个 `agent-sessions` 源，复用现有「采集本机配置 → 写回新机」管线，几乎零新 UI。
-  - 采：Claude 的 `projects/**/memory/`、`settings.json`；Codex 的 `config.toml` / `AGENTS.md` / memories（**敏感开关下**）。
-  - **排除**：transcripts（~493MB）、缓存、`auth.json`（密钥）、sqlite/`*.sqlite-wal`。
-  - 写入 `configs/<id>/`，并加进 `.gitignore` 敏感块（个人专属，绝不入公共库）。
-  - 背景：`~/.claude` ≈ 494MB（493MB 为 transcripts），`~/.codex` ≈ 1.4GB（含 auth.json/locked sqlite/caches）。全量 git 同步不可行，故只取小配置。
+- [x] **智能体会话备份（Option A：只采小而关键的部分）** ✅
+  - 实现：给 `EnvCaptureSource` 加 `IncludeDirs`（命名子目录递归采集，遵守脱敏与敏感名排除），接到 Claude（`projects\*\memory`、`memory`、`commands`、`agents`）与 Codex（`memory`）源。
+  - 大体积 transcripts（`projects\<p>\*.jsonl`）/缓存/`auth.json` 因只采 `memory` 子目录而天然排除；复用既有 capture/restore 管线，恢复已递归遍历。
 
-- [ ] **配置漂移 / Diff 视图**
-  - 「采集本机配置」时对比仓库已有版本 vs 本机当前版本，列出新增/改动文件，让用户决定是否覆盖。
-  - 现状是直接覆盖 + `.bak.<stamp>` 备份，缺预览。
-  - 直接痛点：`configs/windows-terminal/settings.json`（跟踪的模板）会被采集反复覆盖。
+- [x] **配置漂移 / Diff 视图** ✅
+  - 实现：`EnvCapture.PreviewApply` 干跑，逐文件标记 New/Changed/Same（按大小+字节比对）。「环境配置恢复」前列出将新增/覆盖的文件与计数；configs/ 为空或已一致时直接短路提示。
+  - 注：当前覆盖恢复（restore）方向。capture 方向（windows-terminal 反复覆盖）建议用「杂项」里的彻底取消跟踪解决。
 
-- [ ] **「把当前勾选保存为 Profile」**
-  - 安装中心目前只能套用 `catalog/profiles/` 里的预设清单。
-  - 让用户把当前手动勾选的组合一键存为新 profile（写到 `catalog/profiles/<name>.json`），新机直接套用。
+- [x] **「把当前勾选保存为 Profile」** ✅
+  - 实现：安装中心「存为方案」按钮 → 输入名称 → 写 `catalog/profiles/<name>.json`（已存在则确认覆盖）→ 加入「方案」下拉。`CatalogLoader.SaveProfile`/`ProfileExists` 落在 Core。
 
 ## 🥈 第二档：可靠性 / 可观测
 
-- [ ] **部署报告（Deployment Report）**
-  - apply 完成后生成 HTML/Markdown 报告：每项成功/失败/跳过、耗时、版本号、失败原因。
-  - 复用已有 AuditLog + inventory HTML 导出的渲染。
+- [x] **部署报告（Deployment Report）** ✅
+  - 实现：`DeployReport.ToHtml`（逐项 状态/耗时/信息 + 成功/失败/跳过 汇总，沿用 inventory 样式）。apply 实际执行后写入 `%APPDATA% 应用目录/reports/deploy-<stamp>.html` 并弹窗询问是否打开。
 
-- [ ] **SHA256 回填工具**
-  - catalog 里很多 portable 项缺 sha256（`engine.validate.portableNoSha256` 会警告）。
-  - 工具：下载一次 → 算 hash → 写回 `catalog.json`，提升完整性校验覆盖率。
+- [x] **SHA256 回填工具** ✅
+  - 实现：CLI `windeploy hash [--all] [--only ids] [--write]` —— 下载便携项安装包算 SHA256，`--write` 用「定位 url 字符串就地插入」方式回写 catalog.json（保留注释/格式）。默认只读打印。
 
-- [ ] **自动化测试基线**
-  - 新增 `WinDeploy.Core.Tests`，先覆盖纯逻辑：`Secrets.Redact`、`EnvCapture.Glob()`、catalog 校验、i18n 键对齐（把 `scripts/check-i18n.ps1` 也做成测试）。
-  - 作为后续重构的安全网。
+- [x] **自动化测试基线** ✅
+  - 实现：`src/WinDeploy.Core.Tests`（xUnit，net10.0），47 个测试覆盖 `Selection.Resolve`、`CatalogLoader`、`Secrets.Redact`/`IsTextConfig`、i18n 三语键对齐+占位符、`CatalogValidator`。`dotnet test` 全绿。
+  - 注：`EnvCapture.Glob()` 为 private，未直接测；改测公开纯逻辑。
 
 ## 🥉 第三档：进阶 / 锦上添花
 
