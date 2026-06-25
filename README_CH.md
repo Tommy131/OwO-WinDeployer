@@ -62,7 +62,7 @@
 
 ### 软件安装中心（M1 · M3）
 
-- **142 个软件**（15 类别）以图标卡片展示，逐项勾选或整组选择
+- **126 个软件**（15 类别）以图标卡片展示，逐项勾选或整组选择
 - **搜索**过滤 + **预设 Profile** 一键切换（`dev` / `full` / `ai-station`）
 - **安装方式**：winget · winget-bundle · portable · git · conda · vscode-ext · exe · script · github-release · local · manual
 - **幂等安装**：检测已装则自动跳过，支持 dry-run 预演
@@ -348,7 +348,7 @@ windeploy <命令> [选项]
 
 ## 软件目录 Catalog
 
-`catalog/catalog.json` 包含 **142 个软件条目**，覆盖 15 个类别。标注 `★` 的条目在 `dev` / `full` 预设中默认选中。
+`catalog/catalog.json` 包含 **126 个软件条目**，覆盖 15 个类别。标注 `★` 的条目在 `dev` / `full` 预设中默认选中。
 
 ### 安装方式分布
 

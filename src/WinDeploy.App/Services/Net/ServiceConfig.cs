@@ -224,8 +224,12 @@ public static class ServiceConfig
         if (!File.Exists(exe)) return (false, Localizer.Format("svc.run.notFound", exe));
         var psi = new ProcessStartInfo(exe) { Arguments = args, WorkingDirectory = wd, UseShellExecute = false, CreateNoWindow = true };
         using var p = Process.Start(psi);
-        p?.WaitForExit(8000);
-        return (p is { ExitCode: 0 }) ? (true, Localizer.T("svc.run.done")) : (true, Localizer.T("svc.run.sent"));
+        if (p == null) return (false, Localizer.T("svc.run.sent"));
+        // Don't read ExitCode until the process has actually exited — doing so on a still-running process throws.
+        if (!p.WaitForExit(8000)) return (true, Localizer.T("svc.run.sent"));   // long-running / async start: treat as "sent"
+        return p.ExitCode == 0
+            ? (true, Localizer.T("svc.run.done"))
+            : (false, Localizer.Format("svc.run.exitFail", p.ExitCode));
     }
 
     private static (bool, string) Kill(string procName)

@@ -20,6 +20,7 @@ public static class HttpProxy
         @"^(?:https?|socks5|socks4)://(?:[^\s:@/]+:[^\s:@/]+@)?[A-Za-z0-9.\-]+:(\d{1,5})$",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
+    private static readonly object Gate = new();
     private static IWebProxy? _systemDefault;
     private static bool _captured;
 
@@ -38,10 +39,13 @@ public static class HttpProxy
     {
         try
         {
-            if (!_captured) { _systemDefault = HttpClient.DefaultProxy; _captured = true; }
-            HttpClient.DefaultProxy = enabled && IsValid(url)
-                ? Build(url!.Trim())
-                : _systemDefault ?? new WebProxy();
+            lock (Gate)
+            {
+                if (!_captured) { _systemDefault = HttpClient.DefaultProxy; _captured = true; }
+                HttpClient.DefaultProxy = enabled && IsValid(url)
+                    ? Build(url!.Trim())
+                    : _systemDefault ?? new WebProxy();
+            }
         }
         catch { /* keep the current proxy on any failure */ }
     }

@@ -65,6 +65,7 @@
   "svc.open.notFound": "路径不存在：{0}",
   "svc.run.cancelled": "已取消授权或启动失败",
   "svc.run.done": "完成",
+  "svc.run.exitFail": "失败（退出码 {0}）",
   "svc.run.killed": "已停止 {0} 个进程",
   "svc.run.noActions": "该服务无可用操作",
   "svc.run.noProcess": "没有正在运行的进程",

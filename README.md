@@ -64,7 +64,7 @@ All milestones are complete:
 
 ### Software Install Center (M1 · M3)
 
-- **142 software packages** (15 categories) displayed as icon cards — check individually or select by group
+- **126 software packages** (15 categories) displayed as icon cards — check individually or select by group
 - **Search** filter + **Profile** switcher (`dev` / `full` / `ai-station`) in one click
 - **Install methods**: winget · winget-bundle · portable · git · conda · vscode-ext · exe · script · github-release · local · manual
 - **Idempotent**: detects already-installed items and skips them; supports dry-run preview
@@ -241,7 +241,7 @@ owo-win-deployer/
 │       │   └── Infra/           # Theme, toast, tray, DPAPI, audit log, settings
 │       └── Behaviors/           # Custom WPF input behaviors (InputFilter, MenuTidy)
 ├── catalog/
-│   ├── catalog.json             # 142-item software manifest (JSONC)
+│   ├── catalog.json             # 126-item software manifest (JSONC)
 │   ├── i18n/{en,de}.json        # Catalog summary translations
 │   ├── profiles/                # Install presets (dev · full · ai-station)
 │   └── hosts.example.json       # Hostname → preset mapping template
@@ -358,7 +358,7 @@ windeploy <command> [options]
 
 ## Software Catalog
 
-`catalog/catalog.json` contains **142 software packages** across 15 categories. Items marked `★` are selected by default in the `dev` / `full` presets.
+`catalog/catalog.json` contains **126 software packages** across 15 categories. Items marked `★` are selected by default in the `dev` / `full` presets.
 
 ### Install Method Distribution
 

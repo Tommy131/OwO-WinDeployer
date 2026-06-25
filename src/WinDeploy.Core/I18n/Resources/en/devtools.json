@@ -65,6 +65,7 @@
   "svc.open.notFound": "Path does not exist: {0}",
   "svc.run.cancelled": "Authorization cancelled or launch failed",
   "svc.run.done": "Done",
+  "svc.run.exitFail": "Failed (exit code {0})",
   "svc.run.killed": "Stopped {0} process(es)",
   "svc.run.noActions": "This service has no available actions",
   "svc.run.noProcess": "No running processes",

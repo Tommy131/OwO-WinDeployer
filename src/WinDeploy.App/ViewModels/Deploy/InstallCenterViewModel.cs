@@ -386,6 +386,11 @@ public sealed class InstallCenterViewModel : LocalizedObject
             }
             RefreshCounts();
         }
-        catch { /* ignore bad profile */ }
+        catch (Exception ex)
+        {
+            // Bad / unreadable profile — tell the user instead of silently doing nothing.
+            PathNote = Localizer.Format("install.profileLoadFail", name, ex.Message);
+            AuditLog.App($"加载方案失败 {name}：{ex.Message}");
+        }
     }
 }

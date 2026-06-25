@@ -138,7 +138,7 @@ public sealed class PortableInstaller : IInstaller
             if (!actual.Equals(sha, StringComparison.OrdinalIgnoreCase))
                 return StepOutcome.Fail($"sha256 mismatch ({actual[..12]}…)");
         }
-        else Log.Warn($"{item.Id}: no sha256 set — skipping integrity check");
+        else Log.Info($"{item.Id}: no sha256 in catalog — integrity check skipped");
 
         Directory.CreateDirectory(dest);
         if (!isArchive)
@@ -265,7 +265,7 @@ public sealed class ExeInstaller : IInstaller
                 return StepOutcome.Fail($"sha256 mismatch ({actual[..12]}…)");
             }
         }
-        else Log.Warn($"{item.Id}: no sha256 set — running installer without an integrity check");
+        else Log.Info($"{item.Id}: no sha256 in catalog — running installer without an integrity check");
 
         ctx.Step(Localizer.T("engine.install.runInstaller"));
         var args = string.IsNullOrWhiteSpace(ins.Args)

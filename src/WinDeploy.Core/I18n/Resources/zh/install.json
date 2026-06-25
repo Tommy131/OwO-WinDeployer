@@ -37,6 +37,7 @@
   "install.invert": "反选",
   "install.launchTip": "启动",
   "install.noneSelected": "未选中任何软件",
+  "install.profileLoadFail": "加载方案「{0}」失败：{1}",
   "install.pathSet": "已为 {0} 个选中项设置安装路径（以 {1} 为根目录，按软件名分目录）",
   "install.profileTip": "预设：选 dev / full / ai-station 一键套用对应勾选",
   "install.profileWatermark": "选择预设…",

@@ -87,18 +87,6 @@ public sealed class CategoryFilterViewModel : LocalizedObject
     public event Action? Changed;
 }
 
-public sealed class PlaceholderViewModel
-{
-    public string Title { get; }
-    public string Message { get; }
-
-    public PlaceholderViewModel(string title, string message)
-    {
-        Title = title;
-        Message = message;
-    }
-}
-
 /// <summary>One software card on the install center.</summary>
 public sealed class AppItemViewModel : LocalizedObject
 {

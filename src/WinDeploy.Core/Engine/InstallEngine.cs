@@ -48,6 +48,9 @@ public sealed class InstallEngine
         bool dryRun, Action<PlanItem>? onStart = null, Action<RunResult>? onDone = null)
     {
         var summary = new RunSummary();
+        // Ids that failed (or were skipped because a dependency failed). The plan is dependency-ordered, so by
+        // the time we reach a dependent its dependencies have already been processed.
+        var failed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         void Record(RunResult r) { summary.Results.Add(r); onDone?.Invoke(r); }
         foreach (var pi in plan)
         {
@@ -58,6 +61,17 @@ public sealed class InstallEngine
             {
                 res.Status = StepStatus.Skipped;
                 res.Message = "already installed";
+                Record(res);
+                continue;
+            }
+
+            // Don't attempt an item whose dependency failed — it would almost certainly fail too. Mark it
+            // skipped (and treat it as failed for ITS dependents, so the skip cascades).
+            if (pi.Item.Depends?.FirstOrDefault(failed.Contains) is { } badDep)
+            {
+                res.Status = StepStatus.Skipped;
+                res.Message = $"dependency failed: {badDep}";
+                failed.Add(pi.Item.Id);
                 Record(res);
                 continue;
             }
@@ -93,6 +107,7 @@ public sealed class InstallEngine
                 res.Message = ex.Message;
             }
             res.Duration = sw.Elapsed;
+            if (res.Status == StepStatus.Failed) failed.Add(pi.Item.Id);
             Record(res);
         }
         return summary;

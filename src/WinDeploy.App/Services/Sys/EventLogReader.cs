@@ -6,8 +6,14 @@ namespace WinDeploy.App.Services.Sys;
 public sealed record EventRow(string Time, string Level, int Id, string Source, string Message)
 {
     public bool IsCritical => Level.StartsWith("Crit", StringComparison.OrdinalIgnoreCase) || Level.Contains("严重");
-    /// <summary>Unexpected-shutdown / BSOD heuristics (Kernel-Power 41, BugCheck 1001, WER 1000/1001).</summary>
-    public bool IsCrash => (Source.Contains("Kernel-Power") && Id == 41) || Source.Contains("BugCheck") || Id == 1001;
+    /// <summary>Unexpected-shutdown / BSOD / app-crash heuristics, scoped by source so unrelated providers that
+    /// also use ID 1000/1001 (BITS, etc.) aren't mislabeled as crashes:
+    /// Kernel-Power 41 (dirty shutdown), BugCheck (BSOD), Application Error 1000, Windows Error Reporting 1000/1001.</summary>
+    public bool IsCrash =>
+        (Source.Contains("Kernel-Power") && Id == 41)
+        || Source.Contains("BugCheck")
+        || (Source.Contains("Application Error") && Id == 1000)
+        || (Source.Contains("Error Reporting") && (Id == 1000 || Id == 1001));
 }
 
 /// <summary>Surfaces recent System/Application Critical+Error events (last 7 days) plus crash/BSOD markers,

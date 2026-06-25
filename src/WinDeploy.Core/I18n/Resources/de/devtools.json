@@ -65,6 +65,7 @@
   "svc.open.notFound": "Pfad existiert nicht: {0}",
   "svc.run.cancelled": "Autorisierung abgebrochen oder Start fehlgeschlagen",
   "svc.run.done": "Fertig",
+  "svc.run.exitFail": "Fehlgeschlagen (Exit-Code {0})",
   "svc.run.killed": "{0} Prozess(e) gestoppt",
   "svc.run.noActions": "Dieser Dienst hat keine verfügbaren Aktionen",
   "svc.run.noProcess": "Keine laufenden Prozesse",

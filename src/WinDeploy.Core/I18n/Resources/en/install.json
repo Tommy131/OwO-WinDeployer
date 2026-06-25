@@ -37,6 +37,7 @@
   "install.invert": "Invert",
   "install.launchTip": "Launch",
   "install.noneSelected": "No software selected",
+  "install.profileLoadFail": "Failed to load profile “{0}”: {1}",
   "install.pathSet": "Set install path for {0} selected item(s) (root {1}, foldered by app name)",
   "install.profileTip": "Profile: pick dev / full / ai-station to apply the matching selection in one click",
   "install.profileWatermark": "Choose profile…",

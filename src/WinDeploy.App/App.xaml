@@ -647,9 +647,6 @@
       <DataTemplate DataType="{x:Type vmnet:CloudflareDdnsViewModel}">
         <vcf:CloudflareDdnsView />
       </DataTemplate>
-      <DataTemplate DataType="{x:Type vm:PlaceholderViewModel}">
-        <vshell:PlaceholderView />
-      </DataTemplate>
 
     </ResourceDictionary>
   </Application.Resources>
