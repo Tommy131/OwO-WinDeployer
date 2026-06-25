@@ -20,21 +20,24 @@ public static class RemoteDeploy
         return (ok, (r.StdOut + r.StdErr).Trim());
     }
 
-    /// <summary>scp the local repo to <paramref name="remoteDir"/>, then ssh-run <paramref name="command"/>.
-    /// Returns success plus a combined transcript for display.</summary>
+    /// <summary>scp <paramref name="sourcePath"/> (a file or folder) to <paramref name="remoteDir"/>, then —
+    /// if <paramref name="command"/> is non-empty — ssh-run it. Returns success plus a transcript for display.</summary>
     public static async Task<(bool Ok, string Output)> DeployAsync(
-        string host, string user, int port, string localRepo, string remoteDir, string command, CancellationToken ct = default)
+        string host, string user, int port, string sourcePath, string remoteDir, string command, CancellationToken ct = default)
     {
         var target = $"{user}@{host}";
+        var dest = string.IsNullOrWhiteSpace(remoteDir) ? "" : remoteDir;
         var log = new StringBuilder();
 
-        log.AppendLine($"$ scp -r \"{localRepo}\" {target}:\"{remoteDir}\"");
+        log.AppendLine($"$ scp -r \"{sourcePath}\" {target}:\"{dest}\"");
         var scp = await Proc.RunAsync("scp", new[]
         {
-            "-r", "-P", port.ToString(), "-o", "StrictHostKeyChecking=accept-new", localRepo, $"{target}:{remoteDir}",
+            "-r", "-P", port.ToString(), "-o", "StrictHostKeyChecking=accept-new", sourcePath, $"{target}:{dest}",
         }, ct: ct);
         log.AppendLine((scp.StdOut + scp.StdErr).Trim());
         if (!scp.Ok) { log.AppendLine($"scp exit {scp.ExitCode}"); return (false, log.ToString()); }
+
+        if (string.IsNullOrWhiteSpace(command)) return (true, log.ToString());
 
         log.AppendLine().AppendLine($"$ ssh {target} {command}");
         var ssh = await Proc.RunAsync("ssh", new[]
