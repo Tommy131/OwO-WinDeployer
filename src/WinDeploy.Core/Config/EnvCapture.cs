@@ -16,7 +16,15 @@ namespace WinDeploy.Core.Config;
 /// <param name="RedactText">Redact secrets inside text files unless sensitive export is allowed.</param>
 public sealed record EnvCaptureSource(
     string Id, string Name, string SourceDir,
-    string[] Include, string[] Sensitive, string[] SensitiveDirs, bool RedactText);
+    string[] Include, string[] Sensitive, string[] SensitiveDirs, bool RedactText)
+{
+    /// <summary>Sub-directory path globs (relative to <see cref="SourceDir"/>, <c>*</c> matches one path
+    /// segment) whose contents are captured recursively — e.g. Claude's <c>projects\*\memory</c> for
+    /// agent-session memory. Honors <see cref="RedactText"/>; files matching <see cref="Sensitive"/> by name
+    /// are still excluded unless sensitive export is allowed. Lets us grab small memory/config trees while the
+    /// huge transcript / cache siblings stay out (they live outside these named sub-directories).</summary>
+    public string[] IncludeDirs { get; init; } = Array.Empty<string>();
+}
 
 /// <summary>
 /// Captures common environment / dotfile / AI-agent configurations (SSH, GnuPG, git credentials, Codex,
@@ -46,12 +54,21 @@ public static class EnvCapture
         new EnvCaptureSource("codex", "Codex CLI (~/.codex)", @"%USERPROFILE%\.codex",
             Include: new[] { "*.json", "*.toml", "*.yaml", "*.yml", "config", "*.md" },
             Sensitive: new[] { "auth*", "*token*", "*credential*", "*.pem", "*.key" },
-            SensitiveDirs: Array.Empty<string>(), RedactText: true),
+            SensitiveDirs: Array.Empty<string>(), RedactText: true)
+        {
+            // Small agent memory; the bulky session logs / caches live elsewhere under ~/.codex and are skipped.
+            IncludeDirs = new[] { "memory" },
+        },
 
         new EnvCaptureSource("claude", "Claude Code (~/.claude)", @"%USERPROFILE%\.claude",
             Include: new[] { "settings.json", "*.json", "CLAUDE.md" },
             Sensitive: new[] { ".credentials*", "*token*", "*.key" },
-            SensitiveDirs: Array.Empty<string>(), RedactText: true),
+            SensitiveDirs: Array.Empty<string>(), RedactText: true)
+        {
+            // Per-project agent memory only — the large *.jsonl transcripts sit in projects\<p>\ (not \memory),
+            // so they're left out; also grab top-level memory/ and reusable commands/agents if present.
+            IncludeDirs = new[] { @"projects\*\memory", "memory", "commands", "agents" },
+        },
 
         new EnvCaptureSource("openssh", "OpenSSH server (ProgramData\\ssh)", @"%PROGRAMDATA%\ssh",
             Include: new[] { "sshd_config", "ssh_config", "*.conf", "*.pub" },
@@ -197,6 +214,42 @@ public static class EnvCapture
                 catch { /* skip an unreadable sensitive dir */ }
             }
 
+        // Named sub-directory trees (e.g. agent-session memory). Captured regardless of the sensitive opt-in,
+        // but text is redacted unless allowed and sensitive-named files are still excluded.
+        foreach (var pat in s.IncludeDirs)
+            foreach (var subDir in ResolveDirs(dir, pat))
+            {
+                IEnumerable<string> sub;
+                try { sub = Directory.EnumerateFiles(subDir, "*", SearchOption.AllDirectories); }
+                catch { continue; }
+                foreach (var path in sub)
+                {
+                    var name = Path.GetFileName(path);
+                    if (!allowSensitive && sensitive.Any(r => r.IsMatch(name))) { skippedSensitive++; continue; }
+                    try
+                    {
+                        var rel = Path.GetRelativePath(dir, path);
+                        var d = Path.Combine(dst, rel);
+                        Directory.CreateDirectory(Path.GetDirectoryName(d)!);
+                        string? text = null;
+                        if (s.RedactText && !allowSensitive && Secrets.IsTextConfig(name))
+                        {
+                            var (rt, c) = Secrets.Redact(File.ReadAllText(path));
+                            File.WriteAllText(d, rt);
+                            redacted += c; text = rt;
+                        }
+                        else
+                        {
+                            File.Copy(path, d, true);
+                            if (Secrets.IsTextConfig(name)) { try { text = File.ReadAllText(d); } catch { /* preview only */ } }
+                        }
+                        n++;
+                        files.Add(new ConfigFileInfo { Path = ConfigSync.RepoRel(repoRoot, d), Size = new FileInfo(d).Length, Preview = ConfigSync.MakePreview(text) });
+                    }
+                    catch { /* skip a single bad file */ }
+                }
+            }
+
         if (n == 0)
             return ConfigResult.Skip(s.Name, skippedSensitive > 0
                 ? Localizer.Format("engine.envcap.onlySensitive", skippedSensitive)
@@ -211,4 +264,26 @@ public static class EnvCapture
     /// <summary>Filename glob (<c>*</c>, <c>?</c>) → anchored case-insensitive regex.</summary>
     private static Regex Glob(string pattern)
         => new("^" + Regex.Escape(pattern).Replace("\\*", ".*").Replace("\\?", ".") + "$", RegexOptions.IgnoreCase);
+
+    /// <summary>Resolve a relative sub-directory path pattern (segments split on <c>\</c> or <c>/</c>, each may
+    /// be a <c>*</c>/<c>?</c> wildcard) against <paramref name="baseDir"/>, returning every existing match.</summary>
+    private static IEnumerable<string> ResolveDirs(string baseDir, string relPattern)
+    {
+        IEnumerable<string> dirs = new[] { baseDir };
+        foreach (var part in relPattern.Split('\\', '/'))
+        {
+            if (part.Length == 0) continue;
+            dirs = dirs.SelectMany(d =>
+            {
+                if (!Directory.Exists(d)) return Enumerable.Empty<string>();
+                if (part.Contains('*') || part.Contains('?'))
+                {
+                    try { return Directory.EnumerateDirectories(d, part); } catch { return Enumerable.Empty<string>(); }
+                }
+                var sub = Path.Combine(d, part);
+                return Directory.Exists(sub) ? new[] { sub } : Enumerable.Empty<string>();
+            });
+        }
+        return dirs;
+    }
 }
