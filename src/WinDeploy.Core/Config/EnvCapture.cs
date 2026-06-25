@@ -81,6 +81,51 @@ public static class EnvCapture
     public static List<ConfigResult> Capture(string repoRoot, bool allowSensitive)
         => Sources.Select(s => CaptureOne(repoRoot, s, allowSensitive)).ToList();
 
+    /// <summary>How a captured repo file compares to its counterpart on this machine.</summary>
+    public enum DriftStatus { New, Changed, Same }
+
+    /// <summary>One file that <see cref="Apply"/> would write, and how it differs from what's there now.</summary>
+    public sealed record DriftEntry(string Source, string RelPath, string TargetPath, DriftStatus Status);
+
+    /// <summary>Dry run of <see cref="Apply"/>: for every captured file under <c>configs/&lt;id&gt;</c>, report
+    /// whether restoring it would create a new file, overwrite a changed one, or be a no-op (identical). Lets the
+    /// UI show what a restore will actually touch before clobbering local config.</summary>
+    public static List<DriftEntry> PreviewApply(string repoRoot)
+    {
+        var list = new List<DriftEntry>();
+        foreach (var s in Sources)
+        {
+            var src = Path.Combine(repoRoot, "configs", s.Id);
+            if (!Directory.Exists(src)) continue;
+            string dir;
+            try { dir = Environment.ExpandEnvironmentVariables(s.SourceDir); } catch { continue; }
+            IEnumerable<string> files;
+            try { files = Directory.EnumerateFiles(src, "*", SearchOption.AllDirectories); } catch { continue; }
+            foreach (var path in files)
+            {
+                var rel = Path.GetRelativePath(src, path);
+                var d = Path.Combine(dir, rel);
+                var status = !File.Exists(d) ? DriftStatus.New
+                           : FilesEqual(path, d) ? DriftStatus.Same : DriftStatus.Changed;
+                list.Add(new DriftEntry(s.Name, rel, d, status));
+            }
+        }
+        return list;
+    }
+
+    /// <summary>Cheap content equality: size first, then byte compare. Config files are small.</summary>
+    private static bool FilesEqual(string a, string b)
+    {
+        try
+        {
+            var fa = new FileInfo(a);
+            var fb = new FileInfo(b);
+            if (fa.Length != fb.Length) return false;
+            return File.ReadAllBytes(a).AsSpan().SequenceEqual(File.ReadAllBytes(b));
+        }
+        catch { return false; }   // treat unreadable as "differs" so the user is warned, not surprised
+    }
+
     /// <summary>Restore every captured source from <c>&lt;repoRoot&gt;/configs/&lt;id&gt;</c> back onto this machine
     /// (the apply / new-machine direction). Existing files are backed up first; restored private keys / credentials
     /// have their ACL tightened to the current user so e.g. OpenSSH will accept them.</summary>

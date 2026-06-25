@@ -132,14 +132,47 @@ public sealed class ConfigSyncViewModel : ConfigPageBase
     /// OpenSSH) from the repo back onto this machine — the new-machine direction of "采集本机配置".</summary>
     private async Task ApplyEnvAsync()
     {
-        if (Dialogs.Show(Localizer.T("cfgsync.env.confirm"), Localizer.T("cfgsync.env.title"),
+        var root = RepoRoot;
+
+        // Drift preview: show exactly what a restore would create / overwrite before clobbering local config.
+        var drift = await Task.Run(() => EnvCapture.PreviewApply(root));
+        if (drift.Count == 0)
+        {
+            Dialogs.Show(Localizer.T("cfgsync.env.noCaptured"), Localizer.T("cfgsync.env.title"),
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var added = drift.Count(e => e.Status == EnvCapture.DriftStatus.New);
+        var changed = drift.Count(e => e.Status == EnvCapture.DriftStatus.Changed);
+        var same = drift.Count(e => e.Status == EnvCapture.DriftStatus.Same);
+        if (added == 0 && changed == 0)
+        {
+            Dialogs.Show(Localizer.T("cfgsync.env.upToDate"), Localizer.T("cfgsync.env.title"),
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var body = new System.Text.StringBuilder();
+        body.AppendLine(Localizer.Format("cfgsync.env.confirmDiff", added, changed, same)).AppendLine();
+        foreach (var e in drift.Where(e => e.Status != EnvCapture.DriftStatus.Same)
+                                .OrderBy(e => e.Status).ThenBy(e => e.RelPath).Take(25))
+        {
+            var tag = e.Status == EnvCapture.DriftStatus.New
+                ? Localizer.T("cfgsync.env.tagNew") : Localizer.T("cfgsync.env.tagChanged");
+            body.AppendLine($"  [{tag}] {e.Source} · {e.RelPath}");
+        }
+        if (added + changed > 25) body.AppendLine(Localizer.Format("cfgsync.env.diffMore", added + changed - 25));
+        body.AppendLine().Append(Localizer.T("cfgsync.env.confirm"));
+
+        if (Dialogs.Show(body.ToString(), Localizer.T("cfgsync.env.title"),
                 MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+
         IsBusy = true;
         Results.Clear();
-        var root = RepoRoot;
         var results = await Task.Run(() => EnvCapture.Apply(root));
         foreach (var r in results) Results.Add(ToRow(r));
-        AuditLog.Action("恢复环境配置（SSH / GPG / git 凭据 / Codex / Claude 等）");
+        AuditLog.Action($"恢复环境配置（新增 {added} · 覆盖 {changed}）");
         IsBusy = false;
     }
 }
