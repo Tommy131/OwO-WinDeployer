@@ -18,8 +18,9 @@
              xmlns:vtools="clr-namespace:WinDeploy.App.Views.Tools"
              xmlns:vshell="clr-namespace:WinDeploy.App.Views.Shell"
              xmlns:app="clr-namespace:WinDeploy.App"
-             xmlns:b="clr-namespace:WinDeploy.App.Behaviors"
-             StartupUri="MainWindow.xaml">
+             xmlns:b="clr-namespace:WinDeploy.App.Behaviors">
+  <!-- No StartupUri: App.OnStartup creates MainWindow manually so the single-instance guard
+       can bail out (Shutdown) before any window is created for a duplicate launch. -->
   <Application.Resources>
     <ResourceDictionary>
 

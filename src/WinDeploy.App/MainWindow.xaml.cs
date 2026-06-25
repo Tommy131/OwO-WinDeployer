@@ -254,6 +254,9 @@ public partial class MainWindow : Window
         if (!_resident) _tray?.Hide();     // keep the icon when it's set to always-resident
     }
 
+    /// <summary>Called when a second instance is launched: bring this existing window to the foreground.</summary>
+    public void SurfaceFromOtherInstance() => RestoreFromTray();
+
     private void ExitFromTray()
     {
         _exiting = true;
