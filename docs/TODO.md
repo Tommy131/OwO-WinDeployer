@@ -30,9 +30,9 @@
 
 ## 🥉 第三档：进阶 / 锦上添花
 
-- [ ] **还原点（Restore Point）** — apply 配置前调 `Checkpoint-Computer` 建系统还原点，出错可回滚。
-- [ ] **定时导出** — 用 Windows 计划任务定期把本机配置采集进仓库（与「智能体会话备份」搭配）。
-- [ ] **远程 apply** — 复用已有 SSH/FTP 能力，把部署套件推到另一台机器执行。
+- [x] **还原点（Restore Point）** ✅ — `RestorePoint.CreateAsync`（`Checkpoint-Computer`）+ 设置页「批量安装前创建系统还原点」开关；安装前创建，失败（需管理员且启用系统还原）时询问是否仍继续。
+- [x] **定时导出** ✅ — App 新增无界面入口 `--capture <repoRoot>`（跑导出管线，仅非敏感，置于单实例守卫之前，GUI 开着也能跑）+ `ScheduledExport`（schtasks）每日/每周/登录时任务；采集页加「定时采集」开关+频率。
+- [x] **远程 apply** ✅ — `RemoteDeploy`（内置 ssh.exe/scp.exe，仅密钥认证、无密码）+ 自包含对话框：测试连通 → 推送仓库到目标机 → 运行部署命令（默认 `windeploy apply --silent`）并显示输出；入口在配置同步页的卡片。
 
 ## 杂项 / 已知待办
 
