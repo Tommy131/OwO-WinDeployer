@@ -493,20 +493,20 @@ public sealed class MainViewModel : LocalizedObject
         var items = Install.Groups.SelectMany(g => g.Items).ToList();
         Settings.IconNote = Localizer.T("ops.icon.fetching");
         var n = await BusyDialog.RunAsync(Application.Current.MainWindow, Localizer.T("ops.icon.busyTitle"),
-            Localizer.T("ops.icon.busyBody"), () => FetchIconCacheAsync(items));
+            Localizer.T("ops.icon.busyBody"), () => FetchIconCacheAsync(items, force: true));
         Settings.IconNote = n > 0 ? Localizer.Format("ops.icon.doneN", n) : Localizer.T("ops.icon.none");
     }
 
     /// <summary>Batch-download HD brand icons for items that have no bundled icon, cache them under
     /// %LOCALAPPDATA%, then adopt them — so missing icons don't leave letter badges. Best-effort.</summary>
-    private async Task<int> FetchIconCacheAsync(IReadOnlyList<AppItemViewModel> items)
+    private async Task<int> FetchIconCacheAsync(IReadOnlyList<AppItemViewModel> items, bool force = false)
     {
         try
         {
             var need = items.Where(vm => !vm.HasIcon)
                             .Select(vm => (vm.Model.Id, vm.Model.Homepage, vm.Model.Name)).ToList();
             if (need.Count == 0) return 0;
-            var n = await IconCache.FetchMissingAsync(need, _repoRoot);
+            var n = await IconCache.FetchMissingAsync(need, _repoRoot, force);
             if (n > 0)
             {
                 await Application.Current.Dispatcher.InvokeAsync(() => { foreach (var vm in items) vm.ReloadFromCache(); });

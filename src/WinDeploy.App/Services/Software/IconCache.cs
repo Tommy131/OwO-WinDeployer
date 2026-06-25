@@ -17,6 +17,18 @@ public static class IconCache
     public static string PathFor(string id) => Path.Combine(Dir, id + ".png");
     public static bool Has(string id) => File.Exists(PathFor(id));
 
+    // Negative cache: ids whose icon couldn't be fetched leave a "<id>.miss" marker so we don't re-hit the
+    // network (and log a 404) on every launch. Retried again only after MissTtl, in case the icon later appears.
+    private static readonly TimeSpan MissTtl = TimeSpan.FromDays(30);
+    private static string MissPathFor(string id) => Path.Combine(Dir, id + ".miss");
+    private static bool RecentlyMissed(string id)
+    {
+        try { var p = MissPathFor(id); return File.Exists(p) && DateTime.UtcNow - File.GetLastWriteTimeUtc(p) < MissTtl; }
+        catch { return false; }
+    }
+    private static void MarkMissed(string id) { try { File.WriteAllText(MissPathFor(id), DateTime.UtcNow.ToString("o")); } catch { /* best effort */ } }
+    private static void ClearMissed(string id) { try { var p = MissPathFor(id); if (File.Exists(p)) File.Delete(p); } catch { /* best effort */ } }
+
     // id → dashboard-icons slug, for ids that differ from the icon repo's slug. Unlisted ids try the id as-is.
     private static readonly Dictionary<string, string> Slug = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -31,11 +43,14 @@ public static class IconCache
     };
 
     /// <summary>For each item missing a bundled and cached icon, try to download one. Throttled; best-effort.
+    /// Skips ids that recently failed (negative cache) unless <paramref name="force"/> (the manual refresh).
+    /// Per-id failures are only logged on a forced refresh, so the automatic startup pass stays quiet.
     /// Returns how many icons were newly cached.</summary>
-    public static async Task<int> FetchMissingAsync(IReadOnlyList<(string Id, string? Homepage, string Name)> items, string repoRoot)
+    public static async Task<int> FetchMissingAsync(IReadOnlyList<(string Id, string? Homepage, string Name)> items, string repoRoot, bool force = false)
     {
         var todo = items.Where(i =>
-            !File.Exists(Path.Combine(repoRoot, "assets", "icons", i.Id + ".png")) && !Has(i.Id)).ToList();
+            !File.Exists(Path.Combine(repoRoot, "assets", "icons", i.Id + ".png")) && !Has(i.Id)
+            && (force || !RecentlyMissed(i.Id))).ToList();
         if (todo.Count == 0) return 0;
 
         try { Directory.CreateDirectory(Dir); } catch { return 0; }
@@ -48,7 +63,7 @@ public static class IconCache
         var tasks = todo.Select(async it =>
         {
             await gate.WaitAsync();
-            try { if (await FetchOneAsync(http, it)) Interlocked.Increment(ref ok); }
+            try { if (await FetchOneAsync(http, it, logFailure: force)) Interlocked.Increment(ref ok); }
             catch { /* best-effort */ }
             finally { gate.Release(); }
         });
@@ -56,7 +71,7 @@ public static class IconCache
         return ok;
     }
 
-    private static async Task<bool> FetchOneAsync(HttpClient http, (string Id, string? Homepage, string Name) it)
+    private static async Task<bool> FetchOneAsync(HttpClient http, (string Id, string? Homepage, string Name) it, bool logFailure)
     {
         string? lastErr = null;
         foreach (var url in CandidateUrls(it))
@@ -66,11 +81,13 @@ public static class IconCache
                 var bytes = await http.GetByteArrayAsync(url);
                 if (bytes.Length < 200 || !LooksLikeImage(bytes)) { lastErr = $"not-image({bytes.Length}) {url}"; continue; }
                 await File.WriteAllBytesAsync(PathFor(it.Id), bytes);
+                ClearMissed(it.Id);
                 return true;
             }
             catch (Exception ex) { lastErr = $"{ex.GetType().Name}: {ex.Message} @ {url}"; }
         }
-        if (lastErr != null) AuditLog.Warn($"图标失败 {it.Id} — {lastErr}");
+        MarkMissed(it.Id);   // remember the miss so the next launch doesn't re-hit the network for this id
+        if (logFailure && lastErr != null) AuditLog.Warn($"图标失败 {it.Id} — {lastErr}");
         return false;
     }
 
