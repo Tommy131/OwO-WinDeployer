@@ -55,6 +55,7 @@ public sealed class InstallCenterViewModel : LocalizedObject
     public RelayCommand ToggleUpdatesCommand { get; }
     public RelayCommand ShowAllGroupsCommand { get; }
     public RelayCommand HideAllGroupsCommand { get; }
+    public RelayCommand SaveProfileCommand { get; }
     private Dictionary<string, bool>? _snapshot;
 
     /// <summary>Raised when the user clicks 刷新 (re-detect installed status + update availability).</summary>
@@ -103,6 +104,50 @@ public sealed class InstallCenterViewModel : LocalizedObject
         ToggleUpdatesCommand = new RelayCommand(_ => ToggleUpdates());
         ShowAllGroupsCommand = new RelayCommand(_ => SetAllGroups(true));
         HideAllGroupsCommand = new RelayCommand(_ => SetAllGroups(false));
+        SaveProfileCommand = new RelayCommand(_ => SaveCurrentAsProfile(), _ => SelectedCount > 0);
+    }
+
+    /// <summary>Save the currently-checked items as a reusable profile under catalog/profiles/.</summary>
+    private void SaveCurrentAsProfile()
+    {
+        if (_catalog == null) return;
+        var ids = Groups.SelectMany(g => g.Items).Where(i => i.IsSelected).Select(i => i.Id).ToList();
+        if (ids.Count == 0) { PathNote = Localizer.T("install.noneSelected"); return; }
+
+        var dlg = new InputDialog(Localizer.T("install.saveProfile.title"),
+            Localizer.T("install.saveProfile.prompt"), Localizer.T("install.saveProfile.placeholder"))
+        { Owner = System.Windows.Application.Current.MainWindow };
+        if (dlg.ShowDialog() != true) return;
+
+        var name = SanitizeProfileName(dlg.Value);
+        if (name.Length == 0) { PathNote = Localizer.T("install.saveProfile.badName"); return; }
+
+        if (CatalogLoader.ProfileExists(_catalogDir, name)
+            && Dialogs.Show(Localizer.Format("install.saveProfile.overwrite", name),
+                   Localizer.T("install.saveProfile.title"),
+                   System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning)
+               != System.Windows.MessageBoxResult.Yes)
+            return;
+
+        try
+        {
+            CatalogLoader.SaveProfile(_catalogDir, new Profile { Name = name, Select = ids });
+            if (!Profiles.Contains(name)) Profiles.Add(name);
+            PathNote = Localizer.Format("install.saveProfile.done", name, ids.Count);
+            AuditLog.Action($"保存方案 {name}（{ids.Count} 项）");
+        }
+        catch (Exception ex)
+        {
+            PathNote = Localizer.Format("install.saveProfile.fail", ex.Message);
+            AuditLog.App($"保存方案失败 {name}：{ex.Message}");
+        }
+    }
+
+    /// <summary>Keep only filename-safe characters; profiles are addressed by file name.</summary>
+    private static string SanitizeProfileName(string raw)
+    {
+        var invalid = Path.GetInvalidFileNameChars();
+        return new string(raw.Where(c => !invalid.Contains(c)).ToArray()).Trim().Trim('.');
     }
 
     /// <summary>Rebuild the category filter chips for the currently category-visible groups (dev-mode aware).</summary>

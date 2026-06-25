@@ -49,6 +49,26 @@ public static class CatalogLoader
                ?? throw new InvalidDataException($"Invalid profile: {path}");
     }
 
+    /// <summary>Write <paramref name="profile"/> to <c>&lt;catalogDir&gt;/profiles/&lt;Name&gt;.json</c>
+    /// (creating the folder). Used by "save current selection as a profile". Returns the file path.</summary>
+    public static string SaveProfile(string catalogDir, Profile profile)
+    {
+        var dir = Path.Combine(catalogDir, "profiles");
+        Directory.CreateDirectory(dir);
+        var path = Path.Combine(dir, profile.Name + ".json");
+        var opts = new JsonSerializerOptions(Json)
+        {
+            WriteIndented = true,
+            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
+        };
+        File.WriteAllText(path, JsonSerializer.Serialize(profile, opts));
+        return path;
+    }
+
+    /// <summary>Whether a profile file with this name already exists.</summary>
+    public static bool ProfileExists(string catalogDir, string name)
+        => File.Exists(Path.Combine(catalogDir, "profiles", name + ".json"));
+
     /// <summary>Walks up from <paramref name="startDir"/> looking for catalog/catalog.json.</summary>
     public static string? FindCatalogDir(string startDir)
     {

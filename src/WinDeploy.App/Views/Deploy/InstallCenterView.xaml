@@ -37,6 +37,8 @@
                   ToolTip="{DynamicResource S.install.restoreTip}" />
           <Button Content="{DynamicResource S.install.setPath}" Style="{StaticResource MiniButton}" Click="SetPath_Click" Margin="0,0,8,6"
                   ToolTip="{DynamicResource S.install.setPathTip}" />
+          <Button Content="{DynamicResource S.install.saveProfile}" Style="{StaticResource MiniButton}" Command="{Binding SaveProfileCommand}" Margin="0,0,8,6"
+                  ToolTip="{DynamicResource S.install.saveProfileTip}" />
           <Border Width="1" Background="{DynamicResource BorderSoft}" Margin="2,2,10,8" />
           <Button Content="{Binding UpdateLabel}" Style="{StaticResource MiniButton}" Command="{Binding UpdateSelectedCommand}" Margin="0,0,8,6"
                   ToolTip="{DynamicResource S.install.updateSelectedTip}" />
