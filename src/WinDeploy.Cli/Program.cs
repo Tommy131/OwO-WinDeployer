@@ -94,8 +94,57 @@ return command switch
     "inventory" => await CmdInventory(opts.Get("format"), opts.Get("out")),
     "download-only" => await CmdDownloadOnly(catalog, resolver, repoRoot, profile, only, all, category, opts.Get("out")),
     "migrate" => await CmdMigrate(catalog, resolver, repoRoot, opts),
+    "hash" => await CmdHash(catalog, catalogPath, only, opts.Has("all"), opts.Has("write")),
     _ => Unknown(command),
 };
+
+// Backfill SHA256 for portable items: download each, compute the digest, optionally write it into
+// catalog.json in place (a targeted text insert that preserves comments/formatting). Read-only by default.
+async Task<int> CmdHash(Catalog cat, string catPath, IReadOnlyCollection<string>? onlyIds, bool allItems, bool write)
+{
+    var targets = cat.Items
+        .Where(i => string.Equals(i.Install.Method, "portable", StringComparison.OrdinalIgnoreCase))
+        .Where(i => !string.IsNullOrWhiteSpace(i.Install.Url)
+                    && i.Install.Url!.StartsWith("http", StringComparison.OrdinalIgnoreCase))   // skip placeholders
+        .Where(i => onlyIds is null || onlyIds.Contains(i.Id))
+        .Where(i => allItems || string.IsNullOrWhiteSpace(i.Install.Sha256))
+        .ToList();
+
+    if (targets.Count == 0) { Log.Info(Localizer.T("cli.hash.none")); return 0; }
+
+    using var http = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
+    var computed = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+    foreach (var it in targets)
+    {
+        try
+        {
+            Log.Step(Localizer.Format("cli.hash.downloading", it.Id, it.Install.Url!));
+            using var resp = await http.GetAsync(it.Install.Url, HttpCompletionOption.ResponseHeadersRead);
+            resp.EnsureSuccessStatusCode();
+            await using var stream = await resp.Content.ReadAsStreamAsync();
+            using var sha = System.Security.Cryptography.SHA256.Create();
+            var hex = Convert.ToHexString(await sha.ComputeHashAsync(stream)).ToLowerInvariant();
+            computed[it.Id] = hex;
+            Log.Ok($"{it.Id}: {hex}");
+        }
+        catch (Exception ex) { Log.Err($"{it.Id}: {ex.Message}"); }
+    }
+
+    if (!write) { if (computed.Count > 0) Log.Info(Localizer.T("cli.hash.readonly")); return 0; }
+
+    var text = File.ReadAllText(catPath);
+    var patched = 0;
+    foreach (var it in targets)
+    {
+        if (!computed.TryGetValue(it.Id, out var hex) || !string.IsNullOrWhiteSpace(it.Install.Sha256)) continue;
+        var find = $"\"url\": \"{it.Install.Url}\"";
+        var repl = $"\"url\": \"{it.Install.Url}\", \"sha256\": \"{hex}\"";
+        if (text.Contains(find) && !text.Contains(repl)) { text = text.Replace(find, repl); patched++; }
+    }
+    if (patched > 0) File.WriteAllText(catPath, text);
+    Log.Ok(Localizer.Format("cli.hash.wrote", patched));
+    return 0;
+}
 
 async Task<int> CmdApplyConfig(Catalog cat, PathResolver pr, string root, bool includeAsk)
 {
