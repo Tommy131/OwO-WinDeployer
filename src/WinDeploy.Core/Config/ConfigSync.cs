@@ -36,8 +36,9 @@ public static class ConfigSync
         return n > 0 ? ConfigResult.Ok(item.Name, Localizer.Format("engine.cfgsync.applied", n)) : ConfigResult.Skip(item.Name, Localizer.T("engine.cfgsync.noFiles"));
     }
 
-    /// <summary>Machine → repo (precise: only the declared files).</summary>
-    public static ConfigResult Export(CatalogItem item, EngineContext ctx)
+    /// <summary>Machine → repo (precise: only the declared files). When <paramref name="redact"/> is false the
+    /// user opted to export sensitive data as-is, so text configs are copied raw instead of being masked.</summary>
+    public static ConfigResult Export(CatalogItem item, EngineContext ctx, bool redact = true)
     {
         var c = item.Config!;
         if (c.Target is null || c.Files is null) return ConfigResult.Skip(item.Name, Localizer.T("engine.cfgsync.noFilesDef"));
@@ -57,14 +58,18 @@ public static class ConfigSync
             Directory.CreateDirectory(Path.GetDirectoryName(d)!);
 
             string? text = null;
-            if (Secrets.IsTextConfig(f))
+            if (redact && Secrets.IsTextConfig(f))
             {
                 var (redactedText, count) = Secrets.Redact(File.ReadAllText(t));
                 File.WriteAllText(d, redactedText);
                 redacted += count;
                 text = redactedText;
             }
-            else File.Copy(t, d, true);
+            else
+            {
+                File.Copy(t, d, true);
+                if (Secrets.IsTextConfig(f)) { try { text = File.ReadAllText(d); } catch { /* preview only */ } }
+            }
             n++;
             files.Add(new ConfigFileInfo { Path = RepoRel(ctx.RepoRoot, d), Size = new FileInfo(d).Length, Preview = MakePreview(text) });
         }

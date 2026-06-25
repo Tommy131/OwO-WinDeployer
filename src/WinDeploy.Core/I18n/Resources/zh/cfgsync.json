@@ -1,5 +1,9 @@
 {
   "cfgsync.apply": "套用配置",
+  "cfgsync.env.apply": "恢复环境配置",
+  "cfgsync.env.confirm": "将把仓库中采集的环境配置（SSH / GPG / git 凭据 / Codex / Claude 等）写回本机，覆盖同名文件（已自动备份）。是否继续？",
+  "cfgsync.env.subtitle": "把仓库里采集的 SSH / GPG / git 凭据 / Codex / Claude 等环境配置写回本机（覆盖前自动备份；恢复的私钥会自动收紧文件权限）。",
+  "cfgsync.env.title": "环境配置恢复",
   "cfgsync.envVars": "环境变量",
   "cfgsync.envVars.target": "用户环境 / PATH",
   "cfgsync.includeAsk": "包含 ask 类（如 LM Studio）",

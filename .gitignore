@@ -12,10 +12,17 @@ dist/
 # 离线安装包 / 下载的大体积二进制（如 VMware .7z），不入库
 assets/packages/
 
-# 安全：配置仓库中绝不提交任何私钥
-configs/ssh/id_*
-configs/ssh/*.pem
-configs/ssh/*.key
+# ── 环境配置采集（EnvCapture）的输出全部属于个人 / 本机，绝不入库 ─────────────────────
+# 「采集本机配置」把 SSH / GnuPG / git 凭据 / Codex / Claude / OpenSSH 等个人配置写入
+# configs/<id>/。这些整目录都是个人专属（私钥 / 令牌 / 公钥 / known_hosts / 配置等），一律忽略；
+# 仅保留各目录的 .gitkeep 占位符。若确实要存进私有仓库，可用 `git add -f` 强制添加。
+configs/ssh/*
+!configs/ssh/.gitkeep
+configs/gnupg/
+configs/git-creds/
+configs/codex/
+configs/claude/
+configs/openssh/
 
 # 安全/个性化：不提交个人的 git 与 VS Code 配置（由各自机器通过「配置同步」导出生成）
 configs/git/.gitconfig

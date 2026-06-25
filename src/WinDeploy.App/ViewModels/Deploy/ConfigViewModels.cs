@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Windows;
 using System.Windows.Input;
 using WinDeploy.Core;
 using WinDeploy.Core.Config;
@@ -80,6 +81,7 @@ public sealed class ConfigSyncViewModel : ConfigPageBase
     public ObservableCollection<ResultRowViewModel> Results { get; } = new();
     public RelayCommand ApplyCommand { get; }
     public RelayCommand SshCommand { get; }
+    public RelayCommand ApplyEnvCommand { get; }
 
     private bool _includeAsk;
     public bool IncludeAsk { get => _includeAsk; set => Set(ref _includeAsk, value); }
@@ -91,6 +93,7 @@ public sealed class ConfigSyncViewModel : ConfigPageBase
     {
         ApplyCommand = new RelayCommand(async _ => await ApplyAsync(), _ => !IsBusy);
         SshCommand = new RelayCommand(async _ => await SshAsync(), _ => !IsBusy);
+        ApplyEnvCommand = new RelayCommand(async _ => await ApplyEnvAsync(), _ => !IsBusy);
     }
 
     protected override void OnInitialized()
@@ -124,6 +127,21 @@ public sealed class ConfigSyncViewModel : ConfigPageBase
         foreach (var r in results) Results.Add(ToRow(r));
         IsBusy = false;
     }
+
+    /// <summary>Restore captured environment / agent configs (SSH, GnuPG, git credentials, Codex, Claude,
+    /// OpenSSH) from the repo back onto this machine — the new-machine direction of "采集本机配置".</summary>
+    private async Task ApplyEnvAsync()
+    {
+        if (Dialogs.Show(Localizer.T("cfgsync.env.confirm"), Localizer.T("cfgsync.env.title"),
+                MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+        IsBusy = true;
+        Results.Clear();
+        var root = RepoRoot;
+        var results = await Task.Run(() => EnvCapture.Apply(root));
+        foreach (var r in results) Results.Add(ToRow(r));
+        AuditLog.Action("恢复环境配置（SSH / GPG / git 凭据 / Codex / Claude 等）");
+        IsBusy = false;
+    }
 }
 
 public sealed class ExportViewModel : ConfigPageBase
@@ -140,11 +158,28 @@ public sealed class ExportViewModel : ConfigPageBase
     private async Task ExportAsync()
     {
         if (Catalog is not { } cat) return;
+
+        // Ask up-front whether to include sensitive data. Default (No) keeps the safe behaviour — redact text
+        // configs and skip private keys / tokens. Yes exports everything as-is (the user accepts the risk).
+        var choice = Dialogs.Show(Localizer.T("export.sensitive.body"), Localizer.T("export.sensitive.title"),
+            MessageBoxButton.YesNoCancel, MessageBoxImage.Warning);
+        if (choice == MessageBoxResult.Cancel) return;
+        var allowSensitive = choice == MessageBoxResult.Yes;
+
         IsBusy = true;
         Done = false;
         Results.Clear();
         var ctx = Context();
-        var results = await Task.Run(() => new ConfigEngine().ExportAsync(cat, ctx, IsInstalled));
+        var root = RepoRoot;
+        var results = await Task.Run(async () =>
+        {
+            // Catalog-app configs (precise files) + well-known environment / agent configs (SSH, GnuPG, git
+            // credentials, Codex, Claude, OpenSSH). Both honor the sensitive-export choice.
+            var list = await new ConfigEngine().ExportAsync(cat, ctx, IsInstalled, redact: !allowSensitive);
+            list.AddRange(EnvCapture.Capture(root, allowSensitive));
+            return list;
+        });
+        if (allowSensitive) AuditLog.Action("导出配置：用户选择包含敏感数据（已忽略脱敏规则）");
         foreach (var r in results)
         {
             Results.Add(new ExportRowViewModel

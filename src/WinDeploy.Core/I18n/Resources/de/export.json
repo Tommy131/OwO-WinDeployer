@@ -5,6 +5,8 @@
   "export.status.failed": "Fehlgeschlagen",
   "export.status.ok": "Erfolg",
   "export.status.skip": "Übersprungen",
-  "export.subtitle": "Diesen Rechner scannen und die Konfigurationen installierter Software ins Repository erfassen (sensible Daten werden automatisch geschwärzt). Klicken Sie auf einen Eintrag, um Dateipfad / Größe / Vorschau anzuzeigen.",
+  "export.sensitive.title": "Sensible Daten exportieren?",
+  "export.sensitive.body": "Sensible Daten (private SSH-/GPG-Schlüssel, Tokens, Anmeldedaten) einbeziehen und die Schwärzungsregeln ignorieren?\n\n[Ja] Unverändert exportieren — private Schlüssel / Tokens werden im Klartext ins Konfig-Repository geschrieben; stellen Sie sicher, dass das Repo privat ist!\n[Nein] Nur nicht-sensible Inhalte erfassen und Text-Konfigurationen schwärzen (empfohlen)\n[Abbrechen] Nicht exportieren",
+  "export.subtitle": "Diesen Rechner scannen und Konfigurationen installierter Software sowie Umgebungskonfigurationen (SSH / GPG / git / Codex / Claude …) ins Repository erfassen. Beim Klick auf „Lokale Konfiguration erfassen“ wird zuerst gefragt, ob sensible Daten einbezogen werden (standardmäßig geschwärzt). Klicken Sie auf einen Eintrag für Dateipfad / Größe / Vorschau.",
   "export.title": "Exportieren"
 }

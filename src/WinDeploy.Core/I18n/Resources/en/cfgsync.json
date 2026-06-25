@@ -1,5 +1,9 @@
 {
   "cfgsync.apply": "Apply config",
+  "cfgsync.env.apply": "Restore env configs",
+  "cfgsync.env.confirm": "This writes the environment configs captured in the repository (SSH / GPG / git credentials / Codex / Claude …) back onto this machine, overwriting same-named files (backed up automatically). Continue?",
+  "cfgsync.env.subtitle": "Write the SSH / GPG / git credentials / Codex / Claude environment configs captured in the repo back onto this machine (backs up before overwriting; restored private keys get their permissions tightened automatically).",
+  "cfgsync.env.title": "Restore environment configs",
   "cfgsync.envVars": "Environment variables",
   "cfgsync.envVars.target": "User environment / PATH",
   "cfgsync.includeAsk": "Include ask-type (e.g. LM Studio)",

@@ -29,15 +29,16 @@ public sealed class ConfigEngine
         return results;
     }
 
-    /// <summary>Capture installed apps' configs back into the repo (precise files only).</summary>
+    /// <summary>Capture installed apps' configs back into the repo (precise files only). When
+    /// <paramref name="redact"/> is false, text configs are exported as-is (the user opted into sensitive data).</summary>
     public async Task<List<ConfigResult>> ExportAsync(Models.Catalog cat, EngineContext ctx,
-        Func<CatalogItem, Task<bool>> isInstalled)
+        Func<CatalogItem, Task<bool>> isInstalled, bool redact = true)
     {
         var results = new List<ConfigResult>();
         foreach (var item in cat.Items.Where(i => i.Config?.Files != null))
         {
             if (!await isInstalled(item)) { results.Add(ConfigResult.Skip(item.Name, Localizer.T("engine.configEngine.notInstalled"))); continue; }
-            results.Add(ConfigSync.Export(item, ctx));
+            results.Add(ConfigSync.Export(item, ctx, redact));
         }
 
         // VS Code extension list snapshot.

@@ -1,5 +1,9 @@
 {
   "cfgsync.apply": "Konfiguration anwenden",
+  "cfgsync.env.apply": "Umgebungskonfigs wiederherstellen",
+  "cfgsync.env.confirm": "Schreibt die im Repository erfassten Umgebungskonfigurationen (SSH / GPG / git-Anmeldedaten / Codex / Claude …) zurück auf diesen Rechner und überschreibt gleichnamige Dateien (automatisch gesichert). Fortfahren?",
+  "cfgsync.env.subtitle": "Die im Repo erfassten Umgebungskonfigurationen (SSH / GPG / git-Anmeldedaten / Codex / Claude) zurück auf diesen Rechner schreiben (vor dem Überschreiben gesichert; wiederhergestellte private Schlüssel erhalten automatisch strengere Berechtigungen).",
+  "cfgsync.env.title": "Umgebungskonfigurationen wiederherstellen",
   "cfgsync.envVars": "Umgebungsvariablen",
   "cfgsync.envVars.target": "Benutzerumgebung / PATH",
   "cfgsync.includeAsk": "Ask-Typ einschließen (z. B. LM Studio)",

@@ -5,6 +5,8 @@
   "export.status.failed": "失败",
   "export.status.ok": "成功",
   "export.status.skip": "跳过",
-  "export.subtitle": "扫描本机、把已装软件的配置采集回仓库（敏感信息自动脱敏）。点每项可展开看文件路径 / 大小 / 概览。",
+  "export.sensitive.title": "导出敏感数据？",
+  "export.sensitive.body": "是否在采集中包含敏感数据（SSH / GPG 私钥、令牌、凭据等）并忽略脱敏规则？\n\n【是】原样导出 —— 私钥 / 令牌将明文写入配置仓库，请务必确保仓库私有！\n【否】仅采集非敏感内容，并对文本配置自动脱敏（推荐）\n【取消】不导出",
+  "export.subtitle": "扫描本机、把已装软件的配置以及 SSH / GPG / git / Codex / Claude 等环境配置采集回仓库。点「采集本机配置」时会先询问是否包含敏感数据（默认脱敏）。点每项可展开看文件路径 / 大小 / 概览。",
   "export.title": "导出"
 }

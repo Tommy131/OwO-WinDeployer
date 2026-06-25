@@ -5,6 +5,8 @@
   "export.status.failed": "Failed",
   "export.status.ok": "Success",
   "export.status.skip": "Skipped",
-  "export.subtitle": "Scan this machine and capture the configs of installed software back into the repository (sensitive data is redacted automatically). Click an item to expand its file path / size / preview.",
+  "export.sensitive.title": "Export sensitive data?",
+  "export.sensitive.body": "Include sensitive data (SSH / GPG private keys, tokens, credentials) and ignore the redaction rules?\n\n[Yes] Export as-is — private keys / tokens are written in plaintext into the config repo; make sure the repo is private!\n[No] Capture non-sensitive content only and redact text configs (recommended)\n[Cancel] Don't export",
+  "export.subtitle": "Scan this machine and capture installed-software configs plus environment configs (SSH / GPG / git / Codex / Claude …) back into the repository. Clicking “Capture local config” first asks whether to include sensitive data (redacted by default). Click an item to expand its file path / size / preview.",
   "export.title": "Export"
 }
