@@ -414,7 +414,7 @@ irm https://raw.githubusercontent.com/Tommy131/owo-win-deployer/main/bootstrap/b
 ## 12. 仓库结构
 
 ```
-win-provision/
+owo-win-deployer/
 ├─ src/
 │  ├─ WinDeploy.Core/      模型 · 引擎 · 安装方式 · 配置同步 · 环境变量
 │  ├─ WinDeploy.App/       WPF GUI

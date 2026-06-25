@@ -16,7 +16,7 @@
     <RootNamespace>WinDeploy.App</RootNamespace>
     <AssemblyName>WinDeploy</AssemblyName>
     <Product>OwO! Win Deployer</Product>
-    <Version>1.2.2</Version>
+    <Version>1.2.3</Version>
     <AssemblyTitle>OwO! Win Deployer</AssemblyTitle>
     <Description>OwO! Win Deployer — 一键复刻 Windows 开发环境、应用与个人配置</Description>
     <Authors>Tommy131</Authors>
@@ -76,6 +76,8 @@
     <PackageReference Include="AvalonEdit" Version="6.3.0.90" />
     <!-- 硬件传感器：CPU/GPU 功耗、温度、负载（系统概览功耗监控）。附带 WinRing0 驱动，部分传感器需管理员。 -->
     <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.4" />
+    <!-- 系统 TTS 语音播报（硬件温度告警，按界面语言选择嗓音）。Windows SAPI 封装。 -->
+    <PackageReference Include="System.Speech" Version="9.0.0" />
   </ItemGroup>
 
 </Project>
