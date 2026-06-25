@@ -22,7 +22,9 @@ public static class AppInfo
         get
         {
             var v = Assembly.GetExecutingAssembly().GetName().Version;
-            return v == null ? "1.0.0" : $"{v.Major}.{v.Minor}.{v.Build}";
+            if (v == null) return "1.0.0";
+            // Show the 4th part only for patch releases (e.g. 1.2.3.1); plain x.y.z otherwise.
+            return v.Revision > 0 ? $"{v.Major}.{v.Minor}.{v.Build}.{v.Revision}" : $"{v.Major}.{v.Minor}.{v.Build}";
         }
     }
 
