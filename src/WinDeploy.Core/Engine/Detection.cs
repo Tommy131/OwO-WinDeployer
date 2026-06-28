@@ -88,7 +88,13 @@ public static class Detection
         if (string.IsNullOrWhiteSpace(hint)) return false;
         _wingetList ??= await LoadWingetListAsync();
         foreach (var line in _wingetList.Split('\n'))
-            if (line.TrimStart().StartsWith(hint, StringComparison.OrdinalIgnoreCase)) return true;
+        {
+            var trimmed = line.TrimStart();
+            if (!trimmed.StartsWith(hint, StringComparison.OrdinalIgnoreCase)) continue;
+            // Require the hint to match the full display-name token: the next char must be whitespace
+            // or end-of-string.  This prevents "哔哩哔哩直播姬" from matching the hint "哔哩哔哩".
+            if (trimmed.Length == hint.Length || char.IsWhiteSpace(trimmed[hint.Length])) return true;
+        }
         return false;
     }
 
