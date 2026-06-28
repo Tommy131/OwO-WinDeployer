@@ -89,6 +89,18 @@
           <Grid.ColumnDefinitions><ColumnDefinition Width="96" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
           <TextBlock Grid.Column="0" Text="{DynamicResource S.detail.field.homepage}" FontSize="13" Foreground="{DynamicResource TextSecondary}" />
           <TextBlock Grid.Column="1" FontSize="13" TextTrimming="CharacterEllipsis">
+            <TextBlock.ContextMenu>
+              <ContextMenu Style="{StaticResource ThemedContextMenu}">
+                <MenuItem Header="{DynamicResource S.detail.copyLink}" Style="{StaticResource ThemedMenuItem}"
+                          Command="{Binding PlacementTarget.DataContext.CopyHomepageCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                  <MenuItem.Icon><TextBlock Text="&#xE8C8;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource TextSecondary}" /></MenuItem.Icon>
+                </MenuItem>
+                <MenuItem Header="{DynamicResource S.detail.openLink}" Style="{StaticResource ThemedMenuItem}"
+                          Command="{Binding PlacementTarget.DataContext.OpenHomepageCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                  <MenuItem.Icon><TextBlock Text="&#xE774;" FontFamily="Segoe MDL2 Assets" FontSize="14" Foreground="{DynamicResource TextSecondary}" /></MenuItem.Icon>
+                </MenuItem>
+              </ContextMenu>
+            </TextBlock.ContextMenu>
             <Hyperlink Command="{Binding OpenHomepageCommand}"><Run Text="{Binding Homepage, Mode=OneWay}" /></Hyperlink>
           </TextBlock>
         </Grid>

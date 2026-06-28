@@ -1,6 +1,8 @@
 {
   "detail.actions": "操作",
   "detail.back": "← 返回",
+  "detail.copyLink": "复制链接",
+  "detail.openLink": "打开链接",
   "detail.downgrade": "降级",
   "detail.downgrade.tip": "安装所选的较低版本（仅 winget）",
   "detail.envVars": "设置环境变量 …",

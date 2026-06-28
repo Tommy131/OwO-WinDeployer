@@ -22,6 +22,7 @@ public sealed class DetailViewModel : LocalizedObject
     public AppItemViewModel Item { get; }
     public RelayCommand BackCommand { get; }
     public RelayCommand OpenHomepageCommand { get; }
+    public RelayCommand CopyHomepageCommand { get; }
     public RelayCommand OpenLocationCommand { get; }
     public RelayCommand InstallCommand { get; }
     public RelayCommand UpdateCommand { get; }
@@ -49,6 +50,7 @@ public sealed class DetailViewModel : LocalizedObject
         _resolver = resolver;
         BackCommand = new RelayCommand(_ => back());
         OpenHomepageCommand = new RelayCommand(_ => OpenHomepage());
+        CopyHomepageCommand = new RelayCommand(_ => CopyHomepage(), _ => HasHomepage);
         OpenLocationCommand = new RelayCommand(_ => OpenLocation(), _ => HasInstallLocation);
         InstallCommand = new RelayCommand(_ => InstallRequested?.Invoke(Item.Model), _ => ShowInstall);
         UpdateCommand = new RelayCommand(_ => UpdateRequested?.Invoke(Item.Model), _ => ShowUpdate);
@@ -308,5 +310,13 @@ public sealed class DetailViewModel : LocalizedObject
         if (!HasHomepage) return;
         try { Process.Start(new ProcessStartInfo(_homepage) { UseShellExecute = true }); }
         catch { /* ignore */ }
+    }
+
+    /// <summary>Copy the homepage URL to the clipboard (right-click 「复制链接」 on the 官网 link).</summary>
+    private void CopyHomepage()
+    {
+        if (!HasHomepage) return;
+        try { Clipboard.SetText(_homepage); }
+        catch { /* clipboard may be locked by another process — ignore */ }
     }
 }

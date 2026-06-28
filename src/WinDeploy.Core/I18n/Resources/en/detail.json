@@ -1,6 +1,8 @@
 {
   "detail.actions": "Actions",
   "detail.back": "← Back",
+  "detail.copyLink": "Copy link",
+  "detail.openLink": "Open link",
   "detail.downgrade": "Downgrade",
   "detail.downgrade.tip": "Install the selected lower version (winget only)",
   "detail.envVars": "Set environment variables …",

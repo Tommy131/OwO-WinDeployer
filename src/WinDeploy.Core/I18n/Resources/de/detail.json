@@ -1,6 +1,8 @@
 {
   "detail.actions": "Aktionen",
   "detail.back": "← Zurück",
+  "detail.copyLink": "Link kopieren",
+  "detail.openLink": "Link öffnen",
   "detail.downgrade": "Herabstufen",
   "detail.downgrade.tip": "Die ausgewählte niedrigere Version installieren (nur winget)",
   "detail.envVars": "Umgebungsvariablen festlegen …",
