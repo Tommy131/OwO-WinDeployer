@@ -114,7 +114,7 @@
       "category": "system", "default": false,
       "homepage": "https://www.huorong.cn",
       "install": { "method": "manual" },
-      "detect": { "arp": "火绒" } },
+      "detect": { "arp": "火绒安全软件" } },
 
     // ── IDE / 编辑器 ─────────────────────────────
     { "id": "vscode", "name": "VS Code", "summary": "编辑器（含约 80 个扩展）", "icon": "assets/icons/vscode.svg",
@@ -204,7 +204,7 @@
       "category": "ai", "default": false,
       "homepage": "https://ima.qq.com/",
       "install": { "method": "manual" },
-      "detect": { "arp": "ima" } },
+      "detect": { "arp": "ima.copilot" } },
 
     // ── 办公 / 通讯 ─────────────────────────────
     { "id": "wechat", "name": "微信", "summary": "即时通讯", "icon": "assets/icons/wechat.svg",
@@ -350,8 +350,7 @@
     { "id": "hwinfo", "name": "HWiNFO", "summary": "硬件信息 / 传感器监控", "icon": "assets/icons/hwinfo.svg",
       "category": "hwmon", "default": false,
       "homepage": "https://www.hwinfo.com/download/",
-      "install": { "method": "winget", "id": "REALiX.HWiNFO" },
-      "detect": { "arp": "HWiNFO" } },
+      "install": { "method": "winget", "id": "REALiX.HWiNFO" } },
 
     { "id": "cpu-z", "name": "CPU-Z", "summary": "CPU / 主板 / 内存信息", "icon": "assets/icons/cpu-z.svg",
       "category": "hwmon", "default": false,
@@ -518,6 +517,12 @@
       "homepage": "https://www.bilibili.com",
       "install": { "method": "winget", "id": "Bilibili.Bilibili" },
       "detect": { "arp": "哔哩哔哩" } },
+
+    { "id": "bilibili-livehime", "name": "哔哩哔哩直播姬", "summary": "B 站官方直播推流工具", "icon": "assets/icons/bilibili-livehime.svg",
+      "category": "media", "default": false,
+      "homepage": "https://link.bilibili.com/p/eden/download",
+      "install": { "method": "winget", "id": "Bilibili.Livehime" },
+      "detect": { "arp": "哔哩哔哩直播姬", "path": "%ProgramFiles%/bililive/livehime" } },
 
     { "id": "potplayer", "name": "PotPlayer", "summary": "多媒体播放器", "icon": "assets/icons/potplayer.svg",
       "category": "media", "default": false,
