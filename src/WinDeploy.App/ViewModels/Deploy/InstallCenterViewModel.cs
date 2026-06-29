@@ -145,6 +145,13 @@ public sealed class InstallCenterViewModel : LocalizedObject
         }
     }
 
+    /// <summary>Make an externally-saved profile (e.g. from 配置同步 → 同步已安装软件) show up in the dropdown
+    /// immediately, without an app restart. No-op if it's already listed.</summary>
+    public void AddProfileIfNew(string name)
+    {
+        if (!string.IsNullOrWhiteSpace(name) && !Profiles.Contains(name)) Profiles.Add(name);
+    }
+
     /// <summary>Keep only filename-safe characters; profiles are addressed by file name.</summary>
     private static string SanitizeProfileName(string raw)
     {

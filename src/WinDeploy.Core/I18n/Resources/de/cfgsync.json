@@ -1,5 +1,13 @@
 {
   "cfgsync.apply": "Konfiguration anwenden",
+  "cfgsync.apply.confirm": "Die Konfigurationsdateien aus dem Repository werden an ihre Speicherorte auf diesem Rechner geschrieben und gleichnamige Dateien überschrieben (kann bestehende Konfiguration beeinflussen). Fortfahren?",
+  "cfgsync.installed.none": "Keine Katalog-Software als auf diesem Rechner installiert erkannt.",
+  "cfgsync.installed.saved": "{0} installierte App(s) als Profil „{1}“ gespeichert.",
+  "cfgsync.installed.subtitle": "Erkennt, welche Apps aus dem Katalog auf diesem Rechner installiert sind, und speichert sie als wiederverwendbares Profil; auf einem neuen Gerät im Installationszentrum dieses Profil wählen, um sie mit einem Klick zu replizieren.",
+  "cfgsync.installed.sync": "Scannen und als Profil speichern",
+  "cfgsync.installed.title": "Installierte Software synchronisieren",
+  "cfgsync.ssh.confirm": "Es wird ein neuer ed25519-SSH-Schlüssel auf diesem Rechner erzeugt und die ssh-Konfiguration angewendet (vorhandene Dateien werden zuvor gesichert). Fortfahren?",
+  "cfgsync.ssh.confirmRegister": "Es wird ein neuer ed25519-SSH-Schlüssel erzeugt, die ssh-Konfiguration angewendet und der öffentliche Schlüssel in Ihrem GitHub-Konto registriert. Fortfahren?",
   "cfgsync.env.apply": "Umgebungskonfigs wiederherstellen",
   "cfgsync.env.confirm": "Schreibt die im Repository erfassten Umgebungskonfigurationen (SSH / GPG / git-Anmeldedaten / Codex / Claude …) zurück auf diesen Rechner und überschreibt gleichnamige Dateien (automatisch gesichert). Fortfahren?",
   "cfgsync.env.confirmDiff": "Diese Wiederherstellung fügt {0} neue Datei(en) hinzu und überschreibt {1} geänderte Datei(en) ({2} identisch).",

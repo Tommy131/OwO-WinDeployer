@@ -83,6 +83,10 @@ public sealed class ConfigSyncViewModel : ConfigPageBase
     public RelayCommand SshCommand { get; }
     public RelayCommand ApplyEnvCommand { get; }
     public RelayCommand RemoteDeployCommand { get; }
+    public RelayCommand SyncInstalledCommand { get; }
+
+    /// <summary>Raised after 同步已安装软件 saves a profile, so the Install Center can list it without a restart.</summary>
+    public event Action<string>? ProfileSaved;
 
     private bool _includeAsk;
     public bool IncludeAsk { get => _includeAsk; set => Set(ref _includeAsk, value); }
@@ -97,6 +101,7 @@ public sealed class ConfigSyncViewModel : ConfigPageBase
         ApplyEnvCommand = new RelayCommand(async _ => await ApplyEnvAsync(), _ => !IsBusy);
         RemoteDeployCommand = new RelayCommand(_ =>
             new RemoteDeployDialog(RepoRoot) { Owner = System.Windows.Application.Current.MainWindow }.ShowDialog());
+        SyncInstalledCommand = new RelayCommand(async _ => await SyncInstalledAsync(), _ => !IsBusy);
     }
 
     protected override void OnInitialized()
@@ -111,6 +116,9 @@ public sealed class ConfigSyncViewModel : ConfigPageBase
     private async Task ApplyAsync()
     {
         if (Catalog is not { } cat) return;
+        // Writing the repo's config files onto this machine overwrites local config — confirm first.
+        if (Dialogs.Show(Localizer.T("cfgsync.apply.confirm"), Localizer.T("cfgsync.apply"),
+                MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
         IsBusy = true;
         Results.Clear();
         var ctx = Context();
@@ -122,6 +130,11 @@ public sealed class ConfigSyncViewModel : ConfigPageBase
 
     private async Task SshAsync()
     {
+        // Generating a key + applying ssh config (and optionally pushing the public key to GitHub) is
+        // side-effectful / outward — confirm first, spelling out the GitHub registration when it's checked.
+        var confirm = RegisterSsh ? Localizer.T("cfgsync.ssh.confirmRegister") : Localizer.T("cfgsync.ssh.confirm");
+        if (Dialogs.Show(confirm, Localizer.T("cfgsync.ssh.title"),
+                MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
         IsBusy = true;
         Results.Clear();
         var root = RepoRoot;
@@ -177,6 +190,82 @@ public sealed class ConfigSyncViewModel : ConfigPageBase
         foreach (var r in results) Results.Add(ToRow(r));
         AuditLog.Action($"恢复环境配置（新增 {added} · 覆盖 {changed}）");
         IsBusy = false;
+    }
+
+    /// <summary>Scan which catalog apps are installed on this machine and save them as a reusable profile, so a
+    /// new device can replicate this machine's software set in one click from the Install Center.</summary>
+    private async Task SyncInstalledAsync()
+    {
+        if (Catalog is not { } cat) return;
+
+        IsBusy = true;
+        Results.Clear();
+        // Throttled-parallel detection (mirrors the Install Center's DetectAllAsync). A serial scan of the
+        // whole catalog spawns one winget probe at a time and takes minutes; 8-way parallel keeps it quick.
+        // Each task returns its own result — no shared mutable list — so it's race-free without a lock.
+        using var gate = new SemaphoreSlim(8);
+        var checks = cat.Items.Select(async it =>
+        {
+            await gate.WaitAsync();
+            try { return (item: it, ok: await IsInstalled(it)); }
+            catch { return (item: it, ok: false); }
+            finally { gate.Release(); }
+        });
+        var installed = (await Task.WhenAll(checks)).Where(r => r.ok).Select(r => r.item).ToList();
+        IsBusy = false;
+
+        if (installed.Count == 0)
+        {
+            Dialogs.Show(Localizer.T("cfgsync.installed.none"), Localizer.T("cfgsync.installed.title"),
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        // Name the profile (default: this machine's name), mirroring the Install Center's "save profile" flow.
+        var dlg = new InputDialog(Localizer.T("install.saveProfile.title"),
+            Localizer.T("install.saveProfile.prompt"), Environment.MachineName)
+        { Owner = System.Windows.Application.Current.MainWindow };
+        if (dlg.ShowDialog() != true) return;
+
+        var name = SanitizeProfileName(dlg.Value);
+        if (name.Length == 0)
+        {
+            Dialogs.Show(Localizer.T("install.saveProfile.badName"), Localizer.T("install.saveProfile.title"),
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        var catalogDir = System.IO.Path.Combine(RepoRoot, "catalog");
+        if (CatalogLoader.ProfileExists(catalogDir, name)
+            && Dialogs.Show(Localizer.Format("install.saveProfile.overwrite", name), Localizer.T("install.saveProfile.title"),
+                   MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+            return;
+
+        var ids = installed.Select(i => i.Id).ToList();
+        try
+        {
+            CatalogLoader.SaveProfile(catalogDir, new Profile { Name = name, Select = ids });
+            Results.Add(new ResultRowViewModel
+            {
+                Name = Localizer.T("cfgsync.installed.title"),
+                Message = Localizer.Format("cfgsync.installed.saved", ids.Count, name),
+                Kind = "ok",
+            });
+            AuditLog.Action($"同步已安装软件：检测到 {ids.Count} 项，存为方案 {name}");
+            ProfileSaved?.Invoke(name);   // surface the new profile in the Install Center without a restart
+        }
+        catch (Exception ex)
+        {
+            Results.Add(new ResultRowViewModel { Name = Localizer.T("cfgsync.installed.title"), Message = ex.Message, Kind = "failed" });
+            AuditLog.App($"同步已安装软件失败：{ex.Message}");
+        }
+    }
+
+    /// <summary>Keep only filename-safe characters; profiles are addressed by file name.</summary>
+    private static string SanitizeProfileName(string raw)
+    {
+        var invalid = System.IO.Path.GetInvalidFileNameChars();
+        return new string(raw.Where(c => !invalid.Contains(c)).ToArray()).Trim().Trim('.');
     }
 }
 

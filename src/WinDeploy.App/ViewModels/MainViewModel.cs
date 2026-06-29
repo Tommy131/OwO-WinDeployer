@@ -68,6 +68,7 @@ public sealed class MainViewModel : LocalizedObject
         Install.OpenDirRequested += item => OpenInstallDir(item.Model);
         Install.OpenHomepageRequested += item => OpenHomepage(item.Model);
         Install.RefreshRequested += () => _ = DetectAllAsync();
+        ConfigSync.ProfileSaved += Install.AddProfileIfNew;
         Processes.OperationRequested += (item, op) => _ = ConfirmRiskAndRun(item, op);
         Progress.CancelRequested += () => _cts?.Cancel();
         Settings.Saved += () => Secrets.ExtraKeywords = SettingsViewModel.ParseKeywords(Settings.RedactKeywords);

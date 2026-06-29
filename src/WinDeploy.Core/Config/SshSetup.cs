@@ -29,15 +29,27 @@ public static class SshSetup
         else results.Add(ConfigResult.Skip(Localizer.T("engine.ssh.keyName"), Localizer.T("engine.ssh.keyExists")));
 
         // Apply non-secret host config + known_hosts from the repo.
+        // config  → overwrite (safe: no secrets, just Host blocks).
+        // known_hosts → MERGE: append only entries absent from the local file so we never
+        //               clobber host keys the user already trusts for their own servers.
         var repoSsh = Path.Combine(repoRoot, "configs", "ssh");
-        foreach (var f in new[] { "config", "known_hosts" })
+
+        var configSrc = Path.Combine(repoSsh, "config");
+        if (File.Exists(configSrc))
         {
-            var s = Path.Combine(repoSsh, f);
-            if (!File.Exists(s)) continue;
-            var d = Path.Combine(sshDir, f);
-            if (File.Exists(d)) { try { File.Copy(d, $"{d}.bak.{DateTime.Now:yyyyMMddHHmmss}", true); } catch { } }
-            File.Copy(s, d, true);
-            results.Add(ConfigResult.Ok(Localizer.T("engine.ssh.configName"), Localizer.Format("engine.ssh.applyConfig", f)));
+            var configDst = Path.Combine(sshDir, "config");
+            if (File.Exists(configDst)) { try { File.Copy(configDst, $"{configDst}.bak.{DateTime.Now:yyyyMMddHHmmss}", true); } catch { } }
+            File.Copy(configSrc, configDst, true);
+            results.Add(ConfigResult.Ok(Localizer.T("engine.ssh.configName"), Localizer.Format("engine.ssh.applyConfig", "config")));
+        }
+
+        var khSrc = Path.Combine(repoSsh, "known_hosts");
+        if (File.Exists(khSrc))
+        {
+            var khDst = Path.Combine(sshDir, "known_hosts");
+            var added = MergeKnownHosts(khSrc, khDst);
+            results.Add(ConfigResult.Ok(Localizer.T("engine.ssh.configName"),
+                Localizer.Format("engine.ssh.applyConfig", $"known_hosts (+{added} entries)")));
         }
 
         // Outward action — only when explicitly requested.
@@ -58,5 +70,23 @@ public static class SshSetup
         }
 
         return results;
+    }
+
+    // Append lines from `src` that are not already present in `dst` (ignores blank lines and comments).
+    // Returns the number of new lines added.
+    private static int MergeKnownHosts(string src, string dst)
+    {
+        var existing = File.Exists(dst)
+            ? new HashSet<string>(File.ReadAllLines(dst), StringComparer.OrdinalIgnoreCase)
+            : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        var toAdd = File.ReadAllLines(src)
+            .Where(l => l.Length > 0 && !l.StartsWith('#') && !existing.Contains(l))
+            .ToList();
+
+        if (toAdd.Count > 0)
+            File.AppendAllLines(dst, toAdd);
+
+        return toAdd.Count;
     }
 }

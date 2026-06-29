@@ -1,5 +1,13 @@
 {
   "cfgsync.apply": "套用配置",
+  "cfgsync.apply.confirm": "将把仓库中的配置文件写入本机对应位置，覆盖同名文件（可能影响现有配置）。是否继续？",
+  "cfgsync.installed.none": "未检测到清单中的已安装软件。",
+  "cfgsync.installed.saved": "已将 {0} 个已安装软件保存为方案「{1}」。",
+  "cfgsync.installed.subtitle": "扫描本机已安装了清单中的哪些软件，存为一个可复用方案；换设备时在「软件安装中心」选择该方案即可一键复刻这批软件。",
+  "cfgsync.installed.sync": "扫描并保存为方案",
+  "cfgsync.installed.title": "同步本机已安装软件",
+  "cfgsync.ssh.confirm": "将在本机生成新的 ed25519 SSH 密钥，并套用 ssh 配置（覆盖前自动备份）。是否继续？",
+  "cfgsync.ssh.confirmRegister": "将在本机生成新的 ed25519 SSH 密钥、套用 ssh 配置，并把公钥登记到你的 GitHub 账户。是否继续？",
   "cfgsync.env.apply": "恢复环境配置",
   "cfgsync.env.confirm": "将把仓库中采集的环境配置（SSH / GPG / git 凭据 / Codex / Claude 等）写回本机，覆盖同名文件（已自动备份）。是否继续？",
   "cfgsync.env.confirmDiff": "本次恢复将新增 {0} 个文件、覆盖 {1} 个已变更文件（另有 {2} 个内容相同）。",

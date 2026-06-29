@@ -1,5 +1,13 @@
 {
   "cfgsync.apply": "Apply config",
+  "cfgsync.apply.confirm": "This will write the repository's config files to their locations on this machine, overwriting same-named files (may affect existing config). Continue?",
+  "cfgsync.installed.none": "No catalog software detected as installed on this machine.",
+  "cfgsync.installed.saved": "Saved {0} installed app(s) as profile \"{1}\".",
+  "cfgsync.installed.subtitle": "Scan which of the catalog's apps are installed on this machine and save them as a reusable profile; on a new device, pick that profile in the Install Center to replicate them in one click.",
+  "cfgsync.installed.sync": "Scan and save as profile",
+  "cfgsync.installed.title": "Sync installed software",
+  "cfgsync.ssh.confirm": "This will generate a new ed25519 SSH key on this machine and apply the ssh config (existing files are backed up first). Continue?",
+  "cfgsync.ssh.confirmRegister": "This will generate a new ed25519 SSH key, apply the ssh config, and register the public key on your GitHub account. Continue?",
   "cfgsync.env.apply": "Restore env configs",
   "cfgsync.env.confirm": "This writes the environment configs captured in the repository (SSH / GPG / git credentials / Codex / Claude …) back onto this machine, overwriting same-named files (backed up automatically). Continue?",
   "cfgsync.env.confirmDiff": "This restore will add {0} new file(s) and overwrite {1} changed file(s) ({2} identical).",
