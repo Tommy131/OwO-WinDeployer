@@ -32,6 +32,10 @@
   "clip.peers.atCapacity": "Device limit reached. The open-source build shares between 2 devices; the paid build lifts this via a relay server.",
   "clip.peers.log": "Activity log",
   "clip.peers.clearLog": "Clear",
+  "clip.peers.manualHint": "Can't find the other device? Enter the LAN IP shown on its “This device” line to pair manually:",
+  "clip.peers.manualPlaceholder": "Peer IP, e.g. 192.168.0.6",
+  "clip.peers.manualConnect": "Connect",
+  "clip.peers.manualBadIp": "Enter a valid IPv4 address (the peer's “This device” IP).",
 
   "clip.role.initiator": "inviter",
   "clip.role.joiner": "joiner",

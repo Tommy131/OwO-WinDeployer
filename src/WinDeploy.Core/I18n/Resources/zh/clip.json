@@ -32,6 +32,10 @@
   "clip.peers.atCapacity": "已达设备上限。开源版支持 2 台设备共享；付费版可经服务器中转解除上限。",
   "clip.peers.log": "活动日志",
   "clip.peers.clearLog": "清空",
+  "clip.peers.manualHint": "找不到对方？输入对方「本机」那一行显示的局域网 IP 手动配对：",
+  "clip.peers.manualPlaceholder": "对方 IP，如 192.168.0.6",
+  "clip.peers.manualConnect": "连接",
+  "clip.peers.manualBadIp": "请输入有效的 IPv4 地址（对方「本机」显示的 IP）。",
 
   "clip.role.initiator": "发起方",
   "clip.role.joiner": "加入方",

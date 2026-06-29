@@ -76,8 +76,20 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
           </Grid.RowDefinitions>
-          <TextBlock Grid.Row="0" Text="{DynamicResource S.clip.peers.discovered}" FontSize="12.5" FontWeight="SemiBold"
-                     Foreground="{DynamicResource TextSecondary}" Margin="14,11,0,8" />
+          <StackPanel Grid.Row="0">
+            <TextBlock Text="{DynamicResource S.clip.peers.discovered}" FontSize="12.5" FontWeight="SemiBold"
+                       Foreground="{DynamicResource TextSecondary}" Margin="14,11,0,6" />
+            <!-- manual connect by IP — guaranteed path when auto-discovery is blocked (AP isolation / multicast filtering) -->
+            <TextBlock Text="{DynamicResource S.clip.peers.manualHint}" FontSize="11" Foreground="{DynamicResource TextTertiary}"
+                       Margin="14,0,12,5" TextWrapping="Wrap" />
+            <DockPanel Margin="12,0,12,8">
+              <Button DockPanel.Dock="Right" Content="{DynamicResource S.clip.peers.manualConnect}" Style="{StaticResource InfoButton}"
+                      Margin="6,0,0,0" Command="{Binding ConnectManualCommand}" />
+              <TextBox DockPanel.Dock="Right" Width="56" Text="{Binding ManualPort}" Padding="6,5" Margin="6,0,0,0" VerticalContentAlignment="Center" />
+              <TextBox Text="{Binding ManualIp, UpdateSourceTrigger=PropertyChanged}" Padding="8,5" VerticalContentAlignment="Center"
+                       Tag="{DynamicResource S.clip.peers.manualPlaceholder}" />
+            </DockPanel>
+          </StackPanel>
           <TextBlock Grid.Row="1" Text="{DynamicResource S.clip.peers.none}" FontSize="13" Foreground="{DynamicResource TextTertiary}"
                      Margin="14,2,14,0" TextWrapping="Wrap" VerticalAlignment="Top"
                      Visibility="{Binding NoPeers, Converter={StaticResource BoolToVis}}" />

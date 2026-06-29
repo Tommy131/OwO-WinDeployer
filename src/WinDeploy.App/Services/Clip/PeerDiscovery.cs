@@ -11,10 +11,11 @@ namespace WinDeploy.App.Services.Clip;
 /// crosses this channel; that requires PIN pairing over the TCP link.
 ///
 /// Robustness on real Windows boxes: a dev machine usually has several NICs (Wi-Fi/Ethernet plus virtual
-/// adapters from VMware / Hyper-V / WSL / VirtualBox / Docker). A single socket using the OS "default"
-/// multicast interface frequently picks a virtual adapter, so peers never see each other. We therefore JOIN
-/// the group and SEND the beacon on EVERY usable interface, and also send a limited broadcast as a fallback
-/// for networks where multicast is filtered.</summary>
+/// adapters from VMware / Hyper-V / WSL / VirtualBox / Docker). A single socket on the OS "default"
+/// interface frequently picks a virtual adapter, so peers never see each other. We therefore JOIN the group
+/// and SEND on EVERY interface. For the broadcast fallback we send the per-interface DIRECTED subnet
+/// broadcast (e.g. 192.168.0.255) — Windows routes that out the right NIC, unlike the limited 255.255.255.255
+/// which it tends to push out a single (often virtual) adapter regardless of the socket's bound address.</summary>
 public sealed class PeerDiscovery : IDisposable
 {
     // Admin-scoped multicast group. Stays on the local subnet (multicast TTL 1).
@@ -23,8 +24,8 @@ public sealed class PeerDiscovery : IDisposable
     private const int SIO_UDP_CONNRESET = -1744830452;   // 0x9800000C
 
     private readonly ConcurrentDictionary<string, ClipPeer> _peers = new();
-    private UdpClient? _rx;                          // bound to the discovery port, joined on every NIC
-    private readonly List<UdpClient> _tx = new();    // one sender per NIC (multicast + broadcast)
+    private UdpClient? _rx;                                       // bound to the discovery port, joined on every NIC
+    private readonly List<(UdpClient Tx, IPEndPoint Bcast)> _tx = new();   // one sender per NIC + its directed broadcast
     private CancellationTokenSource? _cts;
     private string _selfId = "";
     private string _selfName = "";
@@ -57,33 +58,33 @@ public sealed class PeerDiscovery : IDisposable
         rx.EnableBroadcast = true;
         rx.Client.Bind(new IPEndPoint(IPAddress.Any, _port));
         var joined = 0;
-        foreach (var ip in ifaces)
-            try { rx.JoinMulticastGroup(Group, ip); joined++; } catch { /* this NIC can't multicast — broadcast still covers it */ }
+        foreach (var f in ifaces)
+            try { rx.JoinMulticastGroup(Group, f.Ip); joined++; } catch { /* this NIC can't multicast — broadcast still covers it */ }
         if (joined == 0) try { rx.JoinMulticastGroup(Group); } catch { /* fall back to the default interface */ }
         _rx = rx;
 
-        // ── senders: one per interface so the beacon leaves EVERY NIC (multicast + limited broadcast) ──
-        foreach (var ip in ifaces)
+        // ── senders: one per interface so beacons leave EVERY NIC (multicast + directed subnet broadcast) ──
+        foreach (var f in ifaces)
         {
             try
             {
-                var tx = new UdpClient(new IPEndPoint(ip, 0)) { EnableBroadcast = true };
-                try { tx.Client.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.MulticastInterface, ip.GetAddressBytes()); } catch { }
+                var tx = new UdpClient(new IPEndPoint(f.Ip, 0)) { EnableBroadcast = true };
+                try { tx.Client.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.MulticastInterface, f.Ip.GetAddressBytes()); } catch { }
                 try { tx.Client.SetSocketOption(SocketOptionLevel.IP, SocketOptionName.MulticastTimeToLive, 1); } catch { }
-                _tx.Add(tx);
+                _tx.Add((tx, new IPEndPoint(f.Bcast, _port)));
             }
             catch { /* skip a NIC we can't bind a sender on */ }
         }
         if (_tx.Count == 0)
-            try { _tx.Add(new UdpClient { EnableBroadcast = true }); } catch { /* last-resort default sender */ }
+            try { _tx.Add((new UdpClient { EnableBroadcast = true }, new IPEndPoint(IPAddress.Broadcast, _port))); } catch { }
 
         _cts = new CancellationTokenSource();
         var ct = _cts.Token;
         Running = true;
         _ = ReceiveLoopAsync(ct);
         _ = BeaconLoopAsync(ct);
-        var ifaceList = ifaces.Count > 0 ? string.Join(", ", ifaces) : "(无可用网卡)";
-        Log?.Invoke($"发现服务已启动 · 多播 {Group}:{_port} + 广播 · 网卡 {ifaceList}");
+        var ifaceList = ifaces.Count > 0 ? string.Join(", ", ifaces.Select(f => $"{f.Ip}→{f.Bcast}")) : "(无可用网卡)";
+        Log?.Invoke($"发现服务已启动 · 多播组 {Group}:{_port} + 定向广播 · 网卡 {ifaceList}");
     }
 
     public void Stop()
@@ -93,7 +94,7 @@ public sealed class PeerDiscovery : IDisposable
         try { _cts?.Cancel(); } catch { }
         try { _rx?.Dispose(); } catch { }
         _rx = null;
-        foreach (var tx in _tx) { try { tx.Dispose(); } catch { } }
+        foreach (var (tx, _) in _tx) { try { tx.Dispose(); } catch { } }
         _tx.Clear();
         _peers.Clear();
         PeersChanged?.Invoke();
@@ -106,7 +107,7 @@ public sealed class PeerDiscovery : IDisposable
     private async Task BeaconLoopAsync(CancellationToken ct)
     {
         var mcast = new IPEndPoint(Group, _port);
-        var bcast = new IPEndPoint(IPAddress.Broadcast, _port);
+        var limited = new IPEndPoint(IPAddress.Broadcast, _port);
         while (!ct.IsCancellationRequested)
         {
             try
@@ -116,10 +117,12 @@ public sealed class PeerDiscovery : IDisposable
                 {
                     Id = _selfId, Name = _selfName, Port = _tcpPort, Version = _version,
                 });
-                foreach (var tx in _tx)
+                foreach (var (tx, bcast) in _tx)
                 {
-                    try { tx.Send(beacon, beacon.Length, mcast); } catch { }
-                    try { tx.Send(beacon, beacon.Length, bcast); } catch { }
+                    try { tx.Send(beacon, beacon.Length, mcast); } catch { }      // multicast
+                    try { tx.Send(beacon, beacon.Length, bcast); } catch { }      // directed subnet broadcast (per NIC)
+                    if (!bcast.Address.Equals(IPAddress.Broadcast))
+                        try { tx.Send(beacon, beacon.Length, limited); } catch { }   // limited broadcast — extra insurance
                 }
             }
             catch { /* transient send error — keep beaconing */ }
@@ -173,11 +176,12 @@ public sealed class PeerDiscovery : IDisposable
         if (removed) PeersChanged?.Invoke();
     }
 
-    /// <summary>Every up, non-loopback IPv4 interface address. Multicast join is attempted per-NIC (failures
-    /// skipped); the broadcast fallback still reaches NICs that can't multicast.</summary>
-    private static List<IPAddress> LocalIPv4Interfaces()
+    /// <summary>Every up, non-loopback IPv4 interface with its directed subnet broadcast address. Multicast
+    /// join is attempted per-NIC (failures skipped); the directed broadcast still reaches NICs that can't
+    /// multicast. A missing/zero mask falls back to the limited broadcast.</summary>
+    private static List<(IPAddress Ip, IPAddress Bcast)> LocalIPv4Interfaces()
     {
-        var list = new List<IPAddress>();
+        var list = new List<(IPAddress, IPAddress)>();
         try
         {
             foreach (var ni in NetworkInterface.GetAllNetworkInterfaces())
@@ -185,12 +189,32 @@ public sealed class PeerDiscovery : IDisposable
                 if (ni.OperationalStatus != OperationalStatus.Up) continue;
                 if (ni.NetworkInterfaceType == NetworkInterfaceType.Loopback) continue;
                 foreach (var ua in ni.GetIPProperties().UnicastAddresses)
-                    if (ua.Address.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(ua.Address))
-                        list.Add(ua.Address);
+                {
+                    if (ua.Address.AddressFamily != AddressFamily.InterNetwork) continue;
+                    if (IPAddress.IsLoopback(ua.Address)) continue;
+                    list.Add((ua.Address, DirectedBroadcast(ua.Address, ua.IPv4Mask) ?? IPAddress.Broadcast));
+                }
             }
         }
         catch { /* best effort */ }
-        return list.Distinct().ToList();
+        return list;
+    }
+
+    /// <summary>ip | ~mask → the subnet's directed broadcast address (null if the mask is unusable).</summary>
+    private static IPAddress? DirectedBroadcast(IPAddress ip, IPAddress? mask)
+    {
+        try
+        {
+            if (mask == null) return null;
+            var ipb = ip.GetAddressBytes();
+            var mb = mask.GetAddressBytes();
+            if (ipb.Length != 4 || mb.Length != 4) return null;
+            var bb = new byte[4];
+            for (var i = 0; i < 4; i++) bb[i] = (byte)(ipb[i] | (byte)~mb[i]);
+            var b = new IPAddress(bb);
+            return b.Equals(ip) ? null : b;   // /32 has no useful broadcast
+        }
+        catch { return null; }
     }
 
     public void Dispose() => Stop();

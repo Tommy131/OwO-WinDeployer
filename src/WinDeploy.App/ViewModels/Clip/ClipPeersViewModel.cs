@@ -67,6 +67,8 @@ public sealed class ClipPeersViewModel : LocalizedObject
         StopCommand = new RelayCommand(_ => Stop(), _ => Running);
         ClearLogCommand = new RelayCommand(_ => { _logLines.Clear(); LogText = ""; });
         CancelInviteCommand = new RelayCommand(_ => _inviteCts?.Cancel(), _ => InviteInProgress);
+        ConnectManualCommand = new RelayCommand(_ => ConnectManual(), _ => Running && !InviteInProgress);
+        _manualPort = _manager.Config.Port.ToString();
         LocalAddresses = string.Join("   ", LocalIPv4());
     }
 
@@ -77,6 +79,7 @@ public sealed class ClipPeersViewModel : LocalizedObject
     public RelayCommand StopCommand { get; }
     public RelayCommand ClearLogCommand { get; }
     public RelayCommand CancelInviteCommand { get; }
+    public RelayCommand ConnectManualCommand { get; }
 
     public bool Running => _manager.Running;
     public string StatusText => Running ? Localizer.T("clip.status.running") : Localizer.T("clip.status.stopped");
@@ -97,6 +100,12 @@ public sealed class ClipPeersViewModel : LocalizedObject
 
     private string _logText = "";
     public string LogText { get => _logText; private set => Set(ref _logText, value); }
+
+    // ── manual connect by IP (discovery fallback) ──────────────────────────────────────────────────────
+    private string _manualIp = "";
+    public string ManualIp { get => _manualIp; set => Set(ref _manualIp, value); }
+    private string _manualPort = "";
+    public string ManualPort { get => _manualPort; set => Set(ref _manualPort, value); }
 
     // ── start / stop ───────────────────────────────────────────────────────────────────────────────────
     private void Start()
@@ -120,6 +129,18 @@ public sealed class ClipPeersViewModel : LocalizedObject
         _manager.Stop();
         AuditLog.Action("剪贴板共享停止");
         RefreshAll();
+    }
+
+    // ── manual connect ─────────────────────────────────────────────────────────────────────────────────
+    /// <summary>Discovery fallback: pair directly with a peer's LAN IP (read off its 本机 line). The PIN
+    /// handshake is identical to an invite; the real peer id/name are learned during it.</summary>
+    private void ConnectManual()
+    {
+        if (!Running) { Dialogs.Show(Localizer.T("clip.peers.startFirst"), Localizer.T("clip.page.title"), MessageBoxButton.OK, MessageBoxImage.Information); return; }
+        var ip = ManualIp.Trim();
+        if (!IPAddress.TryParse(ip, out _)) { Dialogs.Show(Localizer.T("clip.peers.manualBadIp"), Localizer.T("clip.peers.manualConnect"), MessageBoxButton.OK, MessageBoxImage.Warning); return; }
+        if (!int.TryParse(ManualPort.Trim(), out var port) || port is < 1 or > 65535) port = _manager.Config.Port;
+        Invite(new ClipPeer { InstanceId = "", DeviceName = ip, Address = ip, Port = port });
     }
 
     // ── invite ───────────────────────────────────────────────────────────────────────────────────────

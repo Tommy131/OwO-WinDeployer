@@ -32,6 +32,10 @@
   "clip.peers.atCapacity": "Gerätelimit erreicht. Die Open-Source-Version teilt zwischen 2 Geräten; die kostenpflichtige Version hebt dies per Relay-Server auf.",
   "clip.peers.log": "Aktivitätsprotokoll",
   "clip.peers.clearLog": "Leeren",
+  "clip.peers.manualHint": "Das andere Gerät nicht gefunden? Gib die LAN-IP aus dessen Zeile „Dieses Gerät“ ein, um manuell zu koppeln:",
+  "clip.peers.manualPlaceholder": "Peer-IP, z. B. 192.168.0.6",
+  "clip.peers.manualConnect": "Verbinden",
+  "clip.peers.manualBadIp": "Gib eine gültige IPv4-Adresse ein (die „Dieses Gerät“-IP des Peers).",
 
   "clip.role.initiator": "Einlader",
   "clip.role.joiner": "Beitretender",
