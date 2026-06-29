@@ -32,6 +32,7 @@ public partial class MainWindow : Window
             _tray?.Dispose();
             (DataContext as MainViewModel)?.Terminal.Dispose();
             (DataContext as MainViewModel)?.Ftp.Shutdown();
+            (DataContext as MainViewModel)?.ClipSync.Shutdown();
             (DataContext as MainViewModel)?.Cloudflare.Shutdown();
         };
     }

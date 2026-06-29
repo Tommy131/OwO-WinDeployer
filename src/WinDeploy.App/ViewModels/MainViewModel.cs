@@ -45,6 +45,7 @@ public sealed class MainViewModel : LocalizedObject
     public AdvancedToolsViewModel AdvancedTools { get; } = new();
     public ServiceConfigViewModel ServiceConfig { get; } = new();
     public FtpViewModel Ftp { get; } = new();
+    public ClipSyncViewModel ClipSync { get; } = new();
     public CloudflareDdnsViewModel Cloudflare { get; } = new();
 
     public string AppName => WinDeploy.App.AppInfo.Name;
@@ -270,6 +271,7 @@ public sealed class MainViewModel : LocalizedObject
         dev.Items.Add(new("", "nav.terminal", Terminal, advanced: true));
         dev.Items.Add(new("", "nav.serviceConfig", ServiceConfig, advanced: true));
         dev.Items.Add(new("", "nav.ftp", Ftp, advanced: true));
+        dev.Items.Add(new("", "nav.clip", ClipSync, advanced: true));
         dev.Items.Add(new("", "Cloudflare DDNS", Cloudflare, advanced: true));
         dev.Items.Add(new("", "nav.wsl", Wsl, advanced: true, minBuild: OsInfo.Win10_1607));
         dev.Items.Add(new("", "nav.tweaks", Tweaks, advanced: true));

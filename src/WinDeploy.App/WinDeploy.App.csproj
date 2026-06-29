@@ -51,10 +51,12 @@
     <Using Include="WinDeploy.App.Services.Terminal" />
     <Using Include="WinDeploy.App.Services.Infra" />
     <Using Include="WinDeploy.App.Services.Ftp" />
+    <Using Include="WinDeploy.App.Services.Clip" />
     <Using Include="WinDeploy.App.ViewModels" />
     <Using Include="WinDeploy.App.ViewModels.Deploy" />
     <Using Include="WinDeploy.App.ViewModels.Sys" />
     <Using Include="WinDeploy.App.ViewModels.Ftp" />
+    <Using Include="WinDeploy.App.ViewModels.Clip" />
     <Using Include="WinDeploy.App.ViewModels.Net" />
     <Using Include="WinDeploy.App.ViewModels.Terminal" />
     <Using Include="WinDeploy.App.ViewModels.Tools" />
@@ -62,6 +64,7 @@
     <Using Include="WinDeploy.App.Views.Deploy" />
     <Using Include="WinDeploy.App.Views.Sys" />
     <Using Include="WinDeploy.App.Views.Ftp" />
+    <Using Include="WinDeploy.App.Views.Clip" />
     <Using Include="WinDeploy.App.Views.Cloudflare" />
     <Using Include="WinDeploy.App.Views.Server" />
     <Using Include="WinDeploy.App.Views.Terminal" />
