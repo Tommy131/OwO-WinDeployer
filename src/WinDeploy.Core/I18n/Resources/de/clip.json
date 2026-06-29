@@ -84,6 +84,7 @@
   "clip.board.delete": "Löschen",
   "clip.board.copied": "In die Zwischenablage dieses PCs kopiert.",
   "clip.board.previewHint": "Wähle einen Eintrag, um ihn hier vorzuschauen.",
+  "clip.board.viewFull": "Zum Vergrößern klicken",
 
   "clip.settings.sectionIdentity": "Identität & Netzwerk",
   "clip.settings.deviceName": "Gerätename (für andere sichtbar)",

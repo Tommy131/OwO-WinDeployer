@@ -84,6 +84,7 @@
   "clip.board.delete": "Delete",
   "clip.board.copied": "Copied to this PC's clipboard.",
   "clip.board.previewHint": "Select an entry to preview it here.",
+  "clip.board.viewFull": "Click to view full size",
 
   "clip.settings.sectionIdentity": "Identity & network",
   "clip.settings.deviceName": "Device name (shown to peers)",

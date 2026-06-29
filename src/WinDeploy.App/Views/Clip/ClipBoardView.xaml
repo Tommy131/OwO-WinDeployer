@@ -113,11 +113,10 @@
                    VerticalScrollBarVisibility="Auto"
                    Visibility="{Binding Selected.IsText, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}" />
 
-          <!-- image preview -->
-          <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
-                        Visibility="{Binding Selected.IsImage, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
-            <Image Source="{Binding Selected.Image}" Stretch="Uniform" StretchDirection="DownOnly" HorizontalAlignment="Center" VerticalAlignment="Center" />
-          </ScrollViewer>
+          <!-- image preview: fits the pane (large images scale down); click to open full size in a window -->
+          <Image Source="{Binding Selected.Image}" Stretch="Uniform" StretchDirection="DownOnly" Cursor="Hand"
+                 MouseLeftButtonUp="OnPreviewImageClick" ToolTip="{DynamicResource S.clip.board.viewFull}"
+                 Visibility="{Binding Selected.IsImage, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}" />
         </Grid>
       </Border>
     </Grid>

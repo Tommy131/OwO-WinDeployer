@@ -84,6 +84,7 @@
   "clip.board.delete": "删除",
   "clip.board.copied": "已复制到本机剪贴板。",
   "clip.board.previewHint": "选择一条以在此预览。",
+  "clip.board.viewFull": "点击查看大图",
 
   "clip.settings.sectionIdentity": "标识与网络",
   "clip.settings.deviceName": "设备名称（向其它设备展示）",
