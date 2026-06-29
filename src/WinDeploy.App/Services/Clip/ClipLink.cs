@@ -1,6 +1,7 @@
 using System.IO;
 using System.Net.Sockets;
 using System.Text;
+using WinDeploy.Core.I18n;
 
 namespace WinDeploy.App.Services.Clip;
 
@@ -83,7 +84,7 @@ public sealed class ClipLink : IDisposable
                 link.PairedAt = DateTime.Now;
                 return link;
             }
-            throw new InvalidOperationException("配对失败：PIN 多次错误");
+            throw new InvalidOperationException(Localizer.T("clip.err.pinFailed"));
         }
         catch { link.Dispose(); throw; }
     }
@@ -98,8 +99,8 @@ public sealed class ClipLink : IDisposable
         try
         {
             var hello = await link.ReadMsgAsync<ClipHello>(ct);
-            if (hello.Magic != ClipEdition.Magic) throw new InvalidOperationException("非 OwO 剪贴板连接");
-            if (hello.Proto != ClipEdition.Proto) throw new InvalidOperationException("协议版本不兼容");
+            if (hello.Magic != ClipEdition.Magic) throw new InvalidOperationException(Localizer.T("clip.err.notClip"));
+            if (hello.Proto != ClipEdition.Proto) throw new InvalidOperationException(Localizer.T("clip.err.protoMismatch"));
             var salt = Convert.FromBase64String(hello.Salt);
             var nonceA = Convert.FromBase64String(hello.NonceA);
             var nonceB = ClipCrypto.RandomBytes(16);
@@ -122,7 +123,7 @@ public sealed class ClipLink : IDisposable
 
                 var expectA = Proof("A", key, nonceA, nonceB, hello.Id, selfId);
                 if (!ClipCrypto.MacEquals(expectA, Convert.FromBase64String(authA.MacA)))
-                    throw new InvalidOperationException("对端校验失败（可能遭到中间人攻击）");
+                    throw new InvalidOperationException(Localizer.T("clip.err.mitm"));
 
                 link._key = ClipCrypto.DeriveSessionKey(key, nonceA, nonceB);
                 link.PeerId = hello.Id;
@@ -159,13 +160,13 @@ public sealed class ClipLink : IDisposable
                 var frame = await ClipProtocol.ReadFrameAsync(_stream, ct);
                 if (frame == null) break;                       // peer closed
                 var plain = ClipCrypto.Decrypt(_key, frame);
-                if (plain == null) { Log?.Invoke($"丢弃来自 {PeerName} 的损坏数据帧"); continue; }
+                if (plain == null) { Log?.Invoke(Localizer.Format("clip.log.frameDropped", PeerName)); continue; }
                 var wire = ClipProtocol.FromJson<ClipWire>(plain);
                 if (wire != null) MessageReceived?.Invoke(this, wire);
             }
         }
         catch (OperationCanceledException) { /* closing */ }
-        catch (Exception ex) { Log?.Invoke($"与 {PeerName} 的连接中断：{ex.Message}"); }
+        catch (Exception ex) { Log?.Invoke(Localizer.Format("clip.log.linkInterrupted", PeerName, ex.Message)); }
         finally { Closed?.Invoke(this); }
     }
 
@@ -184,8 +185,8 @@ public sealed class ClipLink : IDisposable
     private async Task<T> ReadMsgAsync<T>(CancellationToken ct)
     {
         var frame = await ClipProtocol.ReadFrameAsync(_stream, ct)
-            ?? throw new IOException("握手期间对端关闭了连接");
-        return ClipProtocol.FromJson<T>(frame) ?? throw new IOException("握手消息格式错误");
+            ?? throw new IOException(Localizer.T("clip.err.peerClosed"));
+        return ClipProtocol.FromJson<T>(frame) ?? throw new IOException(Localizer.T("clip.err.badHandshake"));
     }
 
     public void Close()

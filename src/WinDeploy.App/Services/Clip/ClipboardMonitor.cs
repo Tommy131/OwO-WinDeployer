@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media.Imaging;
+using WinDeploy.Core.I18n;
 
 namespace WinDeploy.App.Services.Clip;
 
@@ -20,8 +21,8 @@ public sealed class ClipboardMonitor : IDisposable
     [DllImport("user32.dll", SetLastError = true)] private static extern bool RemoveClipboardFormatListener(IntPtr hwnd);
 
     private HwndSource? _source;
-    private string? _suppressHash;     // skip the next change matching this (we caused it)
-    private string? _lastHash;         // dedupe identical consecutive copies
+    private DateTime _suppressUntil = DateTime.MinValue;   // ignore clipboard echoes of our own writes until this time
+    private string? _lastHash;                             // dedupe identical consecutive copies
 
     /// <summary>Raised on the UI thread with a freshly captured local clipboard entry (origin unset).</summary>
     public event Action<ClipEntry>? Captured;
@@ -56,9 +57,12 @@ public sealed class ClipboardMonitor : IDisposable
         _source = null;
     }
 
-    /// <summary>Ignore the next clipboard change whose content matches <paramref name="hash"/> — used right
-    /// before we write a remote entry onto the local clipboard so it isn't re-broadcast.</summary>
-    public void Suppress(string hash) => _suppressHash = hash;
+    /// <summary>Ignore clipboard changes for a short window — called right before we write a remote entry onto
+    /// the local clipboard so the resulting OS clipboard-update isn't re-captured &amp; re-broadcast. A time
+    /// window (not content matching) is used because a clipboard round-trip RE-ENCODES an image
+    /// (PNG → DIB → PNG), so its bytes/hash change and content matching would miss the echo — duplicating the
+    /// image under the wrong device's name.</summary>
+    public void Suppress() => _suppressUntil = DateTime.Now.AddMilliseconds(700);
 
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
@@ -68,11 +72,12 @@ public sealed class ClipboardMonitor : IDisposable
 
     private void OnClipboardUpdate()
     {
+        if (DateTime.Now <= _suppressUntil) return;   // echo of our own write (auto-apply) — ignore the whole window
+
         var entry = Capture();
         if (entry == null) return;
 
         var hash = entry.ContentHash();
-        if (_suppressHash != null && hash == _suppressHash) { _suppressHash = null; _lastHash = hash; return; }
         if (hash == _lastHash) return;   // same content copied again — don't duplicate
         _lastHash = hash;
         Captured?.Invoke(entry);
@@ -99,7 +104,7 @@ public sealed class ClipboardMonitor : IDisposable
                     var png = EncodePng(img);
                     if (png.Length > MaxImageBytes)
                     {
-                        Log?.Invoke($"剪贴板图片过大（{png.Length / 1024} KB），已跳过同步");
+                        Log?.Invoke(Localizer.Format("clip.log.imageTooBig", png.Length / 1024));
                         return null;
                     }
                     return new ClipEntry

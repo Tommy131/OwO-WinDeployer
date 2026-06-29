@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using System.Windows;
+using WinDeploy.Core.I18n;
 
 namespace WinDeploy.App.Services.Clip;
 
@@ -89,7 +90,7 @@ public sealed class ClipSyncManager : IDisposable
 
         Running = true;
         BoardChanged?.Invoke();
-        Log?.Invoke($"剪贴板共享已启动 · 设备「{_config.DeviceName}」· 端口 {_config.Port}");
+        Log?.Invoke(Localizer.Format("clip.log.shareStarted", _config.DeviceName, _config.Port));
     }
 
     public void Stop()
@@ -109,7 +110,7 @@ public sealed class ClipSyncManager : IDisposable
         }
         LinksChanged?.Invoke();
         BoardChanged?.Invoke();
-        Log?.Invoke("剪贴板共享已停止");
+        Log?.Invoke(Localizer.T("clip.log.shareStopped"));
     }
 
     // ── pairing ──────────────────────────────────────────────────────────────────────────────────────
@@ -118,7 +119,7 @@ public sealed class ClipSyncManager : IDisposable
     public async Task InviteAsync(ClipPeer peer, string pin, CancellationToken ct)
     {
         if (AtCapacity) throw new InvalidOperationException(CapacityMessage());
-        if (IsLinkedTo(peer.InstanceId)) throw new InvalidOperationException("该设备已在共享中");
+        if (IsLinkedTo(peer.InstanceId)) throw new InvalidOperationException(Localizer.T("clip.err.alreadyLinked"));
         var link = await ClipLink.ConnectAsync(peer, pin, _config.InstanceId, _config.DeviceName, ct);
         AdoptLink(link);
     }
@@ -139,18 +140,18 @@ public sealed class ClipSyncManager : IDisposable
     private async Task HandleInboundAsync(TcpClient client, CancellationToken ct)
     {
         var remote = client.Client.RemoteEndPoint?.ToString() ?? "?";
-        if (AtCapacity) { Log?.Invoke($"拒绝 {remote} 的配对：{CapacityMessage()}"); try { client.Dispose(); } catch { } return; }
+        if (AtCapacity) { Log?.Invoke(Localizer.Format("clip.log.rejectPairing", remote, CapacityMessage())); try { client.Dispose(); } catch { } return; }
         var prompt = PinPrompt;
-        if (prompt == null) { Log?.Invoke($"拒绝 {remote} 的配对：未就绪"); try { client.Dispose(); } catch { } return; }
+        if (prompt == null) { Log?.Invoke(Localizer.Format("clip.log.rejectPairing", remote, Localizer.T("clip.log.notReady"))); try { client.Dispose(); } catch { } return; }
 
         try
         {
             var link = await ClipLink.AcceptAsync(client, prompt, _config.InstanceId, _config.DeviceName, ct);
-            if (link == null) { Log?.Invoke($"{remote} 的配对未完成（取消 / PIN 错误）"); return; }
-            if (AtCapacity || IsLinkedTo(link.PeerId)) { Log?.Invoke($"放弃与「{link.PeerName}」的重复/超额连接"); link.Dispose(); return; }
+            if (link == null) { Log?.Invoke(Localizer.Format("clip.log.pairingIncomplete", remote)); return; }
+            if (AtCapacity || IsLinkedTo(link.PeerId)) { Log?.Invoke(Localizer.Format("clip.log.dropDuplicate", link.PeerName)); link.Dispose(); return; }
             AdoptLink(link);
         }
-        catch (Exception ex) { Log?.Invoke($"{remote} 配对失败：{ex.Message}"); try { client.Dispose(); } catch { } }
+        catch (Exception ex) { Log?.Invoke(Localizer.Format("clip.log.pairingFailed", remote, ex.Message)); try { client.Dispose(); } catch { } }
     }
 
     /// <summary>Wire up a freshly paired link, start its pump, announce it, and exchange the current board.</summary>
@@ -162,7 +163,7 @@ public sealed class ClipSyncManager : IDisposable
         link.Log += m => Log?.Invoke(m);
         link.StartPump();
         LinksChanged?.Invoke();
-        Log?.Invoke($"已与「{link.PeerName}」建立加密剪贴板共享");
+        Log?.Invoke(Localizer.Format("clip.log.linkEstablished", link.PeerName));
         // Send our board so the new peer catches up; it sends us theirs (merged, deduped by id).
         _ = SafeSend(link, new ClipWire { Kind = ClipWireKind.Board, Entries = Board.ToList() });
     }
@@ -172,7 +173,7 @@ public sealed class ClipSyncManager : IDisposable
         bool removed;
         lock (_gate) removed = _links.Remove(link);
         link.Dispose();
-        if (removed) { LinksChanged?.Invoke(); Log?.Invoke($"与「{link.PeerName}」的共享已断开"); }
+        if (removed) { LinksChanged?.Invoke(); Log?.Invoke(Localizer.Format("clip.log.linkClosed", link.PeerName)); }
     }
 
     /// <summary>Disconnect one peer link (user-initiated from the UI).</summary>
@@ -308,7 +309,7 @@ public sealed class ClipSyncManager : IDisposable
     private async Task SafeSend(ClipLink link, ClipWire wire)
     {
         try { await link.SendAsync(wire); }
-        catch (Exception ex) { Log?.Invoke($"向「{link.PeerName}」发送失败：{ex.Message}"); }
+        catch (Exception ex) { Log?.Invoke(Localizer.Format("clip.log.sendFailed", link.PeerName, ex.Message)); }
     }
 
     private void ApplyToLocalClipboard(ClipEntry entry)
@@ -319,11 +320,11 @@ public sealed class ClipSyncManager : IDisposable
         {
             try
             {
-                _monitor.Suppress(entry.ContentHash());   // don't re-capture & re-broadcast what we just set
+                _monitor.Suppress();   // don't re-capture & re-broadcast our own write (images re-encode, so suppress by time)
                 if (entry.Kind == ClipKind.Text && entry.Text != null) System.Windows.Clipboard.SetText(entry.Text);
                 else if (entry.Kind == ClipKind.Image && entry.Image != null) System.Windows.Clipboard.SetImage(DecodeImage(entry.Image));
             }
-            catch (Exception ex) { Log?.Invoke($"写入本机剪贴板失败：{ex.Message}"); }
+            catch (Exception ex) { Log?.Invoke(Localizer.Format("clip.log.applyFailed", ex.Message)); }
         });
     }
 
@@ -344,7 +345,7 @@ public sealed class ClipSyncManager : IDisposable
     }
 
     private string CapacityMessage()
-        => $"开源版最多 {MaxPeers} 台设备共享（已连接 {Links.Count}/{MaxLinks}）。付费版可经服务器中转解除上限。";
+        => Localizer.Format("clip.log.capacity", MaxPeers, Links.Count, MaxLinks);
 
     // ── settings ──────────────────────────────────────────────────────────────────────────────────────
     /// <summary>Pin discovery to a single interface IP (or "" = all) and restart ONLY discovery so it applies

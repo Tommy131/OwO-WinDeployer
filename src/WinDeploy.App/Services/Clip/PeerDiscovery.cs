@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using WinDeploy.Core.I18n;
 
 namespace WinDeploy.App.Services.Clip;
 
@@ -83,8 +84,8 @@ public sealed class PeerDiscovery : IDisposable
         Running = true;
         _ = ReceiveLoopAsync(ct);
         _ = BeaconLoopAsync(ct);
-        var ifaceList = ifaces.Count > 0 ? string.Join(", ", ifaces.Select(f => $"{f.Ip}→{f.Bcast}")) : "(无可用网卡)";
-        Log?.Invoke($"发现服务已启动 · 多播组 {Group}:{_port} + 定向广播 · 网卡 {ifaceList}");
+        var ifaceList = ifaces.Count > 0 ? string.Join(", ", ifaces.Select(f => $"{f.Ip}→{f.Bcast}")) : Localizer.T("clip.log.noNics");
+        Log?.Invoke(Localizer.Format("clip.log.discoveryStarted", $"{Group}:{_port}", ifaceList));
     }
 
     public void Stop()
@@ -98,7 +99,7 @@ public sealed class PeerDiscovery : IDisposable
         _tx.Clear();
         _peers.Clear();
         PeersChanged?.Invoke();
-        Log?.Invoke("发现服务已停止");
+        Log?.Invoke(Localizer.T("clip.log.discoveryStopped"));
     }
 
     /// <summary>Update the advertised device name without a restart (the user renamed this device).</summary>
@@ -159,7 +160,7 @@ public sealed class PeerDiscovery : IDisposable
                 peer.Version = b.Version;
                 peer.Proto = b.Proto;
                 peer.LastSeen = DateTime.Now;
-                if (isNew) Log?.Invoke($"发现设备「{b.Name}」（{addr}:{b.Port}）");
+                if (isNew) Log?.Invoke(Localizer.Format("clip.log.peerFound", b.Name, $"{addr}:{b.Port}"));
                 if (changed) PeersChanged?.Invoke();
             }
             catch { /* not one of ours / malformed — ignore */ }
