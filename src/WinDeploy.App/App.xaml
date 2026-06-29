@@ -5,6 +5,7 @@
              xmlns:vmd="clr-namespace:WinDeploy.App.ViewModels.Deploy"
              xmlns:vmsys="clr-namespace:WinDeploy.App.ViewModels.Sys"
              xmlns:vmftp="clr-namespace:WinDeploy.App.ViewModels.Ftp"
+             xmlns:vmclip="clr-namespace:WinDeploy.App.ViewModels.Clip"
              xmlns:vmnet="clr-namespace:WinDeploy.App.ViewModels.Net"
              xmlns:vmterm="clr-namespace:WinDeploy.App.ViewModels.Terminal"
              xmlns:vmtools="clr-namespace:WinDeploy.App.ViewModels.Tools"
@@ -12,6 +13,7 @@
              xmlns:vd="clr-namespace:WinDeploy.App.Views.Deploy"
              xmlns:vsys="clr-namespace:WinDeploy.App.Views.Sys"
              xmlns:vftp="clr-namespace:WinDeploy.App.Views.Ftp"
+             xmlns:vclip="clr-namespace:WinDeploy.App.Views.Clip"
              xmlns:vcf="clr-namespace:WinDeploy.App.Views.Cloudflare"
              xmlns:vsrv="clr-namespace:WinDeploy.App.Views.Server"
              xmlns:vterm="clr-namespace:WinDeploy.App.Views.Terminal"
@@ -644,6 +646,18 @@
       </DataTemplate>
       <DataTemplate DataType="{x:Type vmftp:FtpClientViewModel}">
         <vftp:FtpClientView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type vmclip:ClipSyncViewModel}">
+        <vclip:ClipSyncView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type vmclip:ClipPeersViewModel}">
+        <vclip:ClipPeersView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type vmclip:ClipBoardViewModel}">
+        <vclip:ClipBoardView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type vmclip:ClipSettingsViewModel}">
+        <vclip:ClipSettingsView />
       </DataTemplate>
       <DataTemplate DataType="{x:Type vmnet:CloudflareDdnsViewModel}">
         <vcf:CloudflareDdnsView />
