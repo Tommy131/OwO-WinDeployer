@@ -72,8 +72,7 @@ public sealed class AppSettings
 /// <summary>Persists GUI settings to %LOCALAPPDATA%/WinDeploy/settings.json.</summary>
 public static class SettingsStore
 {
-    private static readonly string DirPath =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WinDeploy");
+    private static readonly string DirPath = AppPaths.DataRoot;
     private static readonly string FilePathValue = Path.Combine(DirPath, "settings.json");
     private static readonly JsonSerializerOptions Opt = new() { WriteIndented = true };
 

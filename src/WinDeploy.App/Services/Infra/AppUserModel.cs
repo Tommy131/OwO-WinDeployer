@@ -41,7 +41,7 @@ public static class AppUserModel
     {
         try
         {
-            var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WinDeploy");
+            var dir = AppPaths.DataRoot;
             Directory.CreateDirectory(dir);
             // PNG (not .ico) — recommended for toast images; the toast renderer handles it reliably.
             var pngPath = Path.Combine(dir, "app.png");

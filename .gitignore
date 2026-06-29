@@ -9,6 +9,10 @@ artifacts/
 publish/
 dist/
 
+# 便携模式：本机运行时数据（日志 / 设置 / 图标缓存 / FTP / Cloudflare / 剪贴板配置 / 报告 / 崩溃日志）
+# 统一写在 exe 旁的 data/（AppPaths.DataRoot），属于本机、绝不入库。
+data/
+
 # 离线安装包 / 下载的大体积二进制（如 VMware .7z），不入库
 assets/packages/
 

@@ -6,8 +6,7 @@ namespace WinDeploy.App.Services.Ftp;
 /// <summary>Persists the FTP server configuration to %LOCALAPPDATA%/WinDeploy/ftp.json.</summary>
 public static class FtpConfigStore
 {
-    private static readonly string DirPath =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WinDeploy");
+    private static readonly string DirPath = AppPaths.DataRoot;
     private static readonly string FilePathValue = Path.Combine(DirPath, "ftp.json");
     private static readonly JsonSerializerOptions Opt = new()
     {

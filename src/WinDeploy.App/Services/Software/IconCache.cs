@@ -12,7 +12,7 @@ namespace WinDeploy.App.Services.Software;
 public static class IconCache
 {
     private static readonly string Dir =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WinDeploy", "iconcache");
+        AppPaths.IconCache;
 
     public static string PathFor(string id) => Path.Combine(Dir, id + ".png");
     public static bool Has(string id) => File.Exists(PathFor(id));

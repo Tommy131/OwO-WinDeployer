@@ -10,8 +10,7 @@ namespace WinDeploy.App.Services.Ftp;
 /// %LOCALAPPDATA%/WinDeploy/ftp_trust.json.</summary>
 public static class FtpTrustStore
 {
-    private static readonly string DirPath =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WinDeploy");
+    private static readonly string DirPath = AppPaths.DataRoot;
     private static readonly string FilePathValue = Path.Combine(DirPath, "ftp_trust.json");
     private static readonly JsonSerializerOptions Opt = new() { WriteIndented = true };
     private static readonly object Gate = new();

@@ -18,8 +18,7 @@ public sealed class FtpClientProfile
 /// <summary>Persists saved client logins to %LOCALAPPDATA%/WinDeploy/ftp-clients.json.</summary>
 public static class FtpClientStore
 {
-    private static readonly string DirPath =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WinDeploy");
+    private static readonly string DirPath = AppPaths.DataRoot;
     private static readonly string FilePathValue = Path.Combine(DirPath, "ftp-clients.json");
     private static readonly JsonSerializerOptions Opt = new() { WriteIndented = true };
 

@@ -40,8 +40,7 @@ public static class RunHistory
 
     private static string Build()
     {
-        var dir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WinDeploy", "logs");
+        var dir = AppPaths.Logs;
         Directory.CreateDirectory(dir);
         return Path.Combine(dir, "progress.jsonl");
     }

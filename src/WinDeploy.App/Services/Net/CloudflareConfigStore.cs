@@ -39,8 +39,7 @@ public sealed class CloudflareConfig
 /// monitor and the UI never clobber each other.</summary>
 public static class CloudflareConfigStore
 {
-    private static readonly string DirPath =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "WinDeploy");
+    private static readonly string DirPath = AppPaths.DataRoot;
     private static readonly string FilePathValue = Path.Combine(DirPath, "cloudflare.json");
     private static readonly JsonSerializerOptions Opt = new()
     {

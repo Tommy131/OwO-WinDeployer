@@ -7,9 +7,7 @@ namespace WinDeploy.App.Services.Ftp;
 /// <summary>Loads (or generates) the X.509 certificate the FTPS listener authenticates with.</summary>
 public static class FtpCertificate
 {
-    private static readonly string AutoCertPath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "WinDeploy", "ftp-autocert.pfx");
+    private static readonly string AutoCertPath = Path.Combine(AppPaths.DataRoot, "ftp-autocert.pfx");
 
     /// <summary>Resolve the server certificate: a configured .pfx, a PEM cert+key pair, or — when none is
     /// configured — a cached self-signed cert (created on first use). The result is always re-imported via
