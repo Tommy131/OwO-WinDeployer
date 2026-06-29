@@ -51,6 +51,12 @@ public partial class App : Application
         AppDomain.CurrentDomain.UnhandledException += (_, ex) => LogCrash("AppDomain", ex.ExceptionObject as Exception);
         System.Threading.Tasks.TaskScheduler.UnobservedTaskException += (_, ex) => { LogCrash("Task", ex.Exception); ex.SetObserved(); };
 
+        // One-time data-location migration: legacy %LOCALAPPDATA%\WinDeploy → portable <exe>\data. MUST run
+        // before AppUserModel.Configure() / SettingsStore.Load() below write into the portable folder (which
+        // would make the "data is empty" check false), and before any log opens the legacy files. Prompt the
+        // user, migrate while nothing has the old files open, then close so they reopen against the new path.
+        if (AppPaths.HasLegacyToMigrate() && !TryMigrateDataLocation()) { Shutdown(); return; }
+
         // Set a stable AppUserModelID first, so tray balloons (shown as toasts on Win10/11) are attributed to
         // "OwO! Win Deployer" rather than an auto-generated "NotifyIconGeneratedAumid_…" id.
         AppUserModel.Configure();
@@ -126,6 +132,37 @@ public partial class App : Application
             W($"capture done: {ok} source(s) written to configs/ under {root}");
         }
         catch (Exception ex) { W("capture error: " + ex.Message); }
+    }
+
+    /// <summary>Prompt for and perform the one-time data-location migration (legacy %LOCALAPPDATA%\WinDeploy →
+    /// portable &lt;exe&gt;\data). Returns false ONLY when the app should shut down afterward — a successful
+    /// migration, so the user reopens against the new location. Returns true to keep starting normally (the
+    /// user cancelled, or the copy failed and we proceed with the new folder).</summary>
+    private static bool TryMigrateDataLocation()
+    {
+        // The saved language lives in the not-yet-migrated legacy settings, so prompt in the system UI language.
+        Localizer.SetLanguage(Lang.FromCulture(CultureInfo.CurrentUICulture));
+        LocalizationManager.Apply();
+
+        if (MessageBox.Show(
+                Localizer.Format("migrate.body", AppPaths.LegacyDir, AppPaths.DataRoot),
+                Localizer.T("migrate.title"), MessageBoxButton.OKCancel, MessageBoxImage.Information)
+            != MessageBoxResult.OK)
+            return true;   // user declined — start fresh in the new folder; ask again next launch
+
+        var (ok, warning) = AppPaths.MigrateFromLegacy();
+        if (!ok)
+        {
+            MessageBox.Show(Localizer.Format("migrate.fail", warning ?? ""),
+                Localizer.T("migrate.title"), MessageBoxButton.OK, MessageBoxImage.Warning);
+            return true;   // copy failed — proceed with whatever made it over
+        }
+
+        var doneMsg = warning is null
+            ? Localizer.Format("migrate.ok", AppPaths.DataRoot)
+            : Localizer.Format("migrate.okLeftover", AppPaths.DataRoot, warning);
+        MessageBox.Show(doneMsg, Localizer.T("migrate.title"), MessageBoxButton.OK, MessageBoxImage.Information);
+        return false;   // migrated — shut down so the user reopens against the new location
     }
 
     private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)

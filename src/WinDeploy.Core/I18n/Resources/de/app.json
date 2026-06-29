@@ -1,5 +1,10 @@
 {
   "app.adminSuffix": "  (Administrator)",
+  "migrate.title": "Datenordner-Migration",
+  "migrate.body": "Ältere App-Daten wurden gefunden unter:\n{0}\n\nDiese Version verwendet einen portablen Datenordner (neben dem Programm):\n{1}\n\nAuf „OK“ klicken, um Ihre Einstellungen / Konfigurationen / Cache jetzt an den neuen Ort zu verschieben; die App wird danach geschlossen — bitte erneut öffnen.\nAuf „Abbrechen“ klicken, um mit einer neuen Konfiguration zu starten (die alten Daten bleiben erhalten; beim nächsten Start wird erneut gefragt).",
+  "migrate.ok": "Migration abgeschlossen. Die App wird nun geschlossen — bitte erneut öffnen.\n\nNeuer Datenort:\n{0}",
+  "migrate.okLeftover": "Daten wurden migriert nach:\n{0}\n\nDer alte Ordner konnte jedoch nicht automatisch entfernt werden (möglicherweise in Verwendung); Sie können ihn später manuell löschen:\n{1}\n\nDie App wird nun geschlossen — bitte erneut öffnen.",
+  "migrate.fail": "Migration fehlgeschlagen: {0}\n\nDie alten Daten bleiben unberührt; die App startet weiterhin mit einer neuen Konfiguration.",
   "tray.open": "Hauptfenster öffnen",
   "tray.exit": "Beenden",
   "tray.minimizedTitle": "Läuft weiterhin im Hintergrund",

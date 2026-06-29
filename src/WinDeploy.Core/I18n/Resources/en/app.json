@@ -1,5 +1,10 @@
 {
   "app.adminSuffix": "  (Administrator)",
+  "migrate.title": "Data folder migration",
+  "migrate.body": "Older app data was found at:\n{0}\n\nThis version uses a portable data folder (kept next to the program):\n{1}\n\nClick OK to move your settings / configs / cache to the new location now; the app will close when done — please reopen it.\nClick Cancel to start with a fresh setup (the old data stays in place; you'll be asked again next launch).",
+  "migrate.ok": "Migration complete. The app will now close — please reopen it.\n\nNew data location:\n{0}",
+  "migrate.okLeftover": "Data was migrated to:\n{0}\n\nBut the old folder couldn't be removed automatically (it may be in use); you can delete it manually later:\n{1}\n\nThe app will now close — please reopen it.",
+  "migrate.fail": "Migration failed: {0}\n\nThe old data is left untouched; the app keeps starting with a fresh setup.",
   "tray.open": "Open main window",
   "tray.exit": "Exit",
   "tray.minimizedTitle": "Still running in the background",
