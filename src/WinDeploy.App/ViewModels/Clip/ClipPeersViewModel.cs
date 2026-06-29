@@ -57,6 +57,9 @@ public sealed class ClipNicVm
     public string Ip { get; }
     public string Label { get; }
     public ClipNicVm(string ip, string label) { Ip = ip; Label = label; }
+    // The app's custom ComboBox template renders the closed selection box from SelectionBoxItem, which falls
+    // back to ToString() — so without this the collapsed box would show the type name, not the label.
+    public override string ToString() => Label;
 }
 
 /// <summary>设备与配对 tab: start/stop the share, see this device's identity + capacity, discover LAN peers
