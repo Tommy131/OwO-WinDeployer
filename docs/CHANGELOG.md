@@ -6,6 +6,28 @@
 
 ---
 
+## v1.2.6.1 — 2026-07-01
+
+### 修复
+- **🩹 断网时「软件安装中心」不再卡在「正在检测」——本次核心修复**：修复了计算机未联网（或 winget 无法访问软件源）时，软件安装中心页面永久卡在加载 / 检测状态、无法进入的致命问题。
+  - **根因**：检测阶段对每个清单软件都单独执行一次 `winget list --id <id>`（约 150 个 winget 项），而每次 winget 调用都会联系其软件源——联网时单次也要约 12～13 秒，断网时更会一直阻塞。以 8 路并发计算，整轮检测累计需 150 秒以上，断网时体感即「永久卡死」；此前每次调用 8 秒的超时反而比 winget 联网时的真实耗时还短，会把调用杀在半路，导致已安装软件被误判为「未安装」。
+  - **修复**：每轮检测只执行 **一次** `winget list`（加锁的共享任务，避免并发检测各跑一次），其余全部软件的 winget id 归属改为在内存中按空白分词精确查表判定（重定向输出不会截断长 id，如 `Microsoft.VisualStudioCode` 也能正确匹配）；单次调用超时提高到 25 秒，联网时不再被误杀，断网时也有明确上限。
+  - 新增 `Detection.WingetReachable` 状态：当那一次 `winget list` 超时（判定为断网）时，更新检查会直接跳过自己的 winget 调用，避免再额外空等一次超时。
+  - 为 `Proc.RunAsync` 增加可选的 `timeoutSeconds` 参数（基于链接取消令牌 + 超时后杀进程树），供所有可能因断网而无限阻塞的外部命令调用使用。
+  - 对 `MainViewModel.DetectAllAsync` 增加 `try/finally` 兜底，确保即使检测过程中出现异常，加载状态（`IsLoading`）也一定会被清除，页面不会卡死。
+  - 实测：全量 `windeploy plan --all`（328 项）由 150 秒以上降至约 14 秒（联网冷启动一次 `winget list`；热启动约 2 秒），且已安装的 winget 应用（含长 id 的 VS Code、winget-bundle 的 VC++ 运行库合集）均正确识别。
+
+### 调整
+- **构建脚本迁移到 `scripts/`**：`build.ps1`、`preview.ps1` 由仓库根目录移动到 `scripts/` 目录（与 `publish.ps1` 等其他脚本统一）；修正 `build.ps1` 的仓库根路径解析（`$PSScriptRoot` → `Split-Path -Parent $PSScriptRoot`），移动后仍能正确定位 `src/` 与 `Directory.Build.props`。
+
+### 新增
+- 无。
+
+### 删除
+- 无。
+
+---
+
 ## v1.2.6 — 2026-06-29
 
 ### 新增
