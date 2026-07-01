@@ -8,10 +8,24 @@ namespace WinDeploy.Core.Engine;
 /// winget still detects correctly.</summary>
 public static class Detection
 {
-    private static string? _wingetList;
+    // A `winget list` invocation contacts winget's sources and costs ~13s cold / ~2s warm — and offline it
+    // stalls until its timeout. So we run it EXACTLY ONCE per detection pass (shared task, lock-guarded so
+    // 8 concurrent detections don't each spawn one) and answer every per-item winget query from that single
+    // output in-memory. The previous design spawned one `winget list --id X` per catalog item (~150), which
+    // offline turned the install-center "detecting" state into a multi-minute (effectively stuck) wait.
+    private static readonly object _listLock = new();
+    private static Task<string>? _listTask;
+    private static Task<HashSet<string>>? _idsTask;
+
+    /// <summary>False after a `winget list` load times out (offline / winget unresponsive) — lets callers
+    /// (e.g. the update check) skip further winget round-trips this pass instead of each eating the timeout.</summary>
+    public static bool WingetReachable { get; private set; } = true;
 
     /// <summary>Drop the cached `winget list` so detection re-reads after an install/uninstall.</summary>
-    public static void ResetCache() => _wingetList = null;
+    public static void ResetCache()
+    {
+        lock (_listLock) { _listTask = null; _idsTask = null; WingetReachable = true; }
+    }
 
     public static async Task<bool> IsInstalledAsync(CatalogItem item, PathResolver pr)
     {
@@ -61,29 +75,20 @@ public static class Detection
         return null;
     }
 
-    /// <summary>Cap on a single `winget` invocation — offline, winget can hang reaching for its sources
-    /// instead of failing fast, which would otherwise stall detection (and the install-center loading
-    /// state) indefinitely.</summary>
-    private const int WingetTimeoutSeconds = 8;
+    /// <summary>Cap on the single `winget list` — must exceed its real cost (~13s cold when winget
+    /// auto-refreshes its sources) so it isn't killed mid-flight online, while still bounding the wait
+    /// offline (where the source refresh stalls) so detection can't hang forever.</summary>
+    private const int WingetListTimeoutSeconds = 25;
 
+    /// <summary>Is the winget package installed? Answered from the single cached `winget list` — winget
+    /// correlates ARP entries to their package id, so apps installed outside winget still match.</summary>
     private static async Task<bool> WingetHasAsync(string id)
-    {
-        try
-        {
-            var r = await Proc.RunAsync("winget", new[]
-            {
-                "list", "--id", id, "-e", "--disable-interactivity", "--accept-source-agreements",
-            }, timeoutSeconds: WingetTimeoutSeconds);
-            return r.Ok; // exit 0 = found; avoids the list table truncating long ids
-        }
-        catch { return false; }
-    }
+        => !string.IsNullOrEmpty(id) && (await WingetIdsAsync()).Contains(id);
 
     private static async Task<bool> AllWingetHaveAsync(IEnumerable<string> ids)
     {
-        foreach (var id in ids)
-            if (!await WingetHasAsync(id)) return false;
-        return true;
+        var have = await WingetIdsAsync();
+        return ids.All(have.Contains);
     }
 
     /// <summary>Matches a display-name prefix against the full `winget list` (which enumerates ARP,
@@ -91,8 +96,8 @@ public static class Detection
     private static async Task<bool> ArpHasAsync(string hint)
     {
         if (string.IsNullOrWhiteSpace(hint)) return false;
-        _wingetList ??= await LoadWingetListAsync();
-        foreach (var line in _wingetList.Split('\n'))
+        var list = await WingetListAsync();
+        foreach (var line in list.Split('\n'))
         {
             var trimmed = line.TrimStart();
             if (!trimmed.StartsWith(hint, StringComparison.OrdinalIgnoreCase)) continue;
@@ -103,14 +108,39 @@ public static class Detection
         return false;
     }
 
+    /// <summary>The set of every whitespace-delimited token in `winget list` — winget package ids never
+    /// contain spaces, so id membership is an exact token lookup (no substring false-positives, and the
+    /// redirected output isn't column-truncated, so long ids match). Built once from the shared list.</summary>
+    private static Task<HashSet<string>> WingetIdsAsync()
+    {
+        lock (_listLock) return _idsTask ??= BuildWingetIdsAsync();
+    }
+
+    private static async Task<HashSet<string>> BuildWingetIdsAsync()
+    {
+        var text = await WingetListAsync();
+        var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var line in text.Split('\n'))
+            foreach (var tok in line.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries))
+                set.Add(tok);
+        return set;
+    }
+
+    /// <summary>The single, shared `winget list` for this detection pass (see the field comment).</summary>
+    private static Task<string> WingetListAsync()
+    {
+        lock (_listLock) return _listTask ??= LoadWingetListAsync();
+    }
+
     private static async Task<string> LoadWingetListAsync()
     {
         try
         {
             var r = await Proc.RunAsync("winget", new[] { "list", "--disable-interactivity", "--accept-source-agreements" },
-                timeoutSeconds: WingetTimeoutSeconds);
+                timeoutSeconds: WingetListTimeoutSeconds);
+            WingetReachable = true;
             return r.StdOut;
         }
-        catch { return ""; }
+        catch { WingetReachable = false; return ""; }   // timed out / winget missing → treat as "nothing detected"
     }
 }

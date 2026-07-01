@@ -1,3 +1,4 @@
+using WinDeploy.Core.Engine;
 using WinDeploy.Core.Models;
 using WinDeploy.Core.Util;
 
@@ -12,6 +13,9 @@ public static class UpdateChecker
     public static async Task<string> WingetUpgradeOutputAsync(bool force = false)
     {
         if (_cache != null && !force) return _cache;
+        // Detection already probed winget via its single `winget list`; if that timed out (offline), skip
+        // the upgrade check rather than eat another full timeout — there are no upgrades to find offline.
+        if (!Detection.WingetReachable) return _cache = "";
         try
         {
             // Offline, `winget upgrade` can hang reaching for its sources instead of failing fast — cap it
