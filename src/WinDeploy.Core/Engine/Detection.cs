@@ -61,6 +61,11 @@ public static class Detection
         return null;
     }
 
+    /// <summary>Cap on a single `winget` invocation — offline, winget can hang reaching for its sources
+    /// instead of failing fast, which would otherwise stall detection (and the install-center loading
+    /// state) indefinitely.</summary>
+    private const int WingetTimeoutSeconds = 8;
+
     private static async Task<bool> WingetHasAsync(string id)
     {
         try
@@ -68,7 +73,7 @@ public static class Detection
             var r = await Proc.RunAsync("winget", new[]
             {
                 "list", "--id", id, "-e", "--disable-interactivity", "--accept-source-agreements",
-            });
+            }, timeoutSeconds: WingetTimeoutSeconds);
             return r.Ok; // exit 0 = found; avoids the list table truncating long ids
         }
         catch { return false; }
@@ -102,7 +107,8 @@ public static class Detection
     {
         try
         {
-            var r = await Proc.RunAsync("winget", new[] { "list", "--disable-interactivity", "--accept-source-agreements" });
+            var r = await Proc.RunAsync("winget", new[] { "list", "--disable-interactivity", "--accept-source-agreements" },
+                timeoutSeconds: WingetTimeoutSeconds);
             return r.StdOut;
         }
         catch { return ""; }

@@ -2,16 +2,16 @@
 # Build a self-contained single-file GUI (WinDeploy.exe) into build\ — target machines need no .NET runtime.
 # Version comes from the root Directory.Build.props (single source of truth); no need to edit this script.
 # ASCII-only on purpose: runs under both Windows PowerShell 5.1 and pwsh 7 regardless of file encoding.
-#   powershell -ExecutionPolicy Bypass -File build.ps1            # Release / win-x64 -> build\
-#   powershell -ExecutionPolicy Bypass -File build.ps1 -Run       # build then launch
-#   powershell -ExecutionPolicy Bypass -File build.ps1 -Config Debug
+#   powershell -ExecutionPolicy Bypass -File scripts\build.ps1            # Release / win-x64 -> build\
+#   powershell -ExecutionPolicy Bypass -File scripts\build.ps1 -Run       # build then launch
+#   powershell -ExecutionPolicy Bypass -File scripts\build.ps1 -Config Debug
 param(
     [string]$Runtime = 'win-x64',
     [string]$Config  = 'Release',
     [switch]$Run
 )
 $ErrorActionPreference = 'Stop'
-$root = $PSScriptRoot
+$root = Split-Path -Parent $PSScriptRoot
 $out  = Join-Path $root 'build'
 
 # Stop any running instance so the single-file exe isn't locked during clean / publish.

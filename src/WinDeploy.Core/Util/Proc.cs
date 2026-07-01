@@ -12,8 +12,15 @@ public sealed record ProcResult(int ExitCode, string StdOut, string StdErr)
 public static class Proc
 {
     public static async Task<ProcResult> RunAsync(string file, IEnumerable<string> args,
-        string? cwd = null, CancellationToken ct = default, IReadOnlyDictionary<string, string>? env = null)
+        string? cwd = null, CancellationToken ct = default, IReadOnlyDictionary<string, string>? env = null,
+        int? timeoutSeconds = null)
     {
+        // Bound worst-case wait for callers that can't tolerate an indefinite hang (e.g. `winget` reaching
+        // for its sources with no network) — a plain command has no such limit unless one is requested.
+        using var timeoutCts = timeoutSeconds is { } secs ? CancellationTokenSource.CreateLinkedTokenSource(ct) : null;
+        timeoutCts?.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds!.Value));
+        var effectiveCt = timeoutCts?.Token ?? ct;
+
         var psi = BuildPsi(file, args, cwd, env);
         using var p = new Process { StartInfo = psi };
         var so = new StringBuilder();
@@ -25,7 +32,7 @@ public static class Proc
         p.BeginErrorReadLine();
         try
         {
-            await p.WaitForExitAsync(ct);
+            await p.WaitForExitAsync(effectiveCt);
         }
         catch (OperationCanceledException)
         {

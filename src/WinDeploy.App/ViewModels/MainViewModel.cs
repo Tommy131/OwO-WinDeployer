@@ -429,63 +429,71 @@ public sealed class MainViewModel : LocalizedObject
         UpdateChecker.Reset();
 
         var items = Install.Groups.SelectMany(g => g.Items).ToList();
-        _ = FetchIconCacheAsync(items);   // 联网补全缺失图标到本地缓存（与检测并行，先行启动）
-        using var gate = new SemaphoreSlim(8);
-        var tasks = items.Select(async vm =>
-        {
-            await gate.WaitAsync();
-            try { vm.Installed = await Detection.IsInstalledAsync(vm.Model, _resolver); }
-            catch { vm.Installed = false; }
-            finally { gate.Release(); }
-        });
-        await Task.WhenAll(tasks);
-
-        // Store / MSIX apps (no ARP / winget id) — detect via Get-StartApps so ▶启动 appears.
         try
         {
-            var store = await Task.Run(() => StoreApps.All());
-            if (store.Count > 0)
-                foreach (var vm in items.Where(i => i.Installed != true))
-                    if (StoreApps.HasMsixApp(vm.Model.Name)) vm.Installed = true;
-        }
-        catch { /* StartApps unavailable */ }
-
-        // Toolchains exposed via an env var (GOROOT/JAVA_HOME/PHP_HOME/LUA_HOME/GCC_HOME/CATALINA_HOME):
-        // if the var points to an existing dir, treat as installed and use it as the install path so
-        // 打开目录 / 进程状态 / 启动 all work, even if it was installed outside this tool.
-        foreach (var vm in items)
-        {
-            var ev = vm.Model.Detect?.EnvVar;
-            if (string.IsNullOrEmpty(ev)) continue;
-            var envDir = Detection.EnvVarDir(ev);
-            if (envDir == null) continue;
-            vm.Installed = true;
-            if (string.IsNullOrEmpty(vm.Model.InstallPathOverride))
+            _ = FetchIconCacheAsync(items);   // 联网补全缺失图标到本地缓存（与检测并行，先行启动）
+            using var gate = new SemaphoreSlim(8);
+            var tasks = items.Select(async vm =>
             {
-                vm.Model.InstallPathOverride = envDir;
-                SettingsStore.SetInstallPath(vm.Model.Id, envDir);
-            }
-        }
+                await gate.WaitAsync();
+                try { vm.Installed = await Detection.IsInstalledAsync(vm.Model, _resolver); }
+                catch { vm.Installed = false; }
+                finally { gate.Release(); }
+            });
+            await Task.WhenAll(tasks);
 
-        // Portable/git apps installed to a custom folder the catalog/settings don't know about
-        // (e.g. cc-switch under D:\Tools): locate the real .exe (ARP / install-spec / Run key / Start menu)
-        // and remember its directory so detection, launch, and process status all work afterwards.
-        foreach (var vm in items.Where(i => i.Installed != true
-                     && i.Model.Install.Method is "portable" or "git" or "exe" or "manual" or "github-release"))
-        {
+            // Store / MSIX apps (no ARP / winget id) — detect via Get-StartApps so ▶启动 appears.
             try
             {
-                var exe = await Task.Run(() => Launcher.ResolveExePath(vm.Model, _resolver));
-                if (exe == null) continue;
-                vm.Installed = true;
-                BackfillInstallPath(vm.Model, exe);
+                var store = await Task.Run(() => StoreApps.All());
+                if (store.Count > 0)
+                    foreach (var vm in items.Where(i => i.Installed != true))
+                        if (StoreApps.HasMsixApp(vm.Model.Name)) vm.Installed = true;
             }
-            catch { /* skip */ }
+            catch { /* StartApps unavailable */ }
+
+            // Toolchains exposed via an env var (GOROOT/JAVA_HOME/PHP_HOME/LUA_HOME/GCC_HOME/CATALINA_HOME):
+            // if the var points to an existing dir, treat as installed and use it as the install path so
+            // 打开目录 / 进程状态 / 启动 all work, even if it was installed outside this tool.
+            foreach (var vm in items)
+            {
+                var ev = vm.Model.Detect?.EnvVar;
+                if (string.IsNullOrEmpty(ev)) continue;
+                var envDir = Detection.EnvVarDir(ev);
+                if (envDir == null) continue;
+                vm.Installed = true;
+                if (string.IsNullOrEmpty(vm.Model.InstallPathOverride))
+                {
+                    vm.Model.InstallPathOverride = envDir;
+                    SettingsStore.SetInstallPath(vm.Model.Id, envDir);
+                }
+            }
+
+            // Portable/git apps installed to a custom folder the catalog/settings don't know about
+            // (e.g. cc-switch under D:\Tools): locate the real .exe (ARP / install-spec / Run key / Start menu)
+            // and remember its directory so detection, launch, and process status all work afterwards.
+            foreach (var vm in items.Where(i => i.Installed != true
+                         && i.Model.Install.Method is "portable" or "git" or "exe" or "manual" or "github-release"))
+            {
+                try
+                {
+                    var exe = await Task.Run(() => Launcher.ResolveExePath(vm.Model, _resolver));
+                    if (exe == null) continue;
+                    vm.Installed = true;
+                    BackfillInstallPath(vm.Model, exe);
+                }
+                catch { /* skip */ }
+            }
+
+            await RunUpdateCheckAsync(items);   // badge installed apps that have an upgrade
+        }
+        finally
+        {
+            // Guarantee the loading state clears even if a step above throws unexpectedly (e.g. offline
+            // network calls timing out) — otherwise the install center is stuck showing its loading screen.
+            Install.IsLoading = false;
         }
 
-        await RunUpdateCheckAsync(items);   // badge installed apps that have an upgrade
-
-        Install.IsLoading = false;
         _ = PrefetchDetailsAsync(items);
         _ = RefreshIconsAsync(items);
     }

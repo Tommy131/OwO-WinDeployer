@@ -14,10 +14,12 @@ public static class UpdateChecker
         if (_cache != null && !force) return _cache;
         try
         {
+            // Offline, `winget upgrade` can hang reaching for its sources instead of failing fast — cap it
+            // so a disconnected machine doesn't leave the install center stuck in its loading state.
             var r = await Proc.RunAsync("winget", new[]
             {
                 "upgrade", "--include-unknown", "--disable-interactivity", "--accept-source-agreements",
-            });
+            }, timeoutSeconds: 20);
             _cache = r.StdOut;
         }
         catch { _cache = ""; }

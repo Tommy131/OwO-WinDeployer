@@ -20,16 +20,27 @@ public static class StoreApps
         {
             var psi = new ProcessStartInfo("powershell.exe")
             {
-                Arguments = "-NoProfile -ExecutionPolicy Bypass -Command " +
-                            "\"Get-StartApps | ForEach-Object { $_.Name + [char]9 + $_.AppID }\"",
+                ArgumentList =
+                {
+                    "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command",
+                    "Get-StartApps | ForEach-Object { $_.Name + [char]9 + $_.AppID }",
+                },
                 RedirectStandardOutput = true,
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 StandardOutputEncoding = Encoding.UTF8,
             };
             using var p = Process.Start(psi)!;
-            var output = p.StandardOutput.ReadToEnd();
-            p.WaitForExit(8000);
+            // Read asynchronously (event-driven) instead of the blocking ReadToEnd(): offline, PowerShell /
+            // Get-StartApps can stall for a long time (e.g. resolving cloud-only OneDrive placeholders in
+            // the Start Menu index) — ReadToEnd() has no timeout and would hang the caller indefinitely,
+            // stalling install-center detection. WaitForExit(8000) below only bounds THIS wait.
+            var sb = new StringBuilder();
+            p.OutputDataReceived += (_, e) => { if (e.Data != null) sb.AppendLine(e.Data); };
+            p.BeginOutputReadLine();
+            if (!p.WaitForExit(8000)) { try { p.Kill(entireProcessTree: true); } catch { /* already gone */ } }
+            else p.WaitForExit(); // flush pending OutputDataReceived events
+            var output = sb.ToString();
             foreach (var raw in output.Split('\n'))
             {
                 var line = raw.Trim();
