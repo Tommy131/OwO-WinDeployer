@@ -13,5 +13,16 @@
   "tray.resident.body": "A resident icon is now in the notification area. Windows 11 may tuck it into the “^” overflow — expand it and drag the icon onto the taskbar. Double-click to open the app, right-click to manage and exit.",
   "crash.dialogTitle": "An error occurred",
   "crash.dialogBody": "An error occurred (logged to crash.log; the app will keep running):\n\n{0}\n\n{1}",
-  "update.selfFoundBody": "A new version of {0} v{1} is available (current v{2}).\n\nGo to the releases page to download the update?"
+  "update.auto.confirm": "A new version of {0} v{1} is available (current v{2}).\n\nDownload and install it automatically now? The app will restart on its own once the update is applied.",
+  "update.auto.notWritable": "The install folder isn't writable (it may be under an admin-only location), so it can't be updated automatically. The releases page has been opened — please download and install it manually.",
+  "update.auto.relFail": "Couldn't fetch release info (possibly a network issue). The releases page has been opened — please download and install it manually.",
+  "update.auto.noAssets": "This release has no downloadable packages. The releases page has been opened.",
+  "update.auto.badPackage": "Update package verification failed (incomplete download or unexpected format).",
+  "update.auto.downloadFail": "Failed to download the update: {0}\n\nThe releases page has been opened — you can download and install it manually.",
+  "update.auto.readyRestart": "The update has finished downloading. The app will close and restart automatically to finish installing it.",
+  "update.auto.applyFail": "Failed to prepare the install: {0}\n\nThe releases page has been opened — you can download and install it manually.",
+  "update.auto.preparing": "Preparing download…",
+  "update.pick.title": "Choose an update package",
+  "update.pick.body": "Couldn't automatically match a package to how this copy was installed — please pick one:",
+  "update.progress.title": "Downloading update"
 }

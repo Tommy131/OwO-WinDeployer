@@ -97,6 +97,5 @@
   "settings.update.checking": "正在检查更新 …",
   "settings.update.found": "发现新版本 v{0}",
   "settings.update.upToDate": "当前已是最新版本 v{0}",
-  "settings.update.dialogTitle": "检查更新",
-  "settings.update.foundBody": "发现新版本 v{0}（当前 v{1}）。\n\n是否前往发布页下载？"
+  "settings.update.dialogTitle": "检查更新"
 }

@@ -13,5 +13,16 @@
   "tray.resident.body": "Ein dauerhaftes Symbol ist jetzt im Infobereich. Windows 11 legt es evtl. in den „^“-Überlauf — aufklappen und das Symbol auf die Taskleiste ziehen. Doppelklick öffnet die App, Rechtsklick zum Verwalten und Beenden.",
   "crash.dialogTitle": "Ein Fehler ist aufgetreten",
   "crash.dialogBody": "Ein Fehler ist aufgetreten (in crash.log protokolliert; die App läuft weiter):\n\n{0}\n\n{1}",
-  "update.selfFoundBody": "Eine neue Version von {0} v{1} ist verfügbar (aktuell v{2}).\n\nZur Releases-Seite, um das Update herunterzuladen?"
+  "update.auto.confirm": "Eine neue Version von {0} v{1} ist verfügbar (aktuell v{2}).\n\nJetzt automatisch herunterladen und installieren? Die App startet nach der Installation von selbst neu.",
+  "update.auto.notWritable": "Der Installationsordner ist nicht beschreibbar (evtl. an einem Administrator-geschützten Ort) — automatisches Update nicht möglich. Die Releases-Seite wurde geöffnet; bitte manuell herunterladen und installieren.",
+  "update.auto.relFail": "Release-Informationen konnten nicht abgerufen werden (evtl. Netzwerkproblem). Die Releases-Seite wurde geöffnet; bitte manuell herunterladen und installieren.",
+  "update.auto.noAssets": "Für dieses Release gibt es keine herunterladbaren Pakete. Die Releases-Seite wurde geöffnet.",
+  "update.auto.badPackage": "Überprüfung des Updatepakets fehlgeschlagen (unvollständiger Download oder unerwartetes Format).",
+  "update.auto.downloadFail": "Herunterladen des Updates fehlgeschlagen: {0}\n\nDie Releases-Seite wurde geöffnet; Sie können es manuell herunterladen und installieren.",
+  "update.auto.readyRestart": "Das Update wurde vollständig heruntergeladen. Die App wird geschlossen und automatisch neu gestartet, um die Installation abzuschließen.",
+  "update.auto.applyFail": "Vorbereitung der Installation fehlgeschlagen: {0}\n\nDie Releases-Seite wurde geöffnet; Sie können es manuell herunterladen und installieren.",
+  "update.auto.preparing": "Download wird vorbereitet …",
+  "update.pick.title": "Update-Paket auswählen",
+  "update.pick.body": "Es konnte kein Paket automatisch zur Installationsart dieser Kopie zugeordnet werden — bitte wählen Sie eines aus:",
+  "update.progress.title": "Update wird heruntergeladen"
 }

@@ -13,5 +13,16 @@
   "tray.resident.body": "已在任务栏通知区域常驻。Windows 11 可能将其收入「^」溢出区——展开后可拖到任务栏上；双击图标唤起主界面，右键可快速管理并退出。",
   "crash.dialogTitle": "出现错误",
   "crash.dialogBody": "操作出错（已记录到 crash.log，应用将继续运行）：\n\n{0}\n\n{1}",
-  "update.selfFoundBody": "发现新版本 {0} v{1}（当前 v{2}）。\n\n是否前往发布页下载更新？"
+  "update.auto.confirm": "发现新版本 {0} v{1}（当前 v{2}）。\n\n是否现在自动下载并安装？下载完成后应用会自动重启以完成更新。",
+  "update.auto.notWritable": "当前安装目录不可写入（可能装在需要管理员权限的位置），无法自动更新。已为你打开发布页，请手动下载安装。",
+  "update.auto.relFail": "获取发布信息失败（可能是网络问题），已为你打开发布页，请手动下载安装。",
+  "update.auto.noAssets": "该发布版本没有可用的安装包，已为你打开发布页。",
+  "update.auto.badPackage": "更新包校验失败（下载不完整或格式异常）。",
+  "update.auto.downloadFail": "下载更新失败：{0}\n\n已为你打开发布页，可手动下载安装。",
+  "update.auto.readyRestart": "更新已下载完成，应用即将关闭并自动重启以完成安装。",
+  "update.auto.applyFail": "准备安装失败：{0}\n\n已为你打开发布页，可手动下载安装。",
+  "update.auto.preparing": "正在准备下载…",
+  "update.pick.title": "选择更新包",
+  "update.pick.body": "未能自动匹配当前安装方式对应的安装包，请手动选择：",
+  "update.progress.title": "下载更新"
 }

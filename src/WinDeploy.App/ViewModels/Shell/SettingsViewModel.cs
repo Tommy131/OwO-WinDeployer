@@ -73,9 +73,7 @@ public sealed class SettingsViewModel : ObservableObject
         {
             UpdateNote = Localizer.Format("settings.update.found", r.Latest);
             AuditLog.Action($"检查更新：发现新版本 v{r.Latest}（当前 v{r.Current}）");
-            if (Dialogs.Show(Localizer.Format("settings.update.foundBody", r.Latest, r.Current),
-                    Localizer.T("settings.update.dialogTitle"), MessageBoxButton.YesNo, MessageBoxImage.Information) == MessageBoxResult.Yes)
-                OpenUrl(r.HtmlUrl);
+            await SelfUpdateFlow.OfferAsync(r);
         }
         else UpdateNote = Localizer.Format("settings.update.upToDate", r.Current);
     }

@@ -95,16 +95,7 @@ public sealed class MainViewModel : LocalizedObject
         {
             var r = await SelfUpdate.CheckAsync();
             if (!r.Available) return;   // up-to-date / offline / no release → stay quiet at startup
-            await Application.Current.Dispatcher.InvokeAsync(() =>
-            {
-                var msg = Localizer.Format("update.selfFoundBody", WinDeploy.App.AppInfo.Name, r.Latest, r.Current);
-                if (Dialogs.Show(msg, Localizer.T("settings.update.dialogTitle"), MessageBoxButton.YesNo, MessageBoxImage.Information) == MessageBoxResult.Yes)
-                {
-                    AuditLog.Action($"自更新：用户前往下载 v{r.Latest}");
-                    try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(r.HtmlUrl) { UseShellExecute = true }); }
-                    catch { /* ignore */ }
-                }
-            });
+            await SelfUpdateFlow.OfferAsync(r);
         }
         catch { /* stay quiet */ }
     }
