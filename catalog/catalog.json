@@ -715,6 +715,37 @@
       "homepage": "https://www.gog.com",
       "install": { "method": "winget", "id": "GOG.Galaxy" } },
 
+    // ══ 常用软件扩充（CS 对战平台 / 电竞客户端） ══════════════════════════════
+    { "id": "faceit", "name": "FACEIT", "summary": "国际主流第三方竞技对战平台（CS2 等）", "icon": "assets/icons/faceit.svg",
+      "category": "games", "default": false,
+      "homepage": "https://www.faceit.com",
+      "install": { "method": "winget", "id": "FACEITLTD.FACEITClient" } },
+
+    { "id": "faceit-ac", "name": "FACEIT Anti-Cheat", "summary": "FACEIT 反作弊客户端（打排位赛需要）", "icon": "assets/icons/faceit-ac.svg",
+      "category": "games", "default": false,
+      "homepage": "https://www.faceit.com",
+      "install": { "method": "winget", "id": "FACEITLTD.FACEITAC" } },
+
+    { "id": "5e-client", "name": "5E对战平台", "summary": "国内 CS2 竞技对战平台（5EPlay）", "icon": "assets/icons/5e-client.svg",
+      "category": "games", "default": false,
+      "homepage": "https://www.5eplay.com",
+      "install": { "method": "winget", "id": "5E.5EClient" } },
+
+    { "id": "pw-arena", "name": "完美世界竞技平台", "summary": "国内 CS2 / Dota2 对战平台", "icon": "assets/icons/pw-arena.svg",
+      "category": "games", "default": false,
+      "homepage": "https://pvp.wanmei.com",
+      "install": { "method": "winget", "id": "PerfectWorld.PerfectWorldArena" } },
+
+    { "id": "lol-cn", "name": "英雄联盟", "summary": "腾讯代理国服客户端（官网手动下载）", "icon": "assets/icons/lol-cn.svg",
+      "category": "games", "default": false,
+      "homepage": "https://lol.qq.com",
+      "install": { "method": "manual" } },
+
+    { "id": "valorant-cn", "name": "无畏契约", "summary": "腾讯代理国服客户端（官网手动下载）", "icon": "assets/icons/valorant-cn.svg",
+      "category": "games", "default": false,
+      "homepage": "https://val.qq.com",
+      "install": { "method": "manual" } },
+
     // ══ 运行时 / 解释器（便携，自动设置 *_HOME 环境变量） ══════════════════
     { "id": "php", "name": "PHP", "summary": "PHP 解释器（多版本可共存，安装时选择版本，自动设置 PHP_HOME）", "icon": "assets/icons/php.svg",
       "category": "dev", "default": false,
