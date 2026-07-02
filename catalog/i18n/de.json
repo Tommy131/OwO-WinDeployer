@@ -76,6 +76,7 @@
   "sublime-merge": "Git-Client",
   "visual-studio": "Umfangreiche C++/.NET-IDE (Community)",
   "comfyui": "KI-Bildgenerierungs-Workflow",
+  "stability-matrix": "Stable-Diffusion-Paketmanager (GitHub-Release wählen, nach Plattform gefiltert)",
   "lmstudio": "Lokale große Sprachmodelle ausführen",
   "ollama": "Lokale große Sprachmodelle ausführen (mit GUI)",
   "llama-cpp": "C++-LLM-Inferenz-Engine (llama-cli / llama-server)",

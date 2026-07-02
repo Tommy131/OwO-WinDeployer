@@ -158,6 +158,12 @@
       "category": "ai", "default": false,
       "install": { "method": "winget", "id": "Comfy.ComfyUI-Desktop" } },
 
+    { "id": "stability-matrix", "name": "Stability Matrix", "summary": "Stable Diffusion 工具包管理器（选择 GitHub 发布版，按平台过滤）", "icon": "assets/icons/stability-matrix.svg",
+      "category": "ai", "default": false,
+      "homepage": "https://github.com/LykosAI/StabilityMatrix",
+      "install": { "method": "github-release" },
+      "detect": { "path": "${ToolsDir}/stability-matrix/StabilityMatrix.exe" } },
+
     { "id": "lmstudio", "name": "LM Studio", "summary": "本地大模型运行", "icon": "assets/icons/lmstudio.svg",
       "category": "ai", "default": false,
       "install": { "method": "winget", "id": "ElementLabs.LMStudio" },
