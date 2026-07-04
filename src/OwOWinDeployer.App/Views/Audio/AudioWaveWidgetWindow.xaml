@@ -4,7 +4,7 @@
         Title="音频波形"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         ShowInTaskbar="False" ResizeMode="CanResize" Topmost="False"
-        Width="360" Height="200" MinWidth="280" MinHeight="150" MaxWidth="960" MaxHeight="600">
+        Width="360" Height="216" MinWidth="280" MinHeight="176" MaxWidth="960" MaxHeight="620">
   <!-- Same pure-WPF frosted glass as the Quick Launch widget: one rounded clip (RoundClip) shapes every layer so
        blur + corners are a single anti-aliased whole. Layer 1 = blurred capture of the screen behind (grabbed in
        code-behind, this window excluded from capture); layer 2 = theme/see-through tint; layer 3 = content. -->
@@ -25,8 +25,8 @@
       <Grid>
         <Grid.RowDefinitions>
           <RowDefinition Height="Auto" />
-          <RowDefinition Height="Auto" />
           <RowDefinition Height="*" />
+          <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <!-- Header: doubles as the drag handle (see code-behind). -->
@@ -56,27 +56,8 @@
                   Foreground="{DynamicResource TextSecondary}" ToolTip="{DynamicResource S.widget.close}" />
         </Grid>
 
-        <!-- Now Playing strip (album art + title/artist). Collapsed when nothing is playing. -->
-        <Grid x:Name="NowPlayingBar" Grid.Row="1" Margin="10,0,8,4" Visibility="Collapsed">
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="Auto" />
-            <ColumnDefinition Width="*" />
-          </Grid.ColumnDefinitions>
-          <Border Grid.Column="0" Width="36" Height="36" CornerRadius="6" SnapsToDevicePixels="True">
-            <Border.Background>
-              <ImageBrush x:Name="ArtBrush" Stretch="UniformToFill" />
-            </Border.Background>
-          </Border>
-          <StackPanel Grid.Column="1" Margin="9,0,0,0" VerticalAlignment="Center">
-            <TextBlock x:Name="TrackTitle" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"
-                       TextTrimming="CharacterEllipsis" />
-            <TextBlock x:Name="TrackArtist" FontSize="11" Foreground="{DynamicResource TextSecondary}"
-                       TextTrimming="CharacterEllipsis" Margin="0,1,0,0" />
-          </StackPanel>
-        </Grid>
-
-        <!-- Visualization host: the WaveformRenderer element is inserted here in code-behind. -->
-        <Grid Grid.Row="2" Margin="8,2,8,4">
+        <!-- Visualization host (Row 1, star): waveform centred here. WaveformRenderer inserted in code-behind. -->
+        <Grid Grid.Row="1" Margin="8,2,8,2">
           <Border x:Name="VizHost" />
           <!-- Readout sits in a translucent rounded chip so the waveform behind it never obscures the text. -->
           <Border x:Name="ReadoutChip" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,3,2"
@@ -90,6 +71,40 @@
           <TextBlock x:Name="NoDeviceHint" Text="{DynamicResource S.audiowave.noDevice}" FontSize="12"
                      Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" TextAlignment="Center"
                      VerticalAlignment="Center" Visibility="Collapsed" Margin="10,0" />
+        </Grid>
+
+        <!-- Now Playing strip (Row 2, bottom): album art + title/artist + progress bar. Collapsed when idle.
+             Placing it below the waveform (with the header above) keeps the waveform vertically centred. -->
+        <Grid x:Name="NowPlayingBar" Grid.Row="2" Margin="10,2,10,7" Visibility="Collapsed">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <Border Grid.Column="0" Width="38" Height="38" CornerRadius="6" SnapsToDevicePixels="True">
+            <Border.Background>
+              <ImageBrush x:Name="ArtBrush" Stretch="UniformToFill" />
+            </Border.Background>
+          </Border>
+          <StackPanel Grid.Column="1" Margin="9,0,0,0" VerticalAlignment="Center">
+            <TextBlock x:Name="TrackTitle" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"
+                       TextTrimming="CharacterEllipsis" />
+            <TextBlock x:Name="TrackArtist" FontSize="11" Foreground="{DynamicResource TextSecondary}"
+                       TextTrimming="CharacterEllipsis" Margin="0,1,0,0" />
+            <Grid Margin="0,4,0,0">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+              </Grid.ColumnDefinitions>
+              <Border x:Name="ProgTrack" Grid.Column="0" Height="3" CornerRadius="2" VerticalAlignment="Center"
+                      Background="{DynamicResource BorderSoft}" HorizontalAlignment="Stretch">
+                <Border x:Name="ProgFill" Height="3" CornerRadius="2" Width="0" HorizontalAlignment="Left"
+                        Background="{DynamicResource Accent}" />
+              </Border>
+              <TextBlock x:Name="ProgTime" Grid.Column="1" Margin="8,0,0,0" FontSize="10"
+                         FontFamily="Cascadia Mono, Consolas" Foreground="{DynamicResource TextTertiary}"
+                         VerticalAlignment="Center" />
+            </Grid>
+          </StackPanel>
         </Grid>
       </Grid>
     </Border>

@@ -36,6 +36,7 @@ public partial class AudioWaveWidgetWindow : Window
     private readonly DispatcherTimer _settle;
     private readonly DispatcherTimer _refresh;
     private readonly DispatcherTimer _readoutTimer;   // updates the note · BPM · level readout ~4×/s
+    private readonly DispatcherTimer _progressTimer;  // advances the now-playing progress bar
     private readonly bool _native;
 
     public AudioWaveWidgetWindow(SettingsViewModel settings)
@@ -55,6 +56,8 @@ public partial class AudioWaveWidgetWindow : Window
         _refresh.Tick += (_, _) => CaptureBackground();
         _readoutTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
         _readoutTimer.Tick += (_, _) => UpdateReadout();
+        _progressTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+        _progressTimer.Tick += (_, _) => UpdateProgress();
 
         Header.MouseLeftButtonDown += (_, e) => { if (e.ChangedButton == MouseButton.Left) { try { DragMove(); } catch { } } };
         CloseButton.Click += (_, _) => CloseRequested?.Invoke();
@@ -120,9 +123,28 @@ public partial class AudioWaveWidgetWindow : Window
         TrackTitle.Text = np.Title;
         TrackArtist.Text = np.Artist;
         ArtBrush.ImageSource = np.Art;
+        if (np.Accent is { } ac) ProgFill.Background = new SolidColorBrush(ac);   // tint progress to the album colour
         _renderer.AlbumColor = np.Accent;
         if (_renderer.Color == WaveColor.Album)
             _renderer.Apply(_renderer.Kind, WaveColor.Album, _renderer.Sensitivity);
+        if (np.HasTrack && IsVisible) { _progressTimer.Start(); UpdateProgress(); }
+        else _progressTimer.Stop();
+    }
+
+    /// <summary>Advance the now-playing progress bar + time label from the media session's timeline.</summary>
+    private void UpdateProgress()
+    {
+        var (pos, dur) = _media.GetProgress();
+        if (dur <= 0) { ProgFill.Width = 0; ProgTime.Text = ""; return; }
+        ProgFill.Width = Math.Max(0, ProgTrack.ActualWidth * Math.Clamp(pos / dur, 0, 1));
+        ProgTime.Text = $"{FormatTime(pos)} / {FormatTime(dur)}";
+    }
+
+    private static string FormatTime(double sec)
+    {
+        if (sec < 0 || double.IsNaN(sec)) sec = 0;
+        int t = (int)sec;
+        return $"{t / 60}:{t % 60:00}";
     }
 
     // ── audio lifecycle (capture only runs while visible) ──────────────────────
@@ -132,6 +154,7 @@ public partial class AudioWaveWidgetWindow : Window
         _renderer.Start();
         NoDeviceHint.Visibility = _capture.IsRunning ? Visibility.Collapsed : Visibility.Visible;
         if (SettingsStore.Load().AudioWidgetReadout && _capture.IsRunning) _readoutTimer.Start();
+        if (_media.Current.HasTrack) { _progressTimer.Start(); UpdateProgress(); }
     }
 
     private void StopAudio()
@@ -139,6 +162,7 @@ public partial class AudioWaveWidgetWindow : Window
         _renderer.Stop();
         _capture.Stop();
         _readoutTimer.Stop();
+        _progressTimer.Stop();
         HideReadout();
     }
 

@@ -82,6 +82,25 @@ public sealed class MediaSessionService : IDisposable
         catch { /* keep last known */ }
     }
 
+    /// <summary>Current playback position and total duration in seconds (0,0 when unknown). While playing, the
+    /// position is extrapolated from the last SMTC update so a progress bar advances smoothly between updates.</summary>
+    public (double pos, double dur) GetProgress()
+    {
+        try
+        {
+            var s = _session;
+            if (s == null) return (0, 0);
+            var tl = s.GetTimelineProperties();
+            double dur = (tl.EndTime - tl.StartTime).TotalSeconds;
+            double pos = (tl.Position - tl.StartTime).TotalSeconds;
+            if (Current.IsPlaying && tl.LastUpdatedTime != default)
+                pos += Math.Max(0, (DateTimeOffset.Now - tl.LastUpdatedTime).TotalSeconds);
+            if (dur > 0) pos = Math.Clamp(pos, 0, dur);
+            return (pos < 0 ? 0 : pos, dur < 0 ? 0 : dur);
+        }
+        catch { return (0, 0); }
+    }
+
     private async Task<(ImageSource?, Color?)> LoadArtAsync(IRandomAccessStreamReference reference)
     {
         try
