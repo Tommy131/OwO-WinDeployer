@@ -81,11 +81,23 @@
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="Auto" />
           </Grid.ColumnDefinitions>
-          <Border Grid.Column="0" Width="38" Height="38" CornerRadius="6" SnapsToDevicePixels="True">
-            <Border.Background>
-              <ImageBrush x:Name="ArtBrush" Stretch="UniformToFill" />
-            </Border.Background>
-          </Border>
+          <!-- Album art doubles as a source switcher: with >1 app playing, a "1/2" badge appears and tapping cycles
+               which source the strip shows (the waveform itself is always the full system mix). -->
+          <Grid Grid.Column="0" x:Name="SourceSwitch" Width="38" Height="38" Background="Transparent">
+            <Border CornerRadius="6" SnapsToDevicePixels="True">
+              <Border.Background>
+                <ImageBrush x:Name="ArtBrush" Stretch="UniformToFill" />
+              </Border.Background>
+            </Border>
+            <Border x:Name="SourceBadge" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,1,1,0"
+                    CornerRadius="7" Padding="4,0" MinWidth="16" Height="14" Visibility="Collapsed">
+              <Border.Background>
+                <SolidColorBrush Color="#000000" Opacity="0.66" />
+              </Border.Background>
+              <TextBlock x:Name="SourceBadgeText" FontSize="9" FontWeight="SemiBold" Foreground="#F5F5F5"
+                         HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+          </Grid>
           <StackPanel Grid.Column="1" Margin="9,0,0,0" VerticalAlignment="Center">
             <TextBlock x:Name="TrackTitle" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimary}"
                        TextTrimming="CharacterEllipsis" />

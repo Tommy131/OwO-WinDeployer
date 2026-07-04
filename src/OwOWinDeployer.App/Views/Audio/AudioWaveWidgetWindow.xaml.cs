@@ -72,6 +72,9 @@ public partial class AudioWaveWidgetWindow : Window
         PrevButton.Click += (_, _) => _media.SkipPrevious();
         NextButton.Click += (_, _) => _media.SkipNext();
         PlayPauseButton.Click += (_, _) => _media.TogglePlayPause();
+        // Tap the album art to cycle which media source the strip follows (only meaningful with >1 source).
+        SourceSwitch.MouseLeftButtonUp += (_, _) => _media.SwitchSource();
+        SourceSwitch.SetResourceReference(ToolTipProperty, "S.audiowave.switchSource");
         SeekArea.MouseLeftButtonDown += (_, e) =>
         {
             if (!_canSeek || _lastDur <= 0) return;
@@ -144,6 +147,13 @@ public partial class AudioWaveWidgetWindow : Window
         TrackTitle.Text = np.Title;
         TrackArtist.Text = np.Artist;
         ArtBrush.ImageSource = np.Art;
+
+        // Source switcher: badge + hand cursor only when more than one app is currently playing.
+        bool multi = np.SourceCount > 1;
+        SourceBadge.Visibility = multi ? Visibility.Visible : Visibility.Collapsed;
+        if (multi) SourceBadgeText.Text = $"{np.SourceIndex}/{np.SourceCount}";
+        SourceSwitch.Cursor = multi ? Cursors.Hand : Cursors.Arrow;
+
         if (np.Accent is { } ac) ProgFill.Background = new SolidColorBrush(ac);   // tint progress to the album colour
         _renderer.AlbumColor = np.Accent;
         if (_renderer.Color == WaveColor.Album)

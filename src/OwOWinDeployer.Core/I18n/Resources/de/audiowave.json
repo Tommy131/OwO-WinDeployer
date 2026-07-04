@@ -4,6 +4,7 @@
   "audiowave.cycleColor": "Farbe wechseln",
   "audiowave.noDevice": "Keine Audioausgabe erkannt. Spiele etwas ab oder prüfe dein Standard-Wiedergabegerät.",
   "audiowave.perfNotice": "Das Audio-Wellenform-Widget erfasst laufend die Lautsprecherausgabe und zeichnet in Echtzeit neu, daher nutzt es etwas CPU/GPU (meist wenige Prozent, bei aufwendigeren Stilen mehr). Es wird nur Audio auf diesem Gerät analysiert — nichts wird aufgezeichnet oder gesendet. Du kannst es jederzeit in den Einstellungen deaktivieren.",
+  "audiowave.switchSource": "Audioquelle wechseln (mehrere Apps spielen)",
   "audiowave.prev": "Vorheriger Titel",
   "audiowave.playPause": "Wiedergabe / Pause",
   "audiowave.next": "Nächster Titel"

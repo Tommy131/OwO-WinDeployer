@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
@@ -9,12 +10,14 @@ namespace OwOWinDeployer.App.Services.Audio;
 
 /// <summary>What's playing right now, per the Windows System Media Transport Controls (the same source that powers
 /// the media flyout). <see cref="Accent"/> is the dominant vibrant colour extracted from the album art (for the
-/// "album" colour scheme).</summary>
+/// "album" colour scheme). <see cref="SourceCount"/> is how many apps currently expose media (YouTube in a browser,
+/// a music player, …); <see cref="SourceIndex"/> is the 1-based position of the one shown — the widget uses these to
+/// offer a source switcher when more than one app is playing.</summary>
 public sealed record NowPlaying(string Title, string Artist, ImageSource? Art, Color? Accent, bool IsPlaying,
-    bool CanPrev, bool CanNext, bool CanPlayPause, bool CanSeek)
+    bool CanPrev, bool CanNext, bool CanPlayPause, bool CanSeek, int SourceCount, int SourceIndex)
 {
     public bool HasTrack => !string.IsNullOrWhiteSpace(Title);
-    public static readonly NowPlaying None = new("", "", null, null, false, false, false, false, false);
+    public static readonly NowPlaying None = new("", "", null, null, false, false, false, false, false, 0, 0);
 }
 
 /// <summary>Reads the current media session (title / artist / album art / play state) from Windows' SMTC and raises
@@ -24,7 +27,10 @@ public sealed class MediaSessionService : IDisposable
 {
     private readonly Dispatcher _ui;
     private GlobalSystemMediaTransportControlsSessionManager? _mgr;
-    private GlobalSystemMediaTransportControlsSession? _session;
+    private GlobalSystemMediaTransportControlsSession? _session;                                   // the one shown
+    private readonly List<GlobalSystemMediaTransportControlsSession> _sessions = new();            // every source
+    private string? _pinnedSourceId;   // source the user picked via SwitchSource; null = auto-follow the playing one
+    private int _sourceCount, _sourceIndex;   // snapshot for NowPlaying (written on the UI thread in Hook)
     private bool _disposed;
 
     public event Action<NowPlaying>? Changed;
@@ -38,30 +44,89 @@ public sealed class MediaSessionService : IDisposable
         {
             _mgr = await GlobalSystemMediaTransportControlsSessionManager.RequestAsync();
             if (_disposed) return;
-            _mgr.CurrentSessionChanged += (_, _) => HookSession();
-            HookSession();
+            // A source starting/stopping fires SessionsChanged; the system's "current" pick changing fires
+            // CurrentSessionChanged. Re-evaluate on both. Marshal to the UI thread so the session list is single-threaded.
+            _mgr.CurrentSessionChanged += (_, _) => Post(Rebuild);
+            _mgr.SessionsChanged += (_, _) => Post(Rebuild);
+            Post(Rebuild);
         }
         catch { /* SMTC unavailable (older Windows / no media) — stay at None */ }
     }
 
-    private void HookSession()
+    private void Post(Action a) => _ui.InvokeAsync(() => { if (!_disposed) a(); });
+
+    /// <summary>Re-enumerate every media source (one per app) into a stable order, then (re)pick which to display.
+    /// Runs on the UI thread so <see cref="_sessions"/> is only ever touched from one thread.</summary>
+    private void Rebuild()
+    {
+        _sessions.Clear();
+        try
+        {
+            var live = _mgr?.GetSessions();
+            if (live != null) _sessions.AddRange(live);
+        }
+        catch { /* transient */ }
+        // Stable order (by app id) so the switcher cycles predictably as tracks change.
+        _sessions.Sort((a, b) => string.CompareOrdinal(a.SourceAppUserModelId, b.SourceAppUserModelId));
+        Select();
+    }
+
+    /// <summary>Pick the session to show: the source the user pinned (if still present), else the first that is
+    /// actually <i>playing</i> (so we never sit on a paused source while another plays), else Windows' current
+    /// session, else the first available.</summary>
+    private void Select()
+    {
+        GlobalSystemMediaTransportControlsSession? pick = null;
+        if (_pinnedSourceId != null)
+            pick = _sessions.FirstOrDefault(s => s.SourceAppUserModelId == _pinnedSourceId);
+        if (pick == null)
+        {
+            _pinnedSourceId = null;   // pinned source vanished → fall back to auto-follow
+            pick = _sessions.FirstOrDefault(IsPlaying);
+            if (pick == null) { try { pick = _mgr?.GetCurrentSession(); } catch { } }
+            pick ??= _sessions.FirstOrDefault();
+        }
+        Hook(pick);
+    }
+
+    private void Hook(GlobalSystemMediaTransportControlsSession? pick)
+    {
+        _sourceCount = _sessions.Count;
+        _sourceIndex = pick == null ? 0 : _sessions.FindIndex(s => ReferenceEquals(s, pick)) + 1;
+        if (ReferenceEquals(_session, pick)) { _ = RefreshAsync(); return; }
+        if (_session != null)
+        {
+            _session.MediaPropertiesChanged -= OnChanged;
+            _session.PlaybackInfoChanged -= OnChanged;
+        }
+        _session = pick;
+        if (_session != null)
+        {
+            _session.MediaPropertiesChanged += OnChanged;
+            _session.PlaybackInfoChanged += OnChanged;
+        }
+        _ = RefreshAsync();
+    }
+
+    private static bool IsPlaying(GlobalSystemMediaTransportControlsSession s)
+    {
+        try { return s.GetPlaybackInfo()?.PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing; }
+        catch { return false; }
+    }
+
+    /// <summary>Cycle the now-playing strip to the next media source and pin it (so it stays put until that source
+    /// disappears, even if another app grabs the system's "current" slot). No-op with a single source.</summary>
+    public void SwitchSource()
     {
         try
         {
-            if (_session != null)
-            {
-                _session.MediaPropertiesChanged -= OnChanged;
-                _session.PlaybackInfoChanged -= OnChanged;
-            }
-            _session = _mgr?.GetCurrentSession();
-            if (_session != null)
-            {
-                _session.MediaPropertiesChanged += OnChanged;
-                _session.PlaybackInfoChanged += OnChanged;
-            }
-            _ = RefreshAsync();
+            if (_sessions.Count <= 1) return;
+            int cur = _session == null ? -1 : _sessions.FindIndex(s => ReferenceEquals(s, _session));
+            var next = _sessions[(cur + 1) % _sessions.Count];
+            _pinnedSourceId = next.SourceAppUserModelId;
+            Hook(next);
         }
-        catch { /* transient */ }
+        catch { /* list shifted under us — next Rebuild will settle it */ }
     }
 
     private void OnChanged(object? s, object? e) => _ = RefreshAsync();
@@ -100,7 +165,8 @@ public sealed class MediaSessionService : IDisposable
             catch { }
 
             (ImageSource? art, Color? accent) = props?.Thumbnail != null ? await LoadArtAsync(props.Thumbnail) : (null, null);
-            Publish(new NowPlaying(props?.Title ?? "", props?.Artist ?? "", art, accent, playing, cprev, cnext, cplay, cseek));
+            Publish(new NowPlaying(props?.Title ?? "", props?.Artist ?? "", art, accent, playing, cprev, cnext, cplay, cseek,
+                _sourceCount, _sourceIndex));
         }
         catch { /* keep last known */ }
     }
