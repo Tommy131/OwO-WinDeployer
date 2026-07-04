@@ -292,8 +292,8 @@ public sealed class MainViewModel : LocalizedObject
         var misc = new NavGroupViewModel("", "nav.group.misc");
         misc.Items.Add(new("", "nav.launcher", QuickLaunch));
         misc.Items.Add(new("", "nav.logs", Logs));
-        misc.Items.Add(new("", "nav.settings", Settings));
         misc.Items.Add(new("\uE946", "nav.about", About));
+        misc.Items.Add(new("", "nav.settings", Settings));
 
         foreach (var g in new[] { deploy, system, dev, misc }) NavGroups.Add(g);
     }

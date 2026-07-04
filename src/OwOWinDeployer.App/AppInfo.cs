@@ -1,7 +1,7 @@
 // ============================================================================
 //  OwO! Win Deployer — Community Edition
 //  Copyright (C) 2026 HanskiJay (GitHub: Tommy131) <hanskijay@owoblog.com>
-//  Blog: https://owoblog.com/  ·  Donation: https://owoblog.com/donation
+//  Blog: https://owoblog.com/  ·  Donation: https://buymeacoffee.com/hanskijay
 //
 //  This file is part of OwO! Win Deployer. The author's copyright and identity
 //  below are the SINGLE SOURCE referenced across the app (window title, About
@@ -34,7 +34,7 @@ public static class AppInfo
     public const string AuthorGitHub = "Tommy131";
     public const string AuthorGitHubUrl = "https://github.com/Tommy131";
     public const string Email = "hanskijay@owoblog.com";
-    public const string DonationUrl = "https://owoblog.com/donation";
+    public const string DonationUrl = "https://buymeacoffee.com/hanskijay";
     public const string ServiceUrl = "https://owoblog.com/service";
     public const string BlogUrl = "https://owoblog.com/";
     public const int Year = 2026;
