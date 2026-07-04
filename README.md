@@ -721,7 +721,23 @@ WSL, System Tweaks, Advanced Tools, Cloudflare DDNS, and other advanced features
 
 ---
 
+## Third-Party Dependencies
+
+This app is built on the following open-source libraries — many thanks to their authors. Each is used under its own license.
+
+| Library | Version | Purpose | License |
+|---|---|---|---|
+| [.NET 10 · WPF](https://dotnet.microsoft.com/) | 10.0 | The app framework and UI the whole application runs on | MIT |
+| [NAudio](https://github.com/naudio/NAudio) | 2.2.1 | Audio capture & DSP — powers the desktop audio waveform widget (WASAPI loopback + FFT) | MIT |
+| [AvalonEdit](https://github.com/icsharpcode/AvalonEdit) | 6.3.0.90 | Code editor with line numbers and syntax highlighting (service-config editor) | MIT |
+| [LibreHardwareMonitorLib](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor) | 0.9.4 | Hardware sensors (CPU/GPU power, temperature, load) for the system overview / temperature monitor | MPL-2.0 / MIT |
+| [System.Speech](https://www.nuget.org/packages/System.Speech) | 9.0.0 | System text-to-speech for the hardware temperature voice alerts | MIT |
+
+---
+
 ## License
+
+> **Edition: Community** — this open-source build is provided **free, for personal study and research only**. Commercial use of any kind is not permitted; for a commercial license contact the author (see below).
 
 This project is released to the public under the **CC BY-NC-SA 4.0** (Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International) license. Full terms: [`LICENSE`](LICENSE).
 
@@ -746,10 +762,10 @@ This project is released to the public under the **CC BY-NC-SA 4.0** (Creative C
 
 ### Author's Reserved Rights
 
-**Tommy131** is the sole copyright holder and is **not bound by the NonCommercial restriction**. The author retains all rights, including commercial use and the right to issue the software under different terms (dual-licensing).
+**HanskiJay** (GitHub: **Tommy131**) is the sole copyright holder and is **not bound by the NonCommercial restriction**. The author retains all rights, including commercial use and the right to issue the software under different terms (dual-licensing).
 
-**Commercial licensing inquiries**: hanskijay@owoblog.com
+**Commercial licensing inquiries**: hanskijay@owoblog.com · <https://owoblog.com/service>
 
 ---
 
-Copyright © 2026 Tommy131 · <https://github.com/Tommy131>
+Copyright © 2026 HanskiJay (GitHub: [Tommy131](https://github.com/Tommy131)) · <hanskijay@owoblog.com> · <https://owoblog.com/>

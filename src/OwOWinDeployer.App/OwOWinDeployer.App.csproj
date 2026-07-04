@@ -15,13 +15,9 @@
     <LangVersion>latest</LangVersion>
     <RootNamespace>OwOWinDeployer.App</RootNamespace>
     <AssemblyName>OwOWinDeployer</AssemblyName>
-    <Product>OwO! Win Deployer</Product>
-    <!-- 版本号见根 Directory.Build.props（App / CLI / Core 跨产物单一来源） -->
+    <!-- 版本号 + 作者/公司/产品/版权 均见根 Directory.Build.props（App / CLI / Core 跨产物单一来源，内嵌进程序集）。 -->
     <AssemblyTitle>OwO! Win Deployer</AssemblyTitle>
-    <Description>OwO! Win Deployer — 一键复刻 Windows 开发环境、应用与个人配置</Description>
-    <Authors>Tommy131</Authors>
-    <Company>Tommy131</Company>
-    <Copyright>© 2026 Tommy131</Copyright>
+    <Description>OwO! Win Deployer — 一键复刻 Windows 开发环境、应用与个人配置（开源社区版）</Description>
 
     <!-- EXE 文件图标（资源管理器/任务栏/窗口） -->
     <ApplicationIcon>app.ico</ApplicationIcon>

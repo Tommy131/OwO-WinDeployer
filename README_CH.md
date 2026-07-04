@@ -707,7 +707,23 @@ WSL、系统调优、高级工具等专业功能通过**开发人员模式**门�
 
 ---
 
+## 第三方依赖 Third-Party Dependencies
+
+本软件基于以下开源库构建，向各库作者致谢——每个库均按其各自的许可协议使用。
+
+| 库 | 版本 | 用途 | 许可 |
+|---|---|---|---|
+| [.NET 10 · WPF](https://dotnet.microsoft.com/) | 10.0 | 整个应用运行所依赖的应用框架与界面 | MIT |
+| [NAudio](https://github.com/naudio/NAudio) | 2.2.1 | 音频采集与信号处理——驱动桌面音频波形组件（WASAPI loopback + FFT） | MIT |
+| [AvalonEdit](https://github.com/icsharpcode/AvalonEdit) | 6.3.0.90 | 带行号与语法高亮的代码编辑器（服务配置编辑器） | MIT |
+| [LibreHardwareMonitorLib](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor) | 0.9.4 | 硬件传感器（CPU/GPU 功耗、温度、负载），用于系统概览 / 温度监控 | MPL-2.0 / MIT |
+| [System.Speech](https://www.nuget.org/packages/System.Speech) | 9.0.0 | 系统语音合成（TTS），用于硬件温度语音告警 | MIT |
+
+---
+
 ## 版权许可 License
+
+> **版本类型：社区版（Community）** —— 本开源版本**免费提供，仅限个人学习与研究使用**，禁止任何形式的商业用途；商业授权请联系作者（见下）。
 
 本项目对外采用 **CC BY-NC-SA 4.0**（署名 - 非商业性使用 - 相同方式共享 4.0 国际）许可，完整条款见 [`LICENSE`](LICENSE)。
 
@@ -732,10 +748,10 @@ WSL、系统调优、高级工具等专业功能通过**开发人员模式**门�
 
 ### 作者特权
 
-作者 **Tommy131** 为唯一版权持有人，**不受「非商业」限制约束**，保留包括商业使用与另行授权（双重许可）在内的全部权利。
+作者 **HanskiJay**（GitHub：**Tommy131**）为唯一版权持有人，**不受「非商业」限制约束**，保留包括商业使用与另行授权（双重许可）在内的全部权利。
 
-**商业授权咨询**：hanskijay@owoblog.com
+**商业授权咨询**：hanskijay@owoblog.com · <https://owoblog.com/service>
 
 ---
 
-Copyright © 2026 Tommy131 · <https://github.com/Tommy131>
+Copyright © 2026 HanskiJay（GitHub：[Tommy131](https://github.com/Tommy131)） · <hanskijay@owoblog.com> · <https://owoblog.com/>
