@@ -37,6 +37,7 @@ public sealed class MainViewModel : LocalizedObject
     public StartupViewModel Startup { get; } = new();
     public LogViewModel Logs { get; } = new();
     public SettingsViewModel Settings { get; } = new();
+    public AboutViewModel About { get; } = new();
     public SystemOverviewViewModel SystemOverview { get; } = new();
     public PowerViewModel Power { get; } = new();
     public MaintenanceViewModel Maintenance { get; } = new();
@@ -292,6 +293,7 @@ public sealed class MainViewModel : LocalizedObject
         misc.Items.Add(new("", "nav.launcher", QuickLaunch));
         misc.Items.Add(new("", "nav.logs", Logs));
         misc.Items.Add(new("", "nav.settings", Settings));
+        misc.Items.Add(new("", "nav.about", About));
 
         foreach (var g in new[] { deploy, system, dev, misc }) NavGroups.Add(g);
     }

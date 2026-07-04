@@ -22,5 +22,6 @@
   "nav.advancedTools": "高级工具",
   "nav.launcher": "快速启动",
   "nav.logs": "日志",
-  "nav.settings": "设置"
+  "nav.settings": "设置",
+  "nav.about": "关于"
 }

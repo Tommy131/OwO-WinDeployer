@@ -23,6 +23,10 @@ public sealed class AppSettings
     /// <summary>用户选择「忽略此版本」的发布 tag（如 v1.3.1）。启动检查遇到同一 tag 时不再打扰；出现更新的版本会重新提示。手动「检查更新」不受影响。</summary>
     public string? IgnoredUpdateVersion { get; set; }
 
+    /// <summary>上次已展示「欢迎/使用须知」弹窗时的应用版本。与当前版本不同（含首次运行为 null）时启动后弹一次，
+    /// 再次强调免费社区版使用须知与联系渠道。</summary>
+    public string? LastWelcomedVersion { get; set; }
+
     /// <summary>界面语言：zh | en | de。null 表示首次运行未设定（按系统语言自动选择）。</summary>
     public string? Language { get; set; }
 

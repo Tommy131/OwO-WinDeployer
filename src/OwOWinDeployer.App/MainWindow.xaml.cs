@@ -37,6 +37,8 @@ public partial class MainWindow : Window
         vm.Settings.AudioWidgetGlassModeChanged += RecreateAudioWidget;
         vm.Settings.AudioWidgetVisualChanged += () => _audioWidget?.ApplyVisualSettings();
         Loaded += (_, _) => { if (SettingsStore.Load().ShowAudioWidget) ShowAudioWidget(); };
+        // After an update (or on first run) welcome the user and re-state the free/community usage terms.
+        Loaded += (_, _) => ShowWelcomeIfNeeded();
         // Returning to the app while a device keeps overheating → show the advanced ignore/adjust prompt.
         Activated += (_, _) => (DataContext as MainViewModel)?.ShowOverheatPromptIfPending();
         Closing += OnClosing;
@@ -135,6 +137,24 @@ public partial class MainWindow : Window
         _audioWidget?.Close();
         _audioWidget = null;
         if (SettingsStore.Load().ShowAudioWidget) ShowAudioWidget();
+    }
+
+    /// <summary>Show the welcome / usage-notice dialog once per version: on first run (no recorded version) and
+    /// after every update (the recorded version differs from the running one). Records the version afterward so
+    /// it doesn't repeat until the next update.</summary>
+    private void ShowWelcomeIfNeeded()
+    {
+        try
+        {
+            var s = SettingsStore.Load();
+            if (string.Equals(s.LastWelcomedVersion, AppInfo.Version, StringComparison.Ordinal)) return;
+            bool firstRun = string.IsNullOrEmpty(s.LastWelcomedVersion);
+            new Views.Common.WelcomeDialog(firstRun) { Owner = this }.ShowDialog();
+            var s2 = SettingsStore.Load();
+            s2.LastWelcomedVersion = AppInfo.Version;
+            SettingsStore.Save(s2);
+        }
+        catch { /* welcome is non-critical — never block startup */ }
     }
 
     /// <summary>Close-button behavior: ask (default) → prompt; tray → minimize to tray; exit → really quit.</summary>

@@ -44,26 +44,13 @@ public sealed class SettingsViewModel : ObservableObject
         _reminderSeconds = _s.TempReminderSeconds;
         _proxyEnabled = _s.ProxyEnabled;
         _proxyUrl = _s.ProxyUrl ?? "";
-        _preReleaseUpdates = _s.PreReleaseUpdates;
-        SettingsPath = SettingsStore.FilePath;
         SaveCommand = new RelayCommand(_ => Save());
-        OpenFolderCommand = new RelayCommand(_ => OpenFolder());
-        CheckUpdateCommand = new RelayCommand(_ => _ = CheckUpdateAsync());
-        OpenLinkCommand = new RelayCommand(p => OpenUrl(p as string));
         RefreshIconsCommand = new RelayCommand(_ => RefreshIconsRequested?.Invoke());
         TestTtsCommand = new RelayCommand(_ => Tts.Speak(Localizer.T("tempmon.tts.test")));
         SaveProxyCommand = new RelayCommand(_ => _ = SaveProxyAsync(), _ => !_proxyTesting);
         ResetCommand = new RelayCommand(_ => ResetAll());
     }
 
-    // ── About / developer ───────────────────────────────────────────────
-    public string AppTitle => OwOWinDeployer.App.AppInfo.TitleWithVersion;
-    public string AppCopyright => OwOWinDeployer.App.AppInfo.Copyright;
-    public string AuthorName => OwOWinDeployer.App.AppInfo.Author;
-    public ImageSource? AuthorAvatar => IconResolver.FromCatalogId("author");
-
-    public RelayCommand CheckUpdateCommand { get; }
-    public RelayCommand OpenLinkCommand { get; }
     public RelayCommand RefreshIconsCommand { get; }
 
     /// <summary>Raised when the user clicks 联网刷新软件图标; handled by MainViewModel (has the catalog).</summary>
@@ -71,49 +58,6 @@ public sealed class SettingsViewModel : ObservableObject
 
     private string _iconNote = "";
     public string IconNote { get => _iconNote; set => Set(ref _iconNote, value); }
-
-    private string _updateNote = "";
-    public string UpdateNote { get => _updateNote; set => Set(ref _updateNote, value); }
-
-    private bool _preReleaseUpdates;
-    /// <summary>接收预览版（pre-release）更新。开启后「检查更新」及启动检查会把预览版也纳入；否则仅正式版
-    /// （但当前若运行的就是预览版，则始终纳入预览版）。即时持久化。</summary>
-    public bool PreReleaseUpdates
-    {
-        get => _preReleaseUpdates;
-        set
-        {
-            if (!Set(ref _preReleaseUpdates, value)) return;
-            _s.PreReleaseUpdates = value;
-            SettingsStore.Save(_s);
-            AuditLog.Action($"接收预览版更新：{(value ? "开启" : "关闭")}");
-        }
-    }
-
-    /// <summary>True when the running build is itself a pre-release — the About section calls it out so the user
-    /// knows they're on a preview.</summary>
-    public bool IsRunningPrerelease => OwOWinDeployer.Core.Util.SemVer.IsPrerelease(OwOWinDeployer.App.AppInfo.Version);
-
-    private async Task CheckUpdateAsync()
-    {
-        UpdateNote = Localizer.T("settings.update.checking");
-        var r = await SelfUpdate.CheckAsync(force: true);
-        if (r.Error != null) { UpdateNote = r.Error; return; }
-        if (r.Available)
-        {
-            UpdateNote = Localizer.Format("settings.update.found", r.Latest);
-            AuditLog.Action($"检查更新：发现新版本 v{r.Latest}（当前 v{r.Current}）");
-            await SelfUpdateFlow.OfferAsync(r);
-        }
-        else UpdateNote = Localizer.Format("settings.update.upToDate", r.Current);
-    }
-
-    private static void OpenUrl(string? url)
-    {
-        if (string.IsNullOrWhiteSpace(url)) return;
-        try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true }); }
-        catch { /* ignore */ }
-    }
 
     private string _devRoot;
     public string DevRoot { get => _devRoot; set { if (Set(ref _devRoot, value)) Note = ""; } }
@@ -604,25 +548,12 @@ public sealed class SettingsViewModel : ObservableObject
         AuditLog.Action($"切换主题：{t}");
     }
 
-    public string SettingsPath { get; }
-
     private string _note = "";
     public string Note { get => _note; set => Set(ref _note, value); }
 
     public RelayCommand SaveCommand { get; }
-    public RelayCommand OpenFolderCommand { get; }
     public RelayCommand ResetCommand { get; }
     public event Action? Saved;
-
-    private void OpenFolder()
-    {
-        try
-        {
-            System.IO.Directory.CreateDirectory(SettingsStore.Folder);
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(SettingsStore.Folder) { UseShellExecute = true });
-        }
-        catch { /* ignore */ }
-    }
 
     private void Save()
     {

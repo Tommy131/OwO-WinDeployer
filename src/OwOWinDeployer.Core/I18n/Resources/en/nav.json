@@ -22,5 +22,6 @@
   "nav.advancedTools": "Advanced Tools",
   "nav.launcher": "Quick Launch",
   "nav.logs": "Logs",
-  "nav.settings": "Settings"
+  "nav.settings": "Settings",
+  "nav.about": "About"
 }

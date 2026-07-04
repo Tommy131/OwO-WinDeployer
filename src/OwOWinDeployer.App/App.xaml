@@ -598,6 +598,9 @@
       <DataTemplate DataType="{x:Type vmshell:LogViewModel}">
         <vshell:LogView />
       </DataTemplate>
+      <DataTemplate DataType="{x:Type vmshell:AboutViewModel}">
+        <vshell:AboutView />
+      </DataTemplate>
       <DataTemplate DataType="{x:Type vmsys:EnvVarsViewModel}">
         <vsys:EnvVarsView />
       </DataTemplate>
