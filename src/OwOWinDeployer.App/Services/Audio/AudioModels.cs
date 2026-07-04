@@ -29,6 +29,8 @@ public enum WaveColor
     Fire,
     /// <summary>Navy → cyan → aqua, mapped by bar height.</summary>
     Ocean,
+    /// <summary>The dominant colour of the currently-playing track's album art (falls back to the theme accent).</summary>
+    Album,
 }
 
 /// <summary>Parsing helpers between the persisted lowercase tokens (in settings.json) and the enums, with a safe
@@ -64,6 +66,7 @@ public static class AudioWaveOptions
         "rainbow" => WaveColor.Rainbow,
         "fire" => WaveColor.Fire,
         "ocean" => WaveColor.Ocean,
+        "album" => WaveColor.Album,
         _ => WaveColor.Accent,
     };
 
@@ -72,6 +75,7 @@ public static class AudioWaveOptions
         WaveColor.Rainbow => "rainbow",
         WaveColor.Fire => "fire",
         WaveColor.Ocean => "ocean",
+        WaveColor.Album => "album",
         _ => "accent",
     };
 }

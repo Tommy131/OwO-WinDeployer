@@ -60,6 +60,7 @@
   "settings.audiowave.color.rainbow": "彩虹",
   "settings.audiowave.color.fire": "火焰",
   "settings.audiowave.color.ocean": "海洋",
+  "settings.audiowave.color.album": "专辑封面色",
   "settings.audiowave.sensitivity": "灵敏度",
   "settings.audiowave.beat": "随节拍脉冲（踩鼓点时辉光炸开）",
   "settings.audiowave.silence": "静音时呼吸淡出（没声音时变暗）",

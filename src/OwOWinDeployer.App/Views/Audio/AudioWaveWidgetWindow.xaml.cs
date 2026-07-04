@@ -27,6 +27,7 @@ public partial class AudioWaveWidgetWindow : Window
     private readonly SpectrumAnalyzer _analyzer = new();
     private readonly AudioCaptureService _capture;
     private readonly WaveformRenderer _renderer;
+    private readonly MediaSessionService _media;     // "now playing" from Windows SMTC (+ album-art colour)
     // The shared Settings view-model (same instance the Settings page binds to). The header's style/colour
     // buttons drive it — not SettingsStore directly — so the page's ComboBoxes stay in sync with the widget.
     private readonly SettingsViewModel _settings;
@@ -43,6 +44,8 @@ public partial class AudioWaveWidgetWindow : Window
         _capture = new AudioCaptureService(_analyzer);
         _renderer = new WaveformRenderer(_analyzer);
         VizHost.Child = _renderer;
+        _media = new MediaSessionService(Dispatcher);
+        _media.Changed += OnNowPlaying;
         _native = SettingsStore.Load().AudioWidgetNativeGlass;
 
         _settle = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(120) };
@@ -91,13 +94,30 @@ public partial class AudioWaveWidgetWindow : Window
             }
         };
 
+        Loaded += (_, _) => _media.Start();     // begin tracking the current media session
+
         ThemeManager.ThemeChanged += OnThemeChanged;
         Closed += (_, _) =>
         {
             ThemeManager.ThemeChanged -= OnThemeChanged;
+            _media.Changed -= OnNowPlaying;
+            _media.Dispose();
             _renderer.Stop();
             _capture.Dispose();
         };
+    }
+
+    /// <summary>Update the "now playing" strip and feed the album-art colour to the renderer (recolouring live when
+    /// the "album" scheme is active). Runs on the UI thread (the service marshals its events here).</summary>
+    private void OnNowPlaying(NowPlaying np)
+    {
+        NowPlayingBar.Visibility = np.HasTrack ? Visibility.Visible : Visibility.Collapsed;
+        TrackTitle.Text = np.Title;
+        TrackArtist.Text = np.Artist;
+        ArtBrush.ImageSource = np.Art;
+        _renderer.AlbumColor = np.Accent;
+        if (_renderer.Color == WaveColor.Album)
+            _renderer.Apply(_renderer.Kind, WaveColor.Album, _renderer.Sensitivity);
     }
 
     // ── audio lifecycle (capture only runs while visible) ──────────────────────

@@ -50,6 +50,10 @@ public sealed class WaveformRenderer : FrameworkElement
     public WaveColor Color { get; set; } = WaveColor.Accent;
     public float Sensitivity { get; set; } = 1f;
 
+    /// <summary>Dominant album-art colour for the "Album" colour scheme (null → theme accent). Set by the widget
+    /// from the media session; call <see cref="Apply"/> (or re-Apply) to rebuild the palette after it changes.</summary>
+    public Color? AlbumColor { get; set; }
+
     /// <summary>React to detected beats with a glow/scale pulse.</summary>
     public bool BeatReactive { get; set; } = true;
     /// <summary>Dim the waveform when the audio goes quiet (a calm "breathing" idle).</summary>
@@ -293,6 +297,8 @@ public sealed class WaveformRenderer : FrameworkElement
     {
         var accent = (Application.Current?.TryFindResource("Accent") as SolidColorBrush)?.Color
                      ?? System.Windows.Media.Color.FromRgb(0x2E, 0x9B, 0xF0);
+        // "Album" scheme: recolour everything to the current track's dominant art colour (theme accent as fallback).
+        if (Color == WaveColor.Album && AlbumColor is { } album) accent = album;
 
         _barBrushes = new LinearGradientBrush[BarCount];
         _barColors = new Color[BarCount];

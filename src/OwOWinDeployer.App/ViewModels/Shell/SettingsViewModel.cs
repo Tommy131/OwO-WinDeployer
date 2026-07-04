@@ -395,13 +395,13 @@ public sealed class SettingsViewModel : ObservableObject
     }
 
     private int _audioColorIndex;
-    /// <summary>配色方案下拉框（0=主题强调色 1=彩虹 2=火焰 3=海洋）。即时生效并持久化。</summary>
+    /// <summary>配色方案下拉框（0=主题强调色 1=彩虹 2=火焰 3=海洋 4=专辑封面色）。即时生效并持久化。</summary>
     public int AudioColorIndex
     {
         get => _audioColorIndex;
         set
         {
-            var v = Math.Clamp(value, 0, 3);
+            var v = Math.Clamp(value, 0, AudioWaveOptions.ColorCount - 1);
             if (!Set(ref _audioColorIndex, v)) return;
             _s.AudioWidgetColor = AudioWaveOptions.ToToken((WaveColor)v);
             SettingsStore.Save(_s);

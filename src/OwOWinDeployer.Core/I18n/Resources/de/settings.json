@@ -60,6 +60,7 @@
   "settings.audiowave.color.rainbow": "Regenbogen",
   "settings.audiowave.color.fire": "Feuer",
   "settings.audiowave.color.ocean": "Ozean",
+  "settings.audiowave.color.album": "Albumcover-Farbe",
   "settings.audiowave.sensitivity": "Empfindlichkeit",
   "settings.audiowave.beat": "Auf den Beat reagieren (Glühen + Puls bei Kicks)",
   "settings.audiowave.silence": "Bei Stille atmen (ausblenden, wenn kein Ton)",

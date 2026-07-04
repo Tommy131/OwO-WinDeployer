@@ -181,6 +181,7 @@
                 <ComboBoxItem Content="{DynamicResource S.settings.audiowave.color.rainbow}" />
                 <ComboBoxItem Content="{DynamicResource S.settings.audiowave.color.fire}" />
                 <ComboBoxItem Content="{DynamicResource S.settings.audiowave.color.ocean}" />
+                <ComboBoxItem Content="{DynamicResource S.settings.audiowave.color.album}" />
               </ComboBox>
             </Grid>
 
