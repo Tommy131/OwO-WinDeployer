@@ -12,6 +12,10 @@ public enum WaveStyle
     Oscilloscope,
     /// <summary>Frequency spectrum arranged radially around a circle.</summary>
     Radial,
+    /// <summary>The waveform as a filled, glowing gradient ribbon (area under the trace).</summary>
+    Ribbon,
+    /// <summary>A scrolling spectrogram waterfall — frequency (x) over time (y) as a heatmap.</summary>
+    Spectrogram,
 }
 
 /// <summary>Colour scheme for the bars/trace. Accent follows the app theme; the rest are fixed gradients.</summary>
@@ -36,6 +40,8 @@ public static class AudioWaveOptions
         "bars" => WaveStyle.Bars,
         "scope" or "oscilloscope" => WaveStyle.Oscilloscope,
         "radial" => WaveStyle.Radial,
+        "ribbon" => WaveStyle.Ribbon,
+        "spectrogram" or "spectro" => WaveStyle.Spectrogram,
         _ => WaveStyle.Mirror,
     };
 
@@ -44,8 +50,14 @@ public static class AudioWaveOptions
         WaveStyle.Bars => "bars",
         WaveStyle.Oscilloscope => "scope",
         WaveStyle.Radial => "radial",
+        WaveStyle.Ribbon => "ribbon",
+        WaveStyle.Spectrogram => "spectrogram",
         _ => "mirror",
     };
+
+    /// <summary>Number of wave styles / colour schemes — for cycling and combo-box bounds.</summary>
+    public static int StyleCount => Enum.GetValues<WaveStyle>().Length;
+    public static int ColorCount => Enum.GetValues<WaveColor>().Length;
 
     public static WaveColor ParseColor(string? s) => s?.Trim().ToLowerInvariant() switch
     {

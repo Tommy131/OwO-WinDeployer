@@ -171,6 +171,8 @@
                 <ComboBoxItem Content="{DynamicResource S.settings.audiowave.style.bars}" />
                 <ComboBoxItem Content="{DynamicResource S.settings.audiowave.style.scope}" />
                 <ComboBoxItem Content="{DynamicResource S.settings.audiowave.style.radial}" />
+                <ComboBoxItem Content="{DynamicResource S.settings.audiowave.style.ribbon}" />
+                <ComboBoxItem Content="{DynamicResource S.settings.audiowave.style.spectrogram}" />
               </ComboBox>
               <TextBlock Grid.Row="1" Grid.Column="0" Text="{DynamicResource S.settings.audiowave.color}" FontSize="12.5"
                          Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" Margin="0,8,0,0" />
@@ -204,6 +206,10 @@
               <TextBlock Grid.Column="2" Text="{Binding AudioWidgetSeeThroughText}" FontSize="12" Foreground="{DynamicResource TextTertiary}" VerticalAlignment="Center" HorizontalAlignment="Right" />
             </Grid>
 
+            <CheckBox Content="{DynamicResource S.settings.audiowave.beat}" IsChecked="{Binding AudioWidgetBeatReactive}" FontSize="13" Margin="0,12,0,0"
+                      IsEnabled="{Binding ShowAudioWidget}" />
+            <CheckBox Content="{DynamicResource S.settings.audiowave.silence}" IsChecked="{Binding AudioWidgetSilenceFade}" FontSize="13" Margin="0,8,0,0"
+                      IsEnabled="{Binding ShowAudioWidget}" />
             <CheckBox Content="{DynamicResource S.settings.widget.native}" IsChecked="{Binding AudioWidgetNativeGlass}" FontSize="13" Margin="0,12,0,0"
                       IsEnabled="{Binding ShowAudioWidget}" />
             <TextBlock Text="{DynamicResource S.settings.audiowave.privacy}" FontSize="11"

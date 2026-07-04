@@ -37,6 +37,8 @@ public sealed class SettingsViewModel : ObservableObject
         _audioStyleIndex = (int)AudioWaveOptions.ParseStyle(_s.AudioWidgetStyle);
         _audioColorIndex = (int)AudioWaveOptions.ParseColor(_s.AudioWidgetColor);
         _audioSensitivity = _s.AudioWidgetSensitivity;
+        _audioBeatReactive = _s.AudioWidgetBeatReactive;
+        _audioSilenceFade = _s.AudioWidgetSilenceFade;
         _tempMonitorEnabled = _s.TempMonitorEnabled;
         _tempTts = _s.TempTtsEnabled;
         _tempCpu = _s.TempCpuEnabled; _tempGpu = _s.TempGpuEnabled; _tempDisk = _s.TempDiskEnabled;
@@ -350,15 +352,43 @@ public sealed class SettingsViewModel : ObservableObject
     public event Action? AudioWidgetGlassModeChanged;
 
     private int _audioStyleIndex;
-    /// <summary>波形风格下拉框（0=镜像频谱 1=频谱柱 2=示波器 3=环形）。即时生效并持久化。</summary>
+    /// <summary>波形风格下拉框（0=镜像频谱 1=频谱柱 2=示波器 3=环形 4=填充丝带 5=声谱瀑布）。即时生效并持久化。</summary>
     public int AudioStyleIndex
     {
         get => _audioStyleIndex;
         set
         {
-            var v = Math.Clamp(value, 0, 3);
+            var v = Math.Clamp(value, 0, AudioWaveOptions.StyleCount - 1);
             if (!Set(ref _audioStyleIndex, v)) return;
             _s.AudioWidgetStyle = AudioWaveOptions.ToToken((WaveStyle)v);
+            SettingsStore.Save(_s);
+            AudioWidgetVisualChanged?.Invoke();
+        }
+    }
+
+    private bool _audioBeatReactive;
+    /// <summary>波形随节拍脉冲。即时生效并持久化。</summary>
+    public bool AudioWidgetBeatReactive
+    {
+        get => _audioBeatReactive;
+        set
+        {
+            if (!Set(ref _audioBeatReactive, value)) return;
+            _s.AudioWidgetBeatReactive = value;
+            SettingsStore.Save(_s);
+            AudioWidgetVisualChanged?.Invoke();
+        }
+    }
+
+    private bool _audioSilenceFade;
+    /// <summary>静音时波形淡出呼吸。即时生效并持久化。</summary>
+    public bool AudioWidgetSilenceFade
+    {
+        get => _audioSilenceFade;
+        set
+        {
+            if (!Set(ref _audioSilenceFade, value)) return;
+            _s.AudioWidgetSilenceFade = value;
             SettingsStore.Save(_s);
             AudioWidgetVisualChanged?.Invoke();
         }

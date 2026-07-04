@@ -119,6 +119,8 @@ public partial class AudioWaveWidgetWindow : Window
     public void ApplyVisualSettings()
     {
         var s = SettingsStore.Load();
+        _renderer.BeatReactive = s.AudioWidgetBeatReactive;
+        _renderer.SilenceFade = s.AudioWidgetSilenceFade;
         _renderer.Apply(
             AudioWaveOptions.ParseStyle(s.AudioWidgetStyle),
             AudioWaveOptions.ParseColor(s.AudioWidgetColor),
@@ -128,9 +130,9 @@ public partial class AudioWaveWidgetWindow : Window
     // Advance style/colour via the shared view-model. Its setter persists the choice, notifies the Settings
     // page's bound ComboBox, and raises AudioWidgetVisualChanged — which the owner routes back to
     // ApplyVisualSettings() to update the renderer. One source of truth, both directions in sync.
-    private void CycleStyle() => _settings.AudioStyleIndex = (_settings.AudioStyleIndex + 1) % 4;
+    private void CycleStyle() => _settings.AudioStyleIndex = (_settings.AudioStyleIndex + 1) % AudioWaveOptions.StyleCount;
 
-    private void CycleColor() => _settings.AudioColorIndex = (_settings.AudioColorIndex + 1) % 4;
+    private void CycleColor() => _settings.AudioColorIndex = (_settings.AudioColorIndex + 1) % AudioWaveOptions.ColorCount;
 
     private void OnThemeChanged()
     {

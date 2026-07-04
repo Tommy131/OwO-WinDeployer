@@ -69,6 +69,10 @@ public sealed class AppSettings
     public string? AudioWidgetColor { get; set; }
     /// <summary>灵敏度倍率 0.3–3.0（越大波形越高）。默认 1.0。</summary>
     public double AudioWidgetSensitivity { get; set; } = 1.0;
+    /// <summary>波形随节拍脉冲（检测到鼓点时辉光炸开 + 微缩放）。默认开启。</summary>
+    public bool AudioWidgetBeatReactive { get; set; } = true;
+    /// <summary>静音时波形平滑淡出「呼吸」，来声音再唤醒。默认开启。</summary>
+    public bool AudioWidgetSilenceFade { get; set; } = true;
 
     // ── 硬件温度监控（后台定时检测 CPU / GPU / NVMe 硬盘，超阈值时通知 + 可选 TTS 语音）──────────
     /// <summary>启用硬件温度监控。默认关闭（opt-in）。</summary>

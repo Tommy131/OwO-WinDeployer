@@ -40,6 +40,7 @@ public sealed class AudioCaptureService : IDisposable
         try
         {
             var cap = new WasapiLoopbackCapture();   // default render device
+            _analyzer.SampleRate = cap.WaveFormat.SampleRate;   // map FFT bins → Hz correctly
             cap.DataAvailable += OnData;
             cap.RecordingStopped += OnStopped;
             _capture = cap;

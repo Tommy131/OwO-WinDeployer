@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
+using System.Windows.Media.Imaging;
 using OwOWinDeployer.App.Services.Audio;
 
 namespace OwOWinDeployer.App.Views.Audio;
@@ -23,11 +24,25 @@ public sealed class WaveformRenderer : FrameworkElement
     private readonly float[] _peak = new float[BarCount];      // slowly-falling peak caps
     private readonly float[] _wave = new float[WavePoints];
 
+    private const int SpecCols = 96;                           // spectrogram frequency columns
+
     private LinearGradientBrush[] _barBrushes = Array.Empty<LinearGradientBrush>();
     private Color[] _barColors = Array.Empty<Color>();
     private Pen[] _barPens = Array.Empty<Pen>();
     private readonly Brush _capBrush;
     private bool _running;
+
+    private readonly float[] _spec = new float[SpecCols];      // current spectrum column (spectrogram)
+    private WriteableBitmap? _specBmp;                          // scrolling waterfall bitmap
+    private int[]? _specPixels;
+    private int _specW, _specH;
+
+    private Color _accent = System.Windows.Media.Color.FromRgb(0x2E, 0x9B, 0xF0);
+    private Brush? _ribbonFill;
+    private DropShadowEffect? _glow;
+    private readonly ScaleTransform _scale = new(1, 1);
+    private float _beat;                                        // smoothed beat pulse
+    private float _fadeOpacity = 1f;                            // smoothed silence-fade opacity
 
     /// <summary>Which visualization to draw. Named <c>Kind</c> (not <c>Style</c>) to avoid shadowing
     /// <see cref="FrameworkElement.Style"/>.</summary>
@@ -35,12 +50,19 @@ public sealed class WaveformRenderer : FrameworkElement
     public WaveColor Color { get; set; } = WaveColor.Accent;
     public float Sensitivity { get; set; } = 1f;
 
+    /// <summary>React to detected beats with a glow/scale pulse.</summary>
+    public bool BeatReactive { get; set; } = true;
+    /// <summary>Dim the waveform when the audio goes quiet (a calm "breathing" idle).</summary>
+    public bool SilenceFade { get; set; } = true;
+
     public WaveformRenderer(SpectrumAnalyzer analyzer)
     {
         _analyzer = analyzer;
         IsHitTestVisible = false;
         _capBrush = new SolidColorBrush(System.Windows.Media.Color.FromArgb(0xE6, 0xFF, 0xFF, 0xFF));
         _capBrush.Freeze();
+        RenderTransformOrigin = new Point(0.5, 0.5);
+        RenderTransform = _scale;
         BuildPalette();
     }
 
@@ -57,6 +79,8 @@ public sealed class WaveformRenderer : FrameworkElement
         _running = false;
         CompositionTarget.Rendering -= OnFrame;
         Array.Clear(_display); Array.Clear(_peak); Array.Clear(_bars);
+        _specBmp = null; _beat = 0; _fadeOpacity = 1f; Opacity = 1;
+        _scale.ScaleX = _scale.ScaleY = 1;
         InvalidateVisual();
     }
 
@@ -65,25 +89,47 @@ public sealed class WaveformRenderer : FrameworkElement
     public void Apply(WaveStyle style, WaveColor color, float sensitivity)
     {
         Kind = style; Color = color; Sensitivity = Math.Clamp(sensitivity, 0.3f, 3f);
+        _specBmp = null;                 // fresh spectrogram on any style/colour change
         BuildPalette();
     }
 
     private void OnFrame(object? sender, EventArgs e)
     {
-        if (Kind == WaveStyle.Oscilloscope) _analyzer.FillWave(_wave);
-        else
+        _analyzer.Update(Environment.TickCount64);
+
+        switch (Kind)
         {
-            _analyzer.FillBars(_bars, Sensitivity);
-            for (int i = 0; i < BarCount; i++)
-            {
-                float target = _bars[i];
-                float cur = _display[i];
-                // Fast attack, slow release — the classic responsive-but-smooth spectrum feel.
-                _display[i] = cur + (target - cur) * (target > cur ? 0.45f : 0.16f);
-                if (_display[i] >= _peak[i]) _peak[i] = _display[i];
-                else _peak[i] = Math.Max(_display[i], _peak[i] - 0.011f);
-            }
+            case WaveStyle.Oscilloscope:
+            case WaveStyle.Ribbon:
+                _analyzer.FillWave(_wave);
+                break;
+            case WaveStyle.Spectrogram:
+                _analyzer.FillSpectrum(_spec, Sensitivity);
+                break;
+            default:
+                _analyzer.FillBars(_bars, Sensitivity);
+                for (int i = 0; i < BarCount; i++)
+                {
+                    float target = _bars[i], cur = _display[i];
+                    // Fast attack, slow release — the classic responsive-but-smooth spectrum feel.
+                    _display[i] = cur + (target - cur) * (target > cur ? 0.45f : 0.16f);
+                    if (_display[i] >= _peak[i]) _peak[i] = _display[i];
+                    else _peak[i] = Math.Max(_display[i], _peak[i] - 0.011f);
+                }
+                break;
         }
+
+        // Beat → glow + subtle scale pulse.
+        float beatTarget = BeatReactive ? _analyzer.BeatPulse : 0f;
+        _beat += (beatTarget - _beat) * 0.5f;
+        if (_glow != null) { _glow.BlurRadius = 16 + _beat * 22; _glow.Opacity = 0.8 + _beat * 0.2; }
+        _scale.ScaleX = _scale.ScaleY = 1f + _beat * 0.035f;
+
+        // Silence → breathe: dim the waveform when quiet, wake up when sound returns.
+        float targetOp = SilenceFade ? Math.Clamp(0.32f + 1.5f * _analyzer.Level, 0.32f, 1f) : 1f;
+        _fadeOpacity += (targetOp - _fadeOpacity) * 0.08f;
+        Opacity = _fadeOpacity;
+
         InvalidateVisual();
     }
 
@@ -98,6 +144,8 @@ public sealed class WaveformRenderer : FrameworkElement
             case WaveStyle.Mirror: DrawBars(dc, w, h, mirror: true); break;
             case WaveStyle.Radial: DrawRadial(dc, w, h); break;
             case WaveStyle.Oscilloscope: DrawScope(dc, w, h); break;
+            case WaveStyle.Ribbon: DrawRibbon(dc, w, h); break;
+            case WaveStyle.Spectrogram: DrawSpectrogram(dc, w, h); break;
         }
     }
 
@@ -169,6 +217,73 @@ public sealed class WaveformRenderer : FrameworkElement
         dc.DrawGeometry(null, _scopePen ?? _barPens[0], geo);
     }
 
+    private void DrawRibbon(DrawingContext dc, double w, double h)
+    {
+        double cy = h / 2, amp = h / 2 - 4;
+        var geo = new StreamGeometry();
+        using (var ctx = geo.Open())
+        {
+            ctx.BeginFigure(new Point(0, cy), isFilled: true, isClosed: true);
+            for (int i = 0; i < WavePoints; i++)
+            {
+                double x = i / (double)(WavePoints - 1) * w;
+                ctx.LineTo(new Point(x, cy - _wave[i] * amp), true, false);
+            }
+            ctx.LineTo(new Point(w, cy), true, false);
+        }
+        geo.Freeze();
+        dc.DrawGeometry(_ribbonFill, _scopePen, geo);   // translucent fill + glowing top stroke
+    }
+
+    private void DrawSpectrogram(DrawingContext dc, double w, double h)
+    {
+        int pw = Math.Max(8, (int)Math.Round(w)), ph = Math.Max(8, (int)Math.Round(h));
+        if (_specBmp == null || _specW != pw || _specH != ph)
+        {
+            _specW = pw; _specH = ph;
+            _specBmp = new WriteableBitmap(pw, ph, 96, 96, PixelFormats.Bgra32, null);
+            _specPixels = new int[pw * ph];
+        }
+        var px = _specPixels!;
+        // Scroll the whole image down one row (newest spectrum lands at the top), then paint the new top row.
+        Array.Copy(px, 0, px, pw, pw * (ph - 1));
+        for (int x = 0; x < pw; x++)
+        {
+            double t = x / (double)pw;
+            int idx = Math.Clamp((int)(t * _spec.Length), 0, _spec.Length - 1);
+            px[x] = SpecColor(Color, t, _spec[idx]);
+        }
+        _specBmp.WritePixels(new Int32Rect(0, 0, pw, ph), px, pw * 4, 0);
+        dc.DrawImage(_specBmp, new Rect(0, 0, w, h));
+    }
+
+    /// <summary>Map (frequency-column, intensity) to a packed BGRA pixel using the current colour scheme.</summary>
+    private int SpecColor(WaveColor c, double t, float v)
+    {
+        v = Math.Clamp(v, 0f, 1f);
+        Color col = c switch
+        {
+            WaveColor.Rainbow => Hsv(t * 285, 0.85, 0.12 + 0.88 * v),
+            WaveColor.Fire => Ramp(v, Rgb(0, 0, 0), Rgb(0x7A, 0x12, 0x12), Rgb(0xFF, 0x6A, 0x10), Rgb(0xFF, 0xE8, 0x6A)),
+            WaveColor.Ocean => Ramp(v, Rgb(0, 0, 0), Rgb(0x08, 0x1B, 0x40), Rgb(0x1E, 0x7F, 0xD0), Rgb(0x5A, 0xF0, 0xF0)),
+            _ => Ramp(v, Rgb(0, 0, 0), Mul(_accent, 0.5), _accent, Lighten(_accent, 0.6)),
+        };
+        return (0xFF << 24) | (col.R << 16) | (col.G << 8) | col.B;
+    }
+
+    private static Color Ramp(float v, Color a, Color b, Color c, Color d)
+    {
+        if (v <= 0f) return a;
+        if (v >= 1f) return d;
+        float seg = v * 3f; int i = (int)seg; float f = seg - i;
+        return i switch { 0 => Lerp(a, b, f), 1 => Lerp(b, c, f), _ => Lerp(c, d, f) };
+    }
+
+    private static Color Lerp(Color a, Color b, float t)
+        => System.Windows.Media.Color.FromRgb((byte)(a.R + (b.R - a.R) * t), (byte)(a.G + (b.G - a.G) * t), (byte)(a.B + (b.B - a.B) * t));
+
+    private static Color WithA(Color c, double a) => System.Windows.Media.Color.FromArgb((byte)(a * 255), c.R, c.G, c.B);
+
     // ── palette ─────────────────────────────────────────────────────────────
     private Pen? _scopePen;
 
@@ -226,7 +341,17 @@ public sealed class WaveformRenderer : FrameworkElement
         sp.Freeze();
         _scopePen = sp;
 
-        // Neon glow over the whole drawing, tinted to the scheme.
+        _accent = accent;
+
+        // Filled-ribbon gradient (translucent, glowing) for the Ribbon style.
+        var rlo = _barColors[0]; var rhi = _barColors[BarCount - 1];
+        var ribbon = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(0, 1) };
+        ribbon.GradientStops.Add(new GradientStop(WithA(Lighten(rhi, 0.3), 0.55), 0));
+        ribbon.GradientStops.Add(new GradientStop(WithA(rlo, 0.28), 1));
+        ribbon.Freeze();
+        _ribbonFill = ribbon;
+
+        // Neon glow over the whole drawing, tinted to the scheme; modulated per-frame by the beat.
         var glow = Color switch
         {
             WaveColor.Fire => Rgb(0xFF, 0x7A, 0x18),
@@ -234,7 +359,8 @@ public sealed class WaveformRenderer : FrameworkElement
             WaveColor.Rainbow => Rgb(0x9A, 0x6C, 0xFF),
             _ => accent,
         };
-        Effect = new DropShadowEffect { Color = glow, BlurRadius = 16, ShadowDepth = 0, Opacity = 0.85 };
+        _glow = new DropShadowEffect { Color = glow, BlurRadius = 16, ShadowDepth = 0, Opacity = 0.85 };
+        Effect = _glow;
     }
 
     private static (Color, Color, Color) RainbowStops(double t)
