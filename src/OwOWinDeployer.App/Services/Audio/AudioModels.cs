@@ -39,6 +39,16 @@ public enum WaveColor
     Fire,
     /// <summary>Navy → cyan → aqua, mapped by bar height.</summary>
     Ocean,
+    /// <summary>Northern-lights ramp: green → teal → blue → violet across the spectrum.</summary>
+    Aurora,
+    /// <summary>Warm dusk ramp: deep purple → magenta → orange → gold across the spectrum.</summary>
+    Sunset,
+    /// <summary>Synthwave ramp: hot magenta → purple → electric cyan.</summary>
+    Neon,
+    /// <summary>Soft pastel ramp: candy pink → lavender → sky blue.</summary>
+    Candy,
+    /// <summary>Luxe warm ramp: bronze → amber → pale gold.</summary>
+    Gold,
     /// <summary>The dominant colour of the currently-playing track's album art (falls back to the theme accent).</summary>
     Album,
 }
@@ -86,6 +96,11 @@ public static class AudioWaveOptions
         "rainbow" => WaveColor.Rainbow,
         "fire" => WaveColor.Fire,
         "ocean" => WaveColor.Ocean,
+        "aurora" => WaveColor.Aurora,
+        "sunset" => WaveColor.Sunset,
+        "neon" => WaveColor.Neon,
+        "candy" => WaveColor.Candy,
+        "gold" => WaveColor.Gold,
         "album" => WaveColor.Album,
         _ => WaveColor.Accent,
     };
@@ -95,6 +110,11 @@ public static class AudioWaveOptions
         WaveColor.Rainbow => "rainbow",
         WaveColor.Fire => "fire",
         WaveColor.Ocean => "ocean",
+        WaveColor.Aurora => "aurora",
+        WaveColor.Sunset => "sunset",
+        WaveColor.Neon => "neon",
+        WaveColor.Candy => "candy",
+        WaveColor.Gold => "gold",
         WaveColor.Album => "album",
         _ => "accent",
     };

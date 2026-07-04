@@ -458,7 +458,8 @@ public sealed class SettingsViewModel : ObservableObject
     }
 
     private int _audioColorIndex;
-    /// <summary>配色方案下拉框（0=主题强调色 1=彩虹 2=火焰 3=海洋 4=专辑封面色）。即时生效并持久化。</summary>
+    /// <summary>配色方案下拉框（顺序同 <see cref="WaveColor"/>：强调色 / 彩虹 / 火焰 / 海洋 / 极光 / 日落 / 霓虹 /
+    /// 糖果 / 鎏金 / 专辑封面色）。即时生效并持久化（存 token，与索引解耦）。</summary>
     public int AudioColorIndex
     {
         get => _audioColorIndex;

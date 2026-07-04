@@ -186,6 +186,11 @@
                 <ComboBoxItem Content="{DynamicResource S.settings.audiowave.color.rainbow}" />
                 <ComboBoxItem Content="{DynamicResource S.settings.audiowave.color.fire}" />
                 <ComboBoxItem Content="{DynamicResource S.settings.audiowave.color.ocean}" />
+                <ComboBoxItem Content="{DynamicResource S.settings.audiowave.color.aurora}" />
+                <ComboBoxItem Content="{DynamicResource S.settings.audiowave.color.sunset}" />
+                <ComboBoxItem Content="{DynamicResource S.settings.audiowave.color.neon}" />
+                <ComboBoxItem Content="{DynamicResource S.settings.audiowave.color.candy}" />
+                <ComboBoxItem Content="{DynamicResource S.settings.audiowave.color.gold}" />
                 <ComboBoxItem Content="{DynamicResource S.settings.audiowave.color.album}" />
               </ComboBox>
             </Grid>

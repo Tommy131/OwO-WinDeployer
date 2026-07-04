@@ -70,7 +70,8 @@ public sealed class AppSettings
     public bool AudioWidgetNativeGlass { get; set; }
     /// <summary>波形风格：mirror（镜像频谱，默认）| bars（频谱柱）| scope（示波器）| radial（环形频谱）。</summary>
     public string? AudioWidgetStyle { get; set; }
-    /// <summary>配色方案：accent（主题强调色，默认）| rainbow（彩虹）| fire（火焰）| ocean（海洋）。</summary>
+    /// <summary>配色方案：accent（默认）| rainbow | fire | ocean | aurora（极光）| sunset（日落）| neon（霓虹）|
+    /// candy（糖果）| gold（鎏金）| album（专辑封面色）。</summary>
     public string? AudioWidgetColor { get; set; }
     /// <summary>灵敏度倍率 0.3–3.0（越大波形越高）。默认 1.0。</summary>
     public double AudioWidgetSensitivity { get; set; } = 1.0;

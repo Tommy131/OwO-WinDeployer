@@ -505,6 +505,11 @@ public sealed class WaveformRenderer : FrameworkElement
             WaveColor.Rainbow => Hsv(t * 285, 0.85, 0.12 + 0.88 * v),
             WaveColor.Fire => Ramp(v, Rgb(0, 0, 0), Rgb(0x7A, 0x12, 0x12), Rgb(0xFF, 0x6A, 0x10), Rgb(0xFF, 0xE8, 0x6A)),
             WaveColor.Ocean => Ramp(v, Rgb(0, 0, 0), Rgb(0x08, 0x1B, 0x40), Rgb(0x1E, 0x7F, 0xD0), Rgb(0x5A, 0xF0, 0xF0)),
+            WaveColor.Aurora => Ramp(v, Rgb(0, 0, 0), Rgb(0x06, 0x3A, 0x2E), Rgb(0x17, 0xC9, 0x9A), Rgb(0xA5, 0x79, 0xF5)),
+            WaveColor.Sunset => Ramp(v, Rgb(0, 0, 0), Rgb(0x2A, 0x0E, 0x52), Rgb(0xE0, 0x45, 0x7B), Rgb(0xFF, 0xC9, 0x3C)),
+            WaveColor.Neon => Ramp(v, Rgb(0, 0, 0), Rgb(0x3A, 0x0A, 0x57), Rgb(0xFF, 0x1E, 0x9C), Rgb(0x29, 0xE3, 0xE3)),
+            WaveColor.Candy => Ramp(v, Rgb(0, 0, 0), Rgb(0x4A, 0x2A, 0x55), Rgb(0xFF, 0x9A, 0xD5), Rgb(0x93, 0xD5, 0xFF)),
+            WaveColor.Gold => Ramp(v, Rgb(0, 0, 0), Rgb(0x3A, 0x24, 0x08), Rgb(0xE0, 0xA3, 0x2E), Rgb(0xFF, 0xE7, 0xA0)),
             _ => Ramp(v, Rgb(0, 0, 0), Mul(_accent, 0.5), _accent, Lighten(_accent, 0.6)),
         };
         return (0xFF << 24) | (col.R << 16) | (col.G << 8) | col.B;
@@ -565,6 +570,11 @@ public sealed class WaveformRenderer : FrameworkElement
                 WaveColor.Rainbow => RainbowStops(t),
                 WaveColor.Fire => (Rgb(0xB7, 0x1C, 0x1C), Rgb(0xFF, 0xE0, 0x5A), Rgb(0xFF, 0x7A, 0x18)),
                 WaveColor.Ocean => (Rgb(0x0A, 0x2A, 0x66), Rgb(0x46, 0xEC, 0xE8), Rgb(0x1E, 0x8F, 0xE0)),
+                WaveColor.Aurora => RampStops(t, Rgb(0x00, 0xE6, 0x76), Rgb(0x17, 0xE0, 0xC0), Rgb(0x35, 0xB8, 0xF0), Rgb(0xA5, 0x79, 0xF5)),
+                WaveColor.Sunset => RampStops(t, Rgb(0x5B, 0x1E, 0x9A), Rgb(0xE0, 0x45, 0x7B), Rgb(0xFF, 0x7A, 0x45), Rgb(0xFF, 0xC9, 0x3C)),
+                WaveColor.Neon => RampStops(t, Rgb(0xFF, 0x1E, 0x9C), Rgb(0xB1, 0x4A, 0xED), Rgb(0x29, 0xE3, 0xE3)),
+                WaveColor.Candy => RampStops(t, Rgb(0xFF, 0x9A, 0xD5), Rgb(0xC9, 0xA7, 0xFF), Rgb(0x93, 0xD5, 0xFF)),
+                WaveColor.Gold => RampStops(t, Rgb(0xC0, 0x7A, 0x1E), Rgb(0xE0, 0xA3, 0x2E), Rgb(0xFF, 0xE7, 0xA0)),
                 _ => (Mul(accent, 0.45), Lighten(accent, 0.55), accent),
             };
             if (HueDrift) { bottom = RotateHue(bottom, _hueOffset); top = RotateHue(top, _hueOffset); solid = RotateHue(solid, _hueOffset); }
@@ -619,6 +629,11 @@ public sealed class WaveformRenderer : FrameworkElement
             WaveColor.Fire => Rgb(0xFF, 0x7A, 0x18),
             WaveColor.Ocean => Rgb(0x35, 0xE0, 0xE0),
             WaveColor.Rainbow => Rgb(0x9A, 0x6C, 0xFF),
+            WaveColor.Aurora => Rgb(0x35, 0xE8, 0xB0),
+            WaveColor.Sunset => Rgb(0xFF, 0x6E, 0x6A),
+            WaveColor.Neon => Rgb(0xFF, 0x3E, 0xC8),
+            WaveColor.Candy => Rgb(0xFF, 0xA6, 0xE4),
+            WaveColor.Gold => Rgb(0xFF, 0xC9, 0x4D),
             _ => accent,
         };
         if (HueDrift) glow = RotateHue(glow, _hueOffset);
@@ -630,6 +645,25 @@ public sealed class WaveformRenderer : FrameworkElement
     {
         var solid = Hsv(t * 285, 0.85, 1.0);
         return (Hsv(t * 285, 0.9, 0.5), Hsv(t * 285, 0.7, 1.0), solid);
+    }
+
+    /// <summary>Per-bar (bottom, top, solid) stops for a fixed multi-anchor gradient scheme: the bar's signature
+    /// colour is the ramp evaluated at <paramref name="t"/> (its position across the spectrum), with a darker floor
+    /// and lighter crown — so bars fan out across the palette and scope/ribbon span the whole ramp.</summary>
+    private static (Color, Color, Color) RampStops(double t, params Color[] anchors)
+    {
+        var solid = RampN(t, anchors);
+        return (Mul(solid, 0.5), Lighten(solid, 0.45), solid);
+    }
+
+    /// <summary>Evaluate an even-spaced colour ramp at <paramref name="t"/>∈[0,1].</summary>
+    private static Color RampN(double t, Color[] anchors)
+    {
+        if (anchors.Length == 1) return anchors[0];
+        t = Math.Clamp(t, 0, 1);
+        double seg = t * (anchors.Length - 1);
+        int i = Math.Min((int)seg, anchors.Length - 2);
+        return Lerp(anchors[i], anchors[i + 1], (float)(seg - i));
     }
 
     private static Color Rgb(byte r, byte g, byte b) => System.Windows.Media.Color.FromRgb(r, g, b);
