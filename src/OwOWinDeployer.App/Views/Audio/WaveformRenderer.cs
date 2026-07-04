@@ -44,6 +44,13 @@ public sealed class WaveformRenderer : FrameworkElement
     private float _beat;                                        // smoothed beat pulse
     private float _fadeOpacity = 1f;                            // smoothed silence-fade opacity
 
+    private readonly Random _rng = new();
+    private readonly List<Particle> _particles = new();         // for the Particles style
+    private float _vuBass, _vuMid, _vuTreble;                   // smoothed band levels (VU style)
+    private float _vuBassPk, _vuMidPk, _vuTreblePk;             // falling peak holds
+
+    private struct Particle { public double X, Y, Vx, Vy, Life, Max; public int Hue; }
+
     /// <summary>Which visualization to draw. Named <c>Kind</c> (not <c>Style</c>) to avoid shadowing
     /// <see cref="FrameworkElement.Style"/>.</summary>
     public WaveStyle Kind { get; set; } = WaveStyle.Mirror;
@@ -85,6 +92,8 @@ public sealed class WaveformRenderer : FrameworkElement
         Array.Clear(_display); Array.Clear(_peak); Array.Clear(_bars);
         _specBmp = null; _beat = 0; _fadeOpacity = 1f; Opacity = 1;
         _scale.ScaleX = _scale.ScaleY = 1;
+        _particles.Clear();
+        _vuBass = _vuMid = _vuTreble = _vuBassPk = _vuMidPk = _vuTreblePk = 0;
         InvalidateVisual();
     }
 
@@ -111,7 +120,12 @@ public sealed class WaveformRenderer : FrameworkElement
             case WaveStyle.Spectrogram:
                 _analyzer.FillSpectrum(_spec, Sensitivity);
                 break;
-            default:
+            case WaveStyle.Particles:
+                UpdateParticles();
+                break;
+            case WaveStyle.Vu:
+                break;   // DrawVU reads the smoothed bands below
+            default:     // Bars, Mirror, Radial, Blob
                 _analyzer.FillBars(_bars, Sensitivity);
                 for (int i = 0; i < BarCount; i++)
                 {
@@ -123,6 +137,11 @@ public sealed class WaveformRenderer : FrameworkElement
                 }
                 break;
         }
+
+        // Smoothed band levels + peak holds (used by the VU style).
+        SmoothBand(ref _vuBass, ref _vuBassPk, _analyzer.Bass * Sensitivity);
+        SmoothBand(ref _vuMid, ref _vuMidPk, _analyzer.Mid * Sensitivity);
+        SmoothBand(ref _vuTreble, ref _vuTreblePk, _analyzer.Treble * Sensitivity);
 
         // Beat → glow + subtle scale pulse.
         float beatTarget = BeatReactive ? _analyzer.BeatPulse : 0f;
@@ -152,7 +171,117 @@ public sealed class WaveformRenderer : FrameworkElement
             case WaveStyle.Ribbon: DrawRibbon(dc, w, h); break;
             case WaveStyle.Spectrogram: DrawSpectrogram(dc, w, h); break;
             case WaveStyle.Polar: DrawPolar(dc, w, h); break;
+            case WaveStyle.Particles: DrawParticles(dc, w, h); break;
+            case WaveStyle.Vu: DrawVu(dc, w, h); break;
+            case WaveStyle.Blob: DrawBlob(dc, w, h); break;
         }
+    }
+
+    private static void SmoothBand(ref float cur, ref float peak, float target)
+    {
+        target = Math.Clamp(target, 0f, 1f);
+        cur += (target - cur) * (target > cur ? 0.4f : 0.14f);
+        if (cur >= peak) peak = cur; else peak = Math.Max(cur, peak - 0.010f);
+    }
+
+    // ── Particles: a field pushed outward by bass / beats ──────────────────────
+    private void UpdateParticles()
+    {
+        double push = _analyzer.Bass * Sensitivity;
+        int spawn = (int)Math.Round(push * 6 + _analyzer.BeatPulse * 10);
+        for (int i = 0; i < spawn && _particles.Count < 220; i++)
+        {
+            double ang = _rng.NextDouble() * Math.PI * 2;
+            double spd = 0.6 + _rng.NextDouble() * 2.2 * (0.5 + push + _analyzer.BeatPulse);
+            _particles.Add(new Particle
+            {
+                X = 0.5, Y = 0.5,                                   // spawn at centre (normalised)
+                Vx = Math.Cos(ang) * spd, Vy = Math.Sin(ang) * spd,
+                Life = 1, Max = 0.7 + _rng.NextDouble() * 0.8,
+                Hue = _rng.Next(BarCount),
+            });
+        }
+        for (int i = _particles.Count - 1; i >= 0; i--)
+        {
+            var p = _particles[i];
+            p.X += p.Vx * 0.010; p.Y += p.Vy * 0.010;
+            p.Vx *= 0.95; p.Vy *= 0.95;
+            p.Life -= 0.016 / p.Max;
+            if (p.Life <= 0 || p.X < -0.1 || p.X > 1.1 || p.Y < -0.1 || p.Y > 1.1) _particles.RemoveAt(i);
+            else _particles[i] = p;
+        }
+    }
+
+    private void DrawParticles(DrawingContext dc, double w, double h)
+    {
+        foreach (var p in _particles)
+        {
+            var col = _barColors.Length > 0 ? _barColors[Math.Clamp(p.Hue, 0, _barColors.Length - 1)] : _accent;
+            var brush = new SolidColorBrush(col) { Opacity = Math.Clamp(p.Life, 0, 1) };
+            brush.Freeze();
+            double r = 1.4 + p.Life * 2.2;
+            dc.DrawEllipse(brush, null, new Point(p.X * w, p.Y * h), r, r);
+        }
+    }
+
+    // ── VU: three segmented band meters with peak holds ────────────────────────
+    private void DrawVu(DrawingContext dc, double w, double h)
+    {
+        (float v, float pk, int idx)[] cols =
+        {
+            (_vuBass, _vuBassPk, 4), (_vuMid, _vuMidPk, BarCount / 2), (_vuTreble, _vuTreblePk, BarCount - 6),
+        };
+        const int segs = 14;
+        double slotW = w / 3, colW = slotW * 0.5, gap = 3;
+        double segH = (h - (segs - 1) * gap) / segs;
+        for (int c = 0; c < 3; c++)
+        {
+            double x = c * slotW + (slotW - colW) / 2;
+            int lit = (int)Math.Round(cols[c].v * segs);
+            int pkSeg = (int)Math.Round(cols[c].pk * segs);
+            for (int s = 0; s < segs; s++)
+            {
+                double y = h - (s + 1) * segH - s * gap;
+                bool on = s < lit, peak = s == pkSeg - 1;
+                Color col = _barColors.Length > 0 ? _barColors[Math.Clamp(cols[c].idx, 0, _barColors.Length - 1)] : _accent;
+                // Top segments shift toward warning colour.
+                if (s > segs * 0.8) col = Lerp(col, Rgb(0xFF, 0x5A, 0x3C), 0.6f);
+                var brush = new SolidColorBrush(col) { Opacity = on ? 0.95 : (peak ? 0.9 : 0.14) };
+                brush.Freeze();
+                dc.DrawRoundedRectangle(peak ? _capBrush : brush, null, new Rect(x, y, colW, segH), 2, 2);
+            }
+        }
+    }
+
+    // ── Blob: a smooth glowing shape bulging with the spectrum ─────────────────
+    private void DrawBlob(DrawingContext dc, double w, double h)
+    {
+        var c = new Point(w / 2, h / 2);
+        double baseR = Math.Min(w, h) * 0.16;
+        double amp = Math.Min(w, h) * 0.26;
+        const int pts = 72;
+        var geo = new StreamGeometry();
+        using (var ctx = geo.Open())
+        {
+            Point First(int i)
+            {
+                double ang = i / (double)pts * Math.PI * 2;
+                int bar = (int)(Math.Abs(Math.Sin(ang * 3)) * (BarCount - 1));    // low-order lobes
+                double r = baseR + _display[Math.Clamp(bar, 0, BarCount - 1)] * amp + _analyzer.Bass * amp * 0.4;
+                return new Point(c.X + Math.Cos(ang) * r, c.Y + Math.Sin(ang) * r);
+            }
+            ctx.BeginFigure(First(0), isFilled: true, isClosed: true);
+            var prev = First(0);
+            for (int i = 1; i <= pts; i++)
+            {
+                var cur = First(i % pts);
+                var mid = new Point((prev.X + cur.X) / 2, (prev.Y + cur.Y) / 2);
+                ctx.QuadraticBezierTo(prev, mid, true, false);          // smooth the outline
+                prev = cur;
+            }
+        }
+        geo.Freeze();
+        dc.DrawGeometry(_ribbonFill, _scopePen, geo);
     }
 
     // ── styles ────────────────────────────────────────────────────────────────

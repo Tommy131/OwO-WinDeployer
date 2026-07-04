@@ -18,6 +18,12 @@ public enum WaveStyle
     Spectrogram,
     /// <summary>The oscilloscope waveform wrapped around a circle — a pulsing polar ring.</summary>
     Polar,
+    /// <summary>A particle field pushed outward by the bass / beats.</summary>
+    Particles,
+    /// <summary>Retro segmented VU meters for the bass / mid / treble bands, with falling peak holds.</summary>
+    Vu,
+    /// <summary>A smooth, glowing blob that bulges with the low frequencies.</summary>
+    Blob,
 }
 
 /// <summary>Colour scheme for the bars/trace. Accent follows the app theme; the rest are fixed gradients.</summary>
@@ -47,6 +53,9 @@ public static class AudioWaveOptions
         "ribbon" => WaveStyle.Ribbon,
         "spectrogram" or "spectro" => WaveStyle.Spectrogram,
         "polar" => WaveStyle.Polar,
+        "particles" => WaveStyle.Particles,
+        "vu" => WaveStyle.Vu,
+        "blob" => WaveStyle.Blob,
         _ => WaveStyle.Mirror,
     };
 
@@ -58,6 +67,9 @@ public static class AudioWaveOptions
         WaveStyle.Ribbon => "ribbon",
         WaveStyle.Spectrogram => "spectrogram",
         WaveStyle.Polar => "polar",
+        WaveStyle.Particles => "particles",
+        WaveStyle.Vu => "vu",
+        WaveStyle.Blob => "blob",
         _ => "mirror",
     };
 
