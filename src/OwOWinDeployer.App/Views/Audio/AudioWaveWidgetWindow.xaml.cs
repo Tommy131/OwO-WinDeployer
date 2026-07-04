@@ -137,13 +137,13 @@ public partial class AudioWaveWidgetWindow : Window
         _renderer.Stop();
         _capture.Stop();
         _readoutTimer.Stop();
-        Readout.Text = "";
+        HideReadout();
     }
 
     /// <summary>Refresh the corner readout: dominant musical note · estimated BPM · level meter.</summary>
     private void UpdateReadout()
     {
-        if (!SettingsStore.Load().AudioWidgetReadout || !_analyzer.HasSignal) { Readout.Text = ""; return; }
+        if (!SettingsStore.Load().AudioWidgetReadout || !_analyzer.HasSignal) { HideReadout(); return; }
         var parts = new System.Collections.Generic.List<string>(3);
         var note = NoteName(_analyzer.DominantHz);
         if (note != null) parts.Add(note);
@@ -151,7 +151,10 @@ public partial class AudioWaveWidgetWindow : Window
         int bars = (int)Math.Round(_analyzer.Level * 5);
         parts.Add(new string('▮', bars) + new string('▯', 5 - bars));
         Readout.Text = string.Join("  ·  ", parts);
+        ReadoutChip.Visibility = Readout.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
+
+    private void HideReadout() { Readout.Text = ""; ReadoutChip.Visibility = Visibility.Collapsed; }
 
     private static readonly string[] NoteNames = { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
 
@@ -176,7 +179,7 @@ public partial class AudioWaveWidgetWindow : Window
             AudioWaveOptions.ParseColor(s.AudioWidgetColor),
             (float)s.AudioWidgetSensitivity);
         if (s.AudioWidgetReadout && _capture.IsRunning) _readoutTimer.Start();
-        else { _readoutTimer.Stop(); Readout.Text = ""; }
+        else { _readoutTimer.Stop(); HideReadout(); }
     }
 
     // Advance style/colour via the shared view-model. Its setter persists the choice, notifies the Settings

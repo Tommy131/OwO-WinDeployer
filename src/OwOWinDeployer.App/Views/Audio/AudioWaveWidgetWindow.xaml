@@ -78,9 +78,15 @@
         <!-- Visualization host: the WaveformRenderer element is inserted here in code-behind. -->
         <Grid Grid.Row="2" Margin="8,2,8,4">
           <Border x:Name="VizHost" />
-          <TextBlock x:Name="Readout" FontSize="10.5" FontFamily="Cascadia Mono, Consolas" Opacity="0.75"
-                     Foreground="{DynamicResource TextSecondary}" HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                     Margin="0,0,4,2" IsHitTestVisible="False" />
+          <!-- Readout sits in a translucent rounded chip so the waveform behind it never obscures the text. -->
+          <Border x:Name="ReadoutChip" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,3,2"
+                  CornerRadius="5" Padding="6,2" IsHitTestVisible="False" Visibility="Collapsed">
+            <Border.Background>
+              <SolidColorBrush Color="#000000" Opacity="0.42" />
+            </Border.Background>
+            <TextBlock x:Name="Readout" FontSize="10.5" FontFamily="Cascadia Mono, Consolas"
+                       Foreground="#F0F0F0" />
+          </Border>
           <TextBlock x:Name="NoDeviceHint" Text="{DynamicResource S.audiowave.noDevice}" FontSize="12"
                      Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" TextAlignment="Center"
                      VerticalAlignment="Center" Visibility="Collapsed" Margin="10,0" />
