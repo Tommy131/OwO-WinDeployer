@@ -22,6 +22,41 @@ public static class ScreenBlur
     [DllImport("gdi32.dll")]
     private static extern bool DeleteObject(IntPtr hObject);
 
+    // ── native DWM blur-behind (the alternative "instant" glass, no WPF capture) ──
+    private enum AccentState { Disabled = 0, EnableBlurBehind = 3 }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct AccentPolicy { public AccentState AccentState; public int Flags; public uint GradientColor; public int AnimationId; }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct WindowCompositionAttributeData { public int Attribute; public IntPtr Data; public int SizeOfData; }
+
+    [DllImport("user32.dll")]
+    private static extern int SetWindowCompositionAttribute(IntPtr hwnd, ref WindowCompositionAttributeData data);
+
+    /// <summary>Turn on the native DWM blur-behind (Aero-style gaussian blur of what's behind the window). This is
+    /// instant (no per-move screen grab) but the window can't be rounded smoothly while it's per-pixel transparent,
+    /// so it reads as a square panel. Used by the widget's "native glass" comparison mode.</summary>
+    public static void EnableBlurBehind(Window w)
+    {
+        try
+        {
+            var hwnd = new WindowInteropHelper(w).EnsureHandle();
+            if (hwnd == IntPtr.Zero) return;
+            var accent = new AccentPolicy { AccentState = AccentState.EnableBlurBehind };
+            var size = Marshal.SizeOf(accent);
+            var ptr = Marshal.AllocHGlobal(size);
+            try
+            {
+                Marshal.StructureToPtr(accent, ptr, false);
+                var data = new WindowCompositionAttributeData { Attribute = 19, Data = ptr, SizeOfData = size };
+                SetWindowCompositionAttribute(hwnd, ref data);
+            }
+            finally { Marshal.FreeHGlobal(ptr); }
+        }
+        catch { /* blur unavailable — the tint panel remains */ }
+    }
+
     /// <summary>Make the window invisible to screen capture, so <see cref="Capture"/> grabs the content behind it.</summary>
     public static void ExcludeFromCapture(Window w)
     {

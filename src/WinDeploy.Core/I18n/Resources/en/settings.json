@@ -43,6 +43,8 @@
   "settings.widget.showDesc": "Float a frosted-glass, rounded widget on the desktop (Windows 7 gadget style); click an item to open it in one click. Draggable, remembers its position.",
   "settings.widget.opacity": "Background see-through",
   "settings.widget.opacityHint": "Higher = more see-through (more transparent, stronger frosted-glass); lower = more solid.",
+  "settings.widget.native": "Use native glass (no rounded corners, snappier drag)",
+  "settings.widget.nativeDesc": "Switch to the system's native DWM blur: the background follows instantly while dragging with no lag, but the corners are square (can't be rounded smoothly). Off = WPF capture blur: smooth rounded corners, but the background lags slightly while dragging.",
   "settings.autostart.fail": "Failed to set launch at startup: {0}",
   "settings.tempmon.title": "Hardware temperature monitor",
   "settings.tempmon.desc": "Checks CPU / GPU / NVMe disk temperatures every 20s in the background; on exceeding a threshold it raises a system notification and can speak a voice alert (TTS).",

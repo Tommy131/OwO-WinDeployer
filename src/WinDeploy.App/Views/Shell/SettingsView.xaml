@@ -140,6 +140,10 @@
             </Grid>
             <TextBlock FontSize="11" Foreground="{DynamicResource TextTertiary}" TextWrapping="Wrap" Margin="0,4,0,0"
                        Text="{DynamicResource S.settings.widget.opacityHint}" />
+            <CheckBox Content="{DynamicResource S.settings.widget.native}" IsChecked="{Binding WidgetNativeGlass}" FontSize="13" Margin="0,12,0,0"
+                      IsEnabled="{Binding ShowDesktopWidget}" />
+            <TextBlock Text="{DynamicResource S.settings.widget.nativeDesc}" FontSize="12"
+                       Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Margin="0,4,0,0" />
           </StackPanel>
         </Border>
 

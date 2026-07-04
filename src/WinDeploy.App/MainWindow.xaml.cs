@@ -28,6 +28,7 @@ public partial class MainWindow : Window
         // Desktop widget: react to the setting live, and show it on startup if enabled.
         vm.Settings.ShowDesktopWidgetChanged += SetDesktopWidget;
         vm.Settings.WidgetOpacityChanged += _ => _widget?.ApplyTint();
+        vm.Settings.WidgetGlassModeChanged += RecreateDesktopWidget;
         Loaded += (_, _) => { if (SettingsStore.Load().ShowDesktopWidget) ShowDesktopWidget(); };
         // Returning to the app while a device keeps overheating → show the advanced ignore/adjust prompt.
         Activated += (_, _) => (DataContext as MainViewModel)?.ShowOverheatPromptIfPending();
@@ -88,6 +89,15 @@ public partial class MainWindow : Window
             _widget.CloseRequested += () => vm.Settings.ShowDesktopWidget = false;
         }
         _widget.Show();
+    }
+
+    /// <summary>The glass mode (native vs WPF) is chosen when the widget window is built, so switching it rebuilds
+    /// the widget: close the current one and reopen it under the new mode (only if it should be visible).</summary>
+    private void RecreateDesktopWidget()
+    {
+        _widget?.Close();
+        _widget = null;
+        if (SettingsStore.Load().ShowDesktopWidget) ShowDesktopWidget();
     }
 
     /// <summary>Close-button behavior: ask (default) → prompt; tray → minimize to tray; exit → really quit.</summary>

@@ -43,6 +43,8 @@
   "settings.widget.showDesc": "Ein Widget mit Milchglas-Optik und runden Ecken auf dem Desktop anzeigen (im Stil der Windows-7-Minianwendungen); ein Klick auf einen Eintrag öffnet ihn direkt. Verschiebbar, merkt sich die Position.",
   "settings.widget.opacity": "Hintergrund-Durchsicht",
   "settings.widget.opacityHint": "Höher = durchsichtiger (transparenter, stärkerer Milchglaseffekt); niedriger = solider.",
+  "settings.widget.native": "Natives Milchglas verwenden (keine runden Ecken, flüssigeres Ziehen)",
+  "settings.widget.nativeDesc": "Wechselt zum nativen DWM-Weichzeichner des Systems: der Hintergrund folgt beim Ziehen sofort ohne Verzögerung, die Ecken sind jedoch eckig (kein weiches Abrunden). Aus = WPF-Aufnahme-Weichzeichner: weiche runde Ecken, aber der Hintergrund hinkt beim Ziehen leicht nach.",
   "settings.autostart.fail": "Autostart konnte nicht gesetzt werden: {0}",
   "settings.tempmon.title": "Hardware-Temperaturüberwachung",
   "settings.tempmon.desc": "Prüft im Hintergrund alle 20 s die Temperatur von CPU / GPU / NVMe-Datenträger; bei Überschreiten eines Schwellwerts erscheint eine Systembenachrichtigung und optional eine Sprachwarnung (TTS).",

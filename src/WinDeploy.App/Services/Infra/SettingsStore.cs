@@ -39,6 +39,8 @@ public sealed class AppSettings
     public bool WidgetPinned { get; set; }
     /// <summary>小组件背景填充不透明度 0.1–0.85（越低越通透）。默认 0.4（透视程度 60%）。</summary>
     public double WidgetOpacity { get; set; } = 0.4;
+    /// <summary>小组件使用原生 DWM 毛玻璃（即时、无圆角）而非 WPF 截图模糊（平滑圆角、拖动略延迟）。默认 false。</summary>
+    public bool WidgetNativeGlass { get; set; }
 
     // ── 硬件温度监控（后台定时检测 CPU / GPU / NVMe 硬盘，超阈值时通知 + 可选 TTS 语音）──────────
     /// <summary>启用硬件温度监控。默认关闭（opt-in）。</summary>

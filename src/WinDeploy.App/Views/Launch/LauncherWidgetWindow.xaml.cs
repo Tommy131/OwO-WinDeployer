@@ -26,11 +26,15 @@ public partial class LauncherWidgetWindow : Window
     private bool _placed;                 // suppress position saves until initial placement is done
     private readonly DispatcherTimer _settle;   // coalesce rapid moves/resizes into one capture
     private readonly DispatcherTimer _refresh;  // periodic re-capture so the glass stays fresh while shown
+    // Glass mode chosen at build time: true = native DWM blur-behind (instant, square); false = WPF capture blur
+    // (smooth rounded, slight drag lag). Switching the setting rebuilds the window (MainWindow.RecreateDesktopWidget).
+    private readonly bool _native;
 
     public LauncherWidgetWindow(LaunchCenterViewModel vm)
     {
         InitializeComponent();
         DataContext = vm;
+        _native = SettingsStore.Load().WidgetNativeGlass;
 
         _settle = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(120) };
         _settle.Tick += (_, _) => { _settle.Stop(); CaptureBackground(); };
@@ -47,17 +51,41 @@ public partial class LauncherWidgetWindow : Window
 
         SourceInitialized += (_, _) =>
         {
-            ScreenBlur.ExcludeFromCapture(this);   // so we grab what's BEHIND us, not ourselves
             HideFromAltTab();
+            if (_native) ScreenBlur.EnableBlurBehind(this);           // native: instant DWM blur, square corners
+            else ScreenBlur.ExcludeFromCapture(this);                 // wpf: grab what's BEHIND us, not ourselves
         };
-        Loaded += (_, _) => { PlaceFromSettingsOrDefault(); _placed = true; UpdateClip(); CaptureBackground(); };
-        SizeChanged += (_, _) => { UpdateClip(); ScheduleCapture(); };
-        LocationChanged += (_, _) => { SavePosition(); ScheduleCapture(); };
+        Loaded += (_, _) =>
+        {
+            PlaceFromSettingsOrDefault();
+            _placed = true;
+            if (_native) RootGrid.Clip = null;                        // native mode is square (no rounded clip)
+            else { UpdateClip(); CaptureBackground(); }
+        };
+        SizeChanged += (_, _) => { if (_native) return; UpdateClip(); ScheduleCapture(); };
+        LocationChanged += (_, _) => { SavePosition(); if (!_native) ScheduleCapture(); };
         IsVisibleChanged += (_, e) =>
         {
-            if (e.NewValue is true) { ApplyTint(); CaptureBackground(); _refresh.Start(); }
-            else _refresh.Stop();
+            if (e.NewValue is true)
+            {
+                ApplyTint();
+                if (_native) ScreenBlur.EnableBlurBehind(this);
+                else { CaptureBackground(); _refresh.Start(); }
+            }
+            else if (!_native) _refresh.Stop();
         };
+
+        // Live-refresh the code-set tint (and the WPF blur capture) when the app theme changes — DynamicResource
+        // brushes update themselves, but the tint fill and captured background are set in code, so re-apply here.
+        ThemeManager.ThemeChanged += OnThemeChanged;
+        Closed += (_, _) => ThemeManager.ThemeChanged -= OnThemeChanged;
+    }
+
+    private void OnThemeChanged()
+    {
+        ApplyTint();
+        if (_native) ScreenBlur.EnableBlurBehind(this);
+        else CaptureBackground();
     }
 
     /// <summary>Update the rounded clip that shapes every layer to the current window size.</summary>
@@ -71,7 +99,7 @@ public partial class LauncherWidgetWindow : Window
     /// to the edges.</summary>
     private void CaptureBackground()
     {
-        if (!IsVisible || ActualWidth <= 0 || ActualHeight <= 0) return;
+        if (_native || !IsVisible || ActualWidth <= 0 || ActualHeight <= 0) return;
         var ps = PresentationSource.FromVisual(this);
         if (ps?.CompositionTarget == null) return;
 

@@ -46,6 +46,10 @@ public static class ThemeManager
     /// Read by windows that pick native effects (e.g. the desktop widget's glass tint) rather than brushes.</summary>
     public static bool IsDark => _dark;
 
+    /// <summary>Raised after the palette is swapped, so windows that pick colours in code (not via DynamicResource)
+    /// — e.g. the desktop widget's glass tint — can refresh live instead of waiting for the next redraw.</summary>
+    public static event Action? ThemeChanged;
+
     public static void Apply(ThemeMode mode)
     {
         var res = Application.Current?.Resources;
@@ -62,6 +66,8 @@ public static class ThemeManager
         // Recolor every open window's native title bar to match.
         if (Application.Current?.Windows is { } windows)
             foreach (Window w in windows) ApplyTitleBar(w);
+
+        ThemeChanged?.Invoke();
     }
 
     /// <summary>Flip a single window's native title bar to the current theme. Safe to call any time;

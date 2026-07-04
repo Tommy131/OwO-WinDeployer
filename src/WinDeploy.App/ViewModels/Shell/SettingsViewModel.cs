@@ -30,6 +30,7 @@ public sealed class SettingsViewModel : ObservableObject
         _showLauncherOnStartup = _s.ShowLauncherOnStartup;
         _showDesktopWidget = _s.ShowDesktopWidget;
         _widgetOpacity = _s.WidgetOpacity;
+        _widgetNativeGlass = _s.WidgetNativeGlass;
         _tempMonitorEnabled = _s.TempMonitorEnabled;
         _tempTts = _s.TempTtsEnabled;
         _tempCpu = _s.TempCpuEnabled; _tempGpu = _s.TempGpuEnabled; _tempDisk = _s.TempDiskEnabled;
@@ -295,6 +296,24 @@ public sealed class SettingsViewModel : ObservableObject
 
     /// <summary>调整小组件透视程度时触发，让桌面小组件实时更新背景。</summary>
     public event Action<double>? WidgetOpacityChanged;
+
+    private bool _widgetNativeGlass;
+    /// <summary>小组件毛玻璃：原生 DWM（即时、无圆角）vs WPF 截图模糊（平滑圆角）。即时生效（重建小组件）并持久化。</summary>
+    public bool WidgetNativeGlass
+    {
+        get => _widgetNativeGlass;
+        set
+        {
+            if (!Set(ref _widgetNativeGlass, value)) return;
+            _s.WidgetNativeGlass = value;
+            SettingsStore.Save(_s);
+            AuditLog.Action($"小组件毛玻璃模式：{(value ? "原生 DWM（无圆角）" : "WPF 截图模糊（圆角）")}");
+            WidgetGlassModeChanged?.Invoke();
+        }
+    }
+
+    /// <summary>切换小组件毛玻璃模式时触发，让主窗口按新模式重建桌面小组件。</summary>
+    public event Action? WidgetGlassModeChanged;
 
     // ── 硬件温度监控（即时生效并持久化）────────────────────────────────────
     public RelayCommand TestTtsCommand { get; }
