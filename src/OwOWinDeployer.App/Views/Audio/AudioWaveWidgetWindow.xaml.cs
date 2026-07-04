@@ -27,15 +27,19 @@ public partial class AudioWaveWidgetWindow : Window
     private readonly SpectrumAnalyzer _analyzer = new();
     private readonly AudioCaptureService _capture;
     private readonly WaveformRenderer _renderer;
+    // The shared Settings view-model (same instance the Settings page binds to). The header's style/colour
+    // buttons drive it — not SettingsStore directly — so the page's ComboBoxes stay in sync with the widget.
+    private readonly SettingsViewModel _settings;
 
     private bool _placed;
     private readonly DispatcherTimer _settle;
     private readonly DispatcherTimer _refresh;
     private readonly bool _native;
 
-    public AudioWaveWidgetWindow()
+    public AudioWaveWidgetWindow(SettingsViewModel settings)
     {
         InitializeComponent();
+        _settings = settings;
         _capture = new AudioCaptureService(_analyzer);
         _renderer = new WaveformRenderer(_analyzer);
         VizHost.Child = _renderer;
@@ -121,23 +125,12 @@ public partial class AudioWaveWidgetWindow : Window
             (float)s.AudioWidgetSensitivity);
     }
 
-    private void CycleStyle()
-    {
-        var s = SettingsStore.Load();
-        var next = (WaveStyle)(((int)AudioWaveOptions.ParseStyle(s.AudioWidgetStyle) + 1) % 4);
-        s.AudioWidgetStyle = AudioWaveOptions.ToToken(next);
-        SettingsStore.Save(s);
-        ApplyVisualSettings();
-    }
+    // Advance style/colour via the shared view-model. Its setter persists the choice, notifies the Settings
+    // page's bound ComboBox, and raises AudioWidgetVisualChanged — which the owner routes back to
+    // ApplyVisualSettings() to update the renderer. One source of truth, both directions in sync.
+    private void CycleStyle() => _settings.AudioStyleIndex = (_settings.AudioStyleIndex + 1) % 4;
 
-    private void CycleColor()
-    {
-        var s = SettingsStore.Load();
-        var next = (WaveColor)(((int)AudioWaveOptions.ParseColor(s.AudioWidgetColor) + 1) % 4);
-        s.AudioWidgetColor = AudioWaveOptions.ToToken(next);
-        SettingsStore.Save(s);
-        ApplyVisualSettings();
-    }
+    private void CycleColor() => _settings.AudioColorIndex = (_settings.AudioColorIndex + 1) % 4;
 
     private void OnThemeChanged()
     {

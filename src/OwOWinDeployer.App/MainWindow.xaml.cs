@@ -120,13 +120,11 @@ public partial class MainWindow : Window
     /// here to hide it).</summary>
     private void ShowAudioWidget()
     {
+        if (DataContext is not MainViewModel vm) return;
         if (_audioWidget == null)
         {
-            _audioWidget = new AudioWaveWidgetWindow();
-            _audioWidget.CloseRequested += () =>
-            {
-                if (DataContext is MainViewModel vm) vm.Settings.ShowAudioWidget = false;
-            };
+            _audioWidget = new AudioWaveWidgetWindow(vm.Settings);
+            _audioWidget.CloseRequested += () => vm.Settings.ShowAudioWidget = false;
         }
         _audioWidget.Show();
     }
