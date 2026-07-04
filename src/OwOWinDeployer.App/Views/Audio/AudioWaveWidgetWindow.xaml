@@ -79,6 +79,7 @@
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
           </Grid.ColumnDefinitions>
           <Border Grid.Column="0" Width="38" Height="38" CornerRadius="6" SnapsToDevicePixels="True">
             <Border.Background>
@@ -95,15 +96,34 @@
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
               </Grid.ColumnDefinitions>
-              <Border x:Name="ProgTrack" Grid.Column="0" Height="3" CornerRadius="2" VerticalAlignment="Center"
-                      Background="{DynamicResource BorderSoft}" HorizontalAlignment="Stretch">
-                <Border x:Name="ProgFill" Height="3" CornerRadius="2" Width="0" HorizontalAlignment="Left"
-                        Background="{DynamicResource Accent}" />
+              <!-- SeekArea is a taller transparent hit target (drag to seek); the 3px track sits inside it. -->
+              <Border x:Name="SeekArea" Grid.Column="0" Height="14" Background="Transparent" Cursor="Hand" VerticalAlignment="Center">
+                <Border x:Name="ProgTrack" Height="3" CornerRadius="2" VerticalAlignment="Center"
+                        Background="{DynamicResource BorderSoft}" HorizontalAlignment="Stretch">
+                  <Border x:Name="ProgFill" Height="3" CornerRadius="2" Width="0" HorizontalAlignment="Left"
+                          Background="{DynamicResource Accent}" />
+                </Border>
               </Border>
               <TextBlock x:Name="ProgTime" Grid.Column="1" Margin="8,0,0,0" FontSize="10"
                          FontFamily="Cascadia Mono, Consolas" Foreground="{DynamicResource TextTertiary}"
                          VerticalAlignment="Center" />
             </Grid>
+          </StackPanel>
+
+          <!-- Transport controls (shown per the player's reported capabilities). -->
+          <StackPanel x:Name="TransportBar" Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="6,0,0,0">
+            <Button x:Name="PrevButton" Width="24" Height="24" Padding="0" Background="Transparent" BorderThickness="0"
+                    Cursor="Hand" ToolTip="{DynamicResource S.audiowave.prev}">
+              <TextBlock Text="&#xE892;" FontFamily="Segoe MDL2 Assets" FontSize="13" Foreground="{DynamicResource TextSecondary}" />
+            </Button>
+            <Button x:Name="PlayPauseButton" Width="26" Height="26" Padding="0" Background="Transparent" BorderThickness="0"
+                    Cursor="Hand" ToolTip="{DynamicResource S.audiowave.playPause}">
+              <TextBlock x:Name="PlayPauseGlyph" Text="&#xE768;" FontFamily="Segoe MDL2 Assets" FontSize="15" Foreground="{DynamicResource TextPrimary}" />
+            </Button>
+            <Button x:Name="NextButton" Width="24" Height="24" Padding="0" Background="Transparent" BorderThickness="0"
+                    Cursor="Hand" ToolTip="{DynamicResource S.audiowave.next}">
+              <TextBlock Text="&#xE893;" FontFamily="Segoe MDL2 Assets" FontSize="13" Foreground="{DynamicResource TextSecondary}" />
+            </Button>
           </StackPanel>
         </Grid>
       </Grid>

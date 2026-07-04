@@ -2,5 +2,8 @@
   "audiowave.title": "Audio Waveform",
   "audiowave.cycleStyle": "Change style",
   "audiowave.cycleColor": "Change colour",
-  "audiowave.noDevice": "No audio output detected. Play something, or check your default playback device."
+  "audiowave.noDevice": "No audio output detected. Play something, or check your default playback device.",
+  "audiowave.prev": "Previous track",
+  "audiowave.playPause": "Play / Pause",
+  "audiowave.next": "Next track"
 }

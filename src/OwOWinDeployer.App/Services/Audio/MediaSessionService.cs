@@ -1,6 +1,7 @@
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using Windows.Foundation;
 using Windows.Media.Control;
 using Windows.Storage.Streams;
 
@@ -9,10 +10,11 @@ namespace OwOWinDeployer.App.Services.Audio;
 /// <summary>What's playing right now, per the Windows System Media Transport Controls (the same source that powers
 /// the media flyout). <see cref="Accent"/> is the dominant vibrant colour extracted from the album art (for the
 /// "album" colour scheme).</summary>
-public sealed record NowPlaying(string Title, string Artist, ImageSource? Art, Color? Accent, bool IsPlaying)
+public sealed record NowPlaying(string Title, string Artist, ImageSource? Art, Color? Accent, bool IsPlaying,
+    bool CanPrev, bool CanNext, bool CanPlayPause, bool CanSeek)
 {
     public bool HasTrack => !string.IsNullOrWhiteSpace(Title);
-    public static readonly NowPlaying None = new("", "", null, null, false);
+    public static readonly NowPlaying None = new("", "", null, null, false, false, false, false, false);
 }
 
 /// <summary>Reads the current media session (title / artist / album art / play state) from Windows' SMTC and raises
@@ -64,6 +66,18 @@ public sealed class MediaSessionService : IDisposable
 
     private void OnChanged(object? s, object? e) => _ = RefreshAsync();
 
+    // ── transport controls (best-effort; only work if the player supports them) ──
+    public void SkipPrevious() => Fire(s => s.TrySkipPreviousAsync());
+    public void SkipNext() => Fire(s => s.TrySkipNextAsync());
+    public void TogglePlayPause() => Fire(s => s.TryTogglePlayPauseAsync());
+    /// <summary>Seek to <paramref name="sec"/> seconds into the current track.</summary>
+    public void Seek(double sec) => Fire(s => s.TryChangePlaybackPositionAsync((long)(Math.Max(0, sec) * TimeSpan.TicksPerSecond)));
+
+    private void Fire(Func<GlobalSystemMediaTransportControlsSession, IAsyncOperation<bool>> op)
+    {
+        try { var s = _session; if (s != null) _ = op(s); } catch { /* command not supported / failed */ }
+    }
+
     private async Task RefreshAsync()
     {
         try
@@ -72,12 +86,21 @@ public sealed class MediaSessionService : IDisposable
             if (s == null) { Publish(NowPlaying.None); return; }
 
             var props = await s.TryGetMediaPropertiesAsync();
-            bool playing = false;
-            try { playing = s.GetPlaybackInfo()?.PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing; }
+            bool playing = false, cprev = false, cnext = false, cplay = false, cseek = false;
+            try
+            {
+                var pb = s.GetPlaybackInfo();
+                playing = pb?.PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing;
+                var ctl = pb?.Controls;
+                cprev = ctl?.IsPreviousEnabled ?? false;
+                cnext = ctl?.IsNextEnabled ?? false;
+                cplay = (ctl?.IsPlayEnabled ?? false) || (ctl?.IsPauseEnabled ?? false) || (ctl?.IsPlayPauseToggleEnabled ?? false);
+                cseek = ctl?.IsPlaybackPositionEnabled ?? false;
+            }
             catch { }
 
             (ImageSource? art, Color? accent) = props?.Thumbnail != null ? await LoadArtAsync(props.Thumbnail) : (null, null);
-            Publish(new NowPlaying(props?.Title ?? "", props?.Artist ?? "", art, accent, playing));
+            Publish(new NowPlaying(props?.Title ?? "", props?.Artist ?? "", art, accent, playing, cprev, cnext, cplay, cseek));
         }
         catch { /* keep last known */ }
     }

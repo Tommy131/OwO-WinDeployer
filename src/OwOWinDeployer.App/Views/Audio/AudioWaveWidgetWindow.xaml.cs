@@ -33,6 +33,9 @@ public partial class AudioWaveWidgetWindow : Window
     private readonly SettingsViewModel _settings;
 
     private bool _placed;
+    private bool _seeking;         // dragging the progress bar
+    private double _lastDur;       // last known track duration (seconds)
+    private bool _canSeek;         // the current player supports seeking
     private readonly DispatcherTimer _settle;
     private readonly DispatcherTimer _refresh;
     private readonly DispatcherTimer _readoutTimer;   // updates the note · BPM · level readout ~4×/s
@@ -64,6 +67,24 @@ public partial class AudioWaveWidgetWindow : Window
         PinButton.Click += (_, _) => SetPinned(!Topmost);
         StyleButton.Click += (_, _) => CycleStyle();
         ColorButton.Click += (_, _) => CycleColor();
+
+        // Transport controls + drag-to-seek.
+        PrevButton.Click += (_, _) => _media.SkipPrevious();
+        NextButton.Click += (_, _) => _media.SkipNext();
+        PlayPauseButton.Click += (_, _) => _media.TogglePlayPause();
+        SeekArea.MouseLeftButtonDown += (_, e) =>
+        {
+            if (!_canSeek || _lastDur <= 0) return;
+            _seeking = true; SeekArea.CaptureMouse(); SeekPreview(e.GetPosition(SeekArea).X); e.Handled = true;
+        };
+        SeekArea.MouseMove += (_, e) => { if (_seeking) SeekPreview(e.GetPosition(SeekArea).X); };
+        SeekArea.MouseLeftButtonUp += (_, e) =>
+        {
+            if (!_seeking) return;
+            _seeking = false; SeekArea.ReleaseMouseCapture();
+            _media.Seek(SeekFraction(e.GetPosition(SeekArea).X) * _lastDur);
+            e.Handled = true;
+        };
 
         SetPinned(SettingsStore.Load().AudioWidgetPinned, save: false);
         ApplyTint();
@@ -127,8 +148,27 @@ public partial class AudioWaveWidgetWindow : Window
         _renderer.AlbumColor = np.Accent;
         if (_renderer.Color == WaveColor.Album)
             _renderer.Apply(_renderer.Kind, WaveColor.Album, _renderer.Sensitivity);
+
+        // Transport controls: show each only if the player reports it, and reflect play/pause state.
+        _canSeek = np.CanSeek;
+        PlayPauseGlyph.Text = np.IsPlaying ? "\uE769" : "\uE768";   // Pause / Play (Segoe MDL2)
+        PrevButton.Visibility = np.CanPrev ? Visibility.Visible : Visibility.Collapsed;
+        NextButton.Visibility = np.CanNext ? Visibility.Visible : Visibility.Collapsed;
+        PlayPauseButton.Visibility = np.CanPlayPause ? Visibility.Visible : Visibility.Collapsed;
+        TransportBar.Visibility = (np.CanPrev || np.CanNext || np.CanPlayPause) ? Visibility.Visible : Visibility.Collapsed;
+
         if (np.HasTrack && IsVisible) { _progressTimer.Start(); UpdateProgress(); }
         else _progressTimer.Stop();
+    }
+
+    private double SeekFraction(double x) => Math.Clamp(x / Math.Max(1, SeekArea.ActualWidth), 0, 1);
+
+    /// <summary>While dragging, preview the seek position on the bar + time label (the actual seek happens on release).</summary>
+    private void SeekPreview(double x)
+    {
+        double frac = SeekFraction(x);
+        ProgFill.Width = ProgTrack.ActualWidth * frac;
+        ProgTime.Text = $"{FormatTime(frac * _lastDur)} / {FormatTime(_lastDur)}";
     }
 
     /// <summary>Advance the now-playing progress bar + time label from the media session's timeline.</summary>
@@ -137,8 +177,10 @@ public partial class AudioWaveWidgetWindow : Window
         var (pos, dur) = _media.GetProgress();
         // Some players (e.g. NetEase Cloud Music) don't report a timeline to SMTC at all — no duration means no
         // meaningful progress bar, so hide the whole row rather than show an empty one that never fills.
-        if (dur <= 0) { ProgressRow.Visibility = Visibility.Collapsed; return; }
+        if (dur <= 0) { ProgressRow.Visibility = Visibility.Collapsed; _lastDur = 0; return; }
+        _lastDur = dur;
         ProgressRow.Visibility = Visibility.Visible;
+        if (_seeking) return;   // user is dragging — don't overwrite the live preview
         ProgFill.Width = Math.Max(0, ProgTrack.ActualWidth * Math.Clamp(pos / dur, 0, 1));
         ProgTime.Text = $"{FormatTime(pos)} / {FormatTime(dur)}";
     }

@@ -2,5 +2,8 @@
   "audiowave.title": "Audio-Wellenform",
   "audiowave.cycleStyle": "Stil wechseln",
   "audiowave.cycleColor": "Farbe wechseln",
-  "audiowave.noDevice": "Keine Audioausgabe erkannt. Spiele etwas ab oder prüfe dein Standard-Wiedergabegerät."
+  "audiowave.noDevice": "Keine Audioausgabe erkannt. Spiele etwas ab oder prüfe dein Standard-Wiedergabegerät.",
+  "audiowave.prev": "Vorheriger Titel",
+  "audiowave.playPause": "Wiedergabe / Pause",
+  "audiowave.next": "Nächster Titel"
 }
