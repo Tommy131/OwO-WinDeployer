@@ -3,6 +3,7 @@
   "audiowave.cycleStyle": "切换风格",
   "audiowave.cycleColor": "切换配色",
   "audiowave.noDevice": "未检测到音频输出。请播放声音，或检查默认播放设备。",
+  "audiowave.perfNotice": "音频波形组件会持续采集扬声器输出并实时重绘，因此会占用一定 CPU/GPU（通常几个百分点，复杂风格会更高些）。仅在本机分析声音，不录制、不上传。可随时在设置中关闭。",
   "audiowave.prev": "上一首",
   "audiowave.playPause": "播放 / 暂停",
   "audiowave.next": "下一首"

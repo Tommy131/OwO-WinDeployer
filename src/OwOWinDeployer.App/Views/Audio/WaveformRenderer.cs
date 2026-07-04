@@ -31,6 +31,7 @@ public sealed class WaveformRenderer : FrameworkElement
     private LinearGradientBrush[] _barBrushes = Array.Empty<LinearGradientBrush>();
     private Color[] _barColors = Array.Empty<Color>();
     private Pen[] _barPens = Array.Empty<Pen>();
+    private SolidColorBrush[] _barSolids = Array.Empty<SolidColorBrush>();   // frozen, reused (particles/VU)
     private readonly Brush _capBrush;
     private bool _running;
 
@@ -74,6 +75,8 @@ public sealed class WaveformRenderer : FrameworkElement
 
     private double _hueOffset;
     private int _hueFrame;
+    private long _lastRenderMs;      // frame-rate cap
+    private int _idleFrames;         // consecutive silent frames → drop to a slower idle rate
 
     public WaveformRenderer(SpectrumAnalyzer analyzer)
     {
@@ -117,7 +120,15 @@ public sealed class WaveformRenderer : FrameworkElement
 
     private void OnFrame(object? sender, EventArgs e)
     {
-        _analyzer.Update(Environment.TickCount64);
+        long now = Environment.TickCount64;
+        // Frame-rate cap: ~30 fps while there's sound, ~10 fps when idle. CompositionTarget.Rendering fires at the
+        // display refresh (often 120/144 Hz), so without this the widget would repaint far more often than needed —
+        // the single biggest CPU cost. 30 fps is plenty smooth for an audio visualizer.
+        int minInterval = _idleFrames > 20 ? 100 : 33;
+        if (now - _lastRenderMs < minInterval) return;
+        _lastRenderMs = now;
+
+        _analyzer.Update(now);
 
         switch (Kind)
         {
@@ -172,6 +183,10 @@ public sealed class WaveformRenderer : FrameworkElement
         float targetOp = SilenceFade ? Math.Clamp(0.32f + 1.5f * _analyzer.Level, 0.32f, 1f) : 1f;
         _fadeOpacity += (targetOp - _fadeOpacity) * 0.08f;
         Opacity = _fadeOpacity;
+
+        // Idle detection → slower frame cap when there's nothing to show (silent + not mid-beat/animation).
+        if (!_analyzer.HasSignal && _beat <= 0.002f && _particles.Count == 0) _idleFrames++;
+        else _idleFrames = 0;
 
         InvalidateVisual();
     }
@@ -253,13 +268,15 @@ public sealed class WaveformRenderer : FrameworkElement
 
     private void DrawParticles(DrawingContext dc, double w, double h)
     {
+        if (_barSolids.Length == 0) return;
         foreach (var p in _particles)
         {
-            var col = _barColors.Length > 0 ? _barColors[Math.Clamp(p.Hue, 0, _barColors.Length - 1)] : _accent;
-            var brush = new SolidColorBrush(col) { Opacity = Math.Clamp(p.Life, 0, 1) };
-            brush.Freeze();
+            // Reuse a frozen brush + PushOpacity (no per-particle allocation → far less GC pressure).
+            var brush = _barSolids[Math.Clamp(p.Hue, 0, _barSolids.Length - 1)];
             double r = 1.4 + p.Life * 2.2;
+            dc.PushOpacity(Math.Clamp(p.Life, 0, 1));
             dc.DrawEllipse(brush, null, new Point(p.X * w, p.Y * h), r, r);
+            dc.Pop();
         }
     }
 
@@ -278,19 +295,23 @@ public sealed class WaveformRenderer : FrameworkElement
             double x = c * slotW + (slotW - colW) / 2;
             int lit = (int)Math.Round(cols[c].v * segs);
             int pkSeg = (int)Math.Round(cols[c].pk * segs);
+            var baseBrush = _barSolids.Length > 0 ? _barSolids[Math.Clamp(cols[c].idx, 0, _barSolids.Length - 1)] : (SolidColorBrush)_capBrush;
             for (int s = 0; s < segs; s++)
             {
                 double y = h - (s + 1) * segH - s * gap;
-                bool on = s < lit, peak = s == pkSeg - 1;
-                Color col = _barColors.Length > 0 ? _barColors[Math.Clamp(cols[c].idx, 0, _barColors.Length - 1)] : _accent;
-                // Top segments shift toward warning colour.
-                if (s > segs * 0.8) col = Lerp(col, Rgb(0xFF, 0x5A, 0x3C), 0.6f);
-                var brush = new SolidColorBrush(col) { Opacity = on ? 0.95 : (peak ? 0.9 : 0.14) };
-                brush.Freeze();
-                dc.DrawRoundedRectangle(peak ? _capBrush : brush, null, new Rect(x, y, colW, segH), 2, 2);
+                var rect = new Rect(x, y, colW, segH);
+                if (s == pkSeg - 1) { dc.DrawRoundedRectangle(_capBrush, null, rect, 2, 2); continue; }
+                // Reuse frozen brushes (top segments = warning colour) + PushOpacity — no per-segment allocation.
+                var brush = s > segs * 0.8 ? VuWarn : baseBrush;
+                dc.PushOpacity(s < lit ? 0.95 : 0.14);
+                dc.DrawRoundedRectangle(brush, null, rect, 2, 2);
+                dc.Pop();
             }
         }
     }
+
+    private static readonly SolidColorBrush VuWarn = Freeze(System.Windows.Media.Color.FromRgb(0xFF, 0x5A, 0x3C));
+    private static SolidColorBrush Freeze(Color c) { var b = new SolidColorBrush(c); b.Freeze(); return b; }
 
     // ── Blob: a smooth glowing shape bulging with the spectrum ─────────────────
     private void DrawBlob(DrawingContext dc, double w, double h)
@@ -512,6 +533,7 @@ public sealed class WaveformRenderer : FrameworkElement
         _barBrushes = new LinearGradientBrush[BarCount];
         _barColors = new Color[BarCount];
         _barPens = new Pen[BarCount];
+        _barSolids = new SolidColorBrush[BarCount];
 
         for (int i = 0; i < BarCount; i++)
         {
@@ -533,7 +555,9 @@ public sealed class WaveformRenderer : FrameworkElement
             g.Freeze();
             _barBrushes[i] = g;
             _barColors[i] = solid;
-            var pen = new Pen(new SolidColorBrush(solid), 3.2) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round };
+            var sb = new SolidColorBrush(solid); sb.Freeze();
+            _barSolids[i] = sb;
+            var pen = new Pen(sb, 3.2) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round };
             pen.Freeze();
             _barPens[i] = pen;
         }

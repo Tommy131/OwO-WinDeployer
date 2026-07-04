@@ -54,6 +54,8 @@ public sealed class AppSettings
     // ── 音频波形桌面组件（实时可视化当前设备的音频输出，WASAPI loopback）───────────────
     /// <summary>在桌面显示「音频波形」毛玻璃小组件。默认关闭（opt-in）。仅在显示时采集音频。</summary>
     public bool ShowAudioWidget { get; set; }
+    /// <summary>是否已展示过「音频波形组件会占用一定 CPU/GPU」的一次性提示（首次启用时弹一次）。</summary>
+    public bool AudioWidgetNoticeShown { get; set; }
     /// <summary>音频组件在屏幕上的位置（左/上，像素）。null 表示用默认位置。</summary>
     public double? AudioWidgetLeft { get; set; }
     public double? AudioWidgetTop { get; set; }

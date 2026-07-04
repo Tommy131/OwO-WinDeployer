@@ -114,7 +114,19 @@ public partial class MainWindow : Window
     /// also stops audio capture (the widget only listens while visible).</summary>
     private void SetAudioWidget(bool on)
     {
-        if (on) ShowAudioWidget();
+        if (on)
+        {
+            // One-time heads-up: a live visualizer continuously captures audio + repaints, so it uses some CPU/GPU.
+            var s = SettingsStore.Load();
+            if (!s.AudioWidgetNoticeShown)
+            {
+                Dialogs.Show(Localizer.T("audiowave.perfNotice"), Localizer.T("audiowave.title"),
+                    System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+                s.AudioWidgetNoticeShown = true;
+                SettingsStore.Save(s);
+            }
+            ShowAudioWidget();
+        }
         else _audioWidget?.Hide();
     }
 

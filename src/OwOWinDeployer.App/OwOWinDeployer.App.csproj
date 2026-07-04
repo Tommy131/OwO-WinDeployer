@@ -28,7 +28,16 @@
     <!-- 只保留中性(英文)框架资源；去掉 cs/de/es/fr/it/ja/ko/pl/pt-BR/ru/tr/zh-Hans/zh-Hant
          等十余个本地化卫星资源子目录（界面文案本身已硬编码中文），发行目录更整洁。 -->
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+
+    <!-- 内存足迹：桌面 GUI 用工作站 GC（比服务器 GC 内存低很多）+ 并发回收，避免多堆占用。 -->
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+    <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
   </PropertyGroup>
+
+  <!-- GC 空闲时把不用的内存归还操作系统（工作集随空闲下降）。桌面应用多数时间空闲，代价可忽略。 -->
+  <ItemGroup>
+    <RuntimeHostConfigurationOption Include="System.GC.ConserveMemory" Value="5" Trim="false" />
+  </ItemGroup>
 
   <!-- WinForms 仅用于托盘图标（TrayIcon.cs 显式 using）。移除其全局隐式 using，避免
        System.Drawing / System.Windows.Forms 的 Brush/Color/FontFamily 等与 WPF 类型在全项目冲突。 -->

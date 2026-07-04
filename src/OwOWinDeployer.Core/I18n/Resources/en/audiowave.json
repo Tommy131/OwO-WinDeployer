@@ -3,6 +3,7 @@
   "audiowave.cycleStyle": "Change style",
   "audiowave.cycleColor": "Change colour",
   "audiowave.noDevice": "No audio output detected. Play something, or check your default playback device.",
+  "audiowave.perfNotice": "The audio waveform widget continuously captures your speaker output and repaints in real time, so it uses some CPU/GPU (usually a few percent, more with heavier styles). Only audio is analysed on this device — nothing is recorded or sent. You can turn it off any time in Settings.",
   "audiowave.prev": "Previous track",
   "audiowave.playPause": "Play / Pause",
   "audiowave.next": "Next track"
