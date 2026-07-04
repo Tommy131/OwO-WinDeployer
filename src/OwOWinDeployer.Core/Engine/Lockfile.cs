@@ -61,7 +61,7 @@ public sealed class Lockfile
             .GroupBy(i => i.Install.Id!, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
-        var tmp = Path.Combine(Path.GetTempPath(), $"windeploy_lock_{Guid.NewGuid():N}.json");
+        var tmp = Path.Combine(Path.GetTempPath(), $"owowindeployer_lock_{Guid.NewGuid():N}.json");
         try
         {
             var r = await Proc.RunAsync("winget", new[]

@@ -125,8 +125,8 @@ public sealed class PortableInstaller : IInstaller
         var isArchive = lower.EndsWith(".7z") || lower.EndsWith(".zip");
         var ext = lower.EndsWith(".7z") ? ".7z" : lower.EndsWith(".zip") ? ".zip"
                 : System.IO.Path.GetExtension(lower) is { Length: > 0 } e ? e : ".bin";
-        var tmpZip = System.IO.Path.Combine(dlDir, $"windeploy_{item.Id}{ext}");
-        var tmpEx = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"windeploy_{item.Id}_x");
+        var tmpZip = System.IO.Path.Combine(dlDir, $"owowindeployer_{item.Id}{ext}");
+        var tmpEx = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"owowindeployer_{item.Id}_x");
 
         ctx.Step(Localizer.Format("engine.install.downloadStart", ins.Url));
         await Download.ToFileAsync(ins.Url, tmpZip, ctx, ctx.Ct);
@@ -304,7 +304,7 @@ public sealed class LocalInstaller : IInstaller
         var lower = pkg.ToLowerInvariant();
         if (lower.EndsWith(".7z") || lower.EndsWith(".zip"))
         {
-            var tmpEx = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"windeploy_{item.Id}_pkg");
+            var tmpEx = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"owowindeployer_{item.Id}_pkg");
             if (Directory.Exists(tmpEx)) Directory.Delete(tmpEx, true);
             if (lower.EndsWith(".7z"))
             {

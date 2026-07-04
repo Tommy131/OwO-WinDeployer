@@ -62,7 +62,7 @@ jobs:
           if (-not $signtool) { throw 'signtool.exe not found on runner' }
           # Sign every variant's GUI + CLI executable before packaging.
           $files = Get-ChildItem dist -Recurse -File |
-                   Where-Object { $_.Name -in @('OwOWinDeployer.exe', 'windeploy.exe') } |
+                   Where-Object { $_.Name -in @('OwOWinDeployer.exe', 'owowindeployer.exe') } |
                    Select-Object -ExpandProperty FullName
           & $signtool.FullName sign /f $pfx /p $env:SIGN_PFX_PASSWORD /fd SHA256 `
             /tr http://timestamp.digicert.com /td SHA256 @files
@@ -88,12 +88,16 @@ jobs:
             if ($v.Single) {
               # 单文件：仅一个 exe（运行库已并入）+ CLI 单文件
               Copy-Item "$appOut/OwOWinDeployer.exe"  "$stage/OwOWinDeployer.exe"     -Force
-              Copy-Item "$cliOut/windeploy.exe"  "$stage/windeploy-cli.exe" -Force
+              Copy-Item "$cliOut/owowindeployer.exe"  "$stage/owowindeployer-cli.exe" -Force
+              # CLI 别名：单文件自包含，副本可独立运行（保留已签名字节）。
+              Copy-Item "$cliOut/owowindeployer.exe"  "$stage/owodeploy.exe"          -Force
             } else {
               # 多文件：GUI 全量输出放根目录；CLI 放 cli/ 子目录（两者运行库 DLL 集不同，分目录避免冲突）
               Copy-Item "$appOut/*" "$stage/" -Recurse -Force
               New-Item -ItemType Directory -Force -Path "$stage/cli" | Out-Null
               Copy-Item "$cliOut/*" "$stage/cli/" -Recurse -Force
+              # CLI 别名：apphost 副本，与 owowindeployer.dll 同目录即可运行。
+              Copy-Item "$stage/cli/owowindeployer.exe" "$stage/cli/owodeploy.exe" -Force
             }
 
             # 运行所需数据放在 exe 同级（程序向上查找 catalog/，再据此定位 repoRoot/assets）

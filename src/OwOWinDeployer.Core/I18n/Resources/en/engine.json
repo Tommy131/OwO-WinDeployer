@@ -91,7 +91,7 @@
   "engine.migrate.manifestFrom": "From {0}, {1} app(s)",
   "engine.migrate.noConfigsKit": "No configs/ in the kit",
   "engine.migrate.noConfigsRepo": "No configs/ in the repo",
-  "engine.migrate.restoreText": "OwO! Win Deployer migration kit\nSource machine: {0} · {1}\n\nRestore on the new machine:\n  1) Pull/clone the owo-win-deployer repo\n  2) windeploy migrate import \"<this directory>\"      (copy configs/ back into the repo)\n  3) windeploy apply --only {2}\n  4) windeploy apply-config                      (apply configs)",
+  "engine.migrate.restoreText": "OwO! Win Deployer migration kit\nSource machine: {0} · {1}\n\nRestore on the new machine:\n  1) Pull/clone the owo-win-deployer repo\n  2) owowindeployer migrate import \"<this directory>\"      (copy configs/ back into the repo)\n  3) owowindeployer apply --only {2}\n  4) owowindeployer apply-config                      (apply configs)",
   "engine.offline.cannotPredownload": "{0} cannot be pre-downloaded offline",
   "engine.offline.downloaded": "Downloaded → {0}",
   "engine.offline.downloading": "Downloading {0} …",

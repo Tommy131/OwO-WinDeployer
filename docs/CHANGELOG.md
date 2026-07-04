@@ -57,7 +57,7 @@
   - 新增 `Detection.WingetReachable` 状态：当那一次 `winget list` 超时（判定为断网）时，更新检查会直接跳过自己的 winget 调用，避免再额外空等一次超时。
   - 为 `Proc.RunAsync` 增加可选的 `timeoutSeconds` 参数（基于链接取消令牌 + 超时后杀进程树），供所有可能因断网而无限阻塞的外部命令调用使用。
   - 对 `MainViewModel.DetectAllAsync` 增加 `try/finally` 兜底，确保即使检测过程中出现异常，加载状态（`IsLoading`）也一定会被清除，页面不会卡死。
-  - 实测：全量 `windeploy plan --all`（328 项）由 150 秒以上降至约 14 秒（联网冷启动一次 `winget list`；热启动约 2 秒），且已安装的 winget 应用（含长 id 的 VS Code、winget-bundle 的 VC++ 运行库合集）均正确识别。
+  - 实测：全量 `owowindeployer plan --all`（328 项）由 150 秒以上降至约 14 秒（联网冷启动一次 `winget list`；热启动约 2 秒），且已安装的 winget 应用（含长 id 的 VS Code、winget-bundle 的 VC++ 运行库合集）均正确识别。
 
 ### 调整
 - **构建脚本迁移到 `scripts/`**：`build.ps1`、`preview.ps1` 由仓库根目录移动到 `scripts/` 目录（与 `publish.ps1` 等其他脚本统一）；修正 `build.ps1` 的仓库根路径解析（`$PSScriptRoot` → `Split-Path -Parent $PSScriptRoot`），移动后仍能正确定位 `src/` 与 `Directory.Build.props`。

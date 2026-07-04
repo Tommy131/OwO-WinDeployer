@@ -83,7 +83,7 @@ public sealed class RemoteDeployDialog : Window
         AddRow(form, r++, "remote.password", _pass);
         _dir = MakeBox("owo-win-deployer");
         AddRow(form, r++, "remote.dir", _dir);
-        _cmd = MakeBox("windeploy apply --silent");
+        _cmd = MakeBox("owowindeployer apply --silent");
         AddRow(form, r++, "remote.command", _cmd);
         root.Children.Add(At(form, 1));
 

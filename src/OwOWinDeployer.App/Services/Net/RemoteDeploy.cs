@@ -14,9 +14,9 @@ public static class RemoteDeploy
         var r = await Proc.RunAsync("ssh", new[]
         {
             "-p", port.ToString(), "-o", "BatchMode=yes", "-o", "ConnectTimeout=8",
-            "-o", "StrictHostKeyChecking=accept-new", $"{user}@{host}", "echo windeploy-ok",
+            "-o", "StrictHostKeyChecking=accept-new", $"{user}@{host}", "echo owowindeployer-ok",
         }, ct: ct);
-        var ok = r.Ok && r.StdOut.Contains("windeploy-ok");
+        var ok = r.Ok && r.StdOut.Contains("owowindeployer-ok");
         return (ok, (r.StdOut + r.StdErr).Trim());
     }
 

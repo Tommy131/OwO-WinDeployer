@@ -118,7 +118,7 @@ public sealed class AdvancedToolsViewModel : LocalizedObject
     private void RunDsc()
     {
         if (_catalog == null) return;
-        var dlg = new Microsoft.Win32.SaveFileDialog { Title = Localizer.T("advtools.dsc.saveTitle"), FileName = "windeploy.dsc.yaml", Filter = "YAML (*.yaml)|*.yaml" };
+        var dlg = new Microsoft.Win32.SaveFileDialog { Title = Localizer.T("advtools.dsc.saveTitle"), FileName = "owowindeployer.dsc.yaml", Filter = "YAML (*.yaml)|*.yaml" };
         if (dlg.ShowDialog() != true) return;
         var items = Selection.Resolve(_catalog, null, null, all: true, null);
         System.IO.File.WriteAllText(dlg.FileName, DscExport.Build(items));

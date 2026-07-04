@@ -285,7 +285,7 @@ irm https://raw.githubusercontent.com/Tommy131/owo-win-deployer/main/bootstrap/b
 
 ### 直接下载
 
-前往 [Releases](../../releases) 页面，下载 `OwOWinDeployer.exe`（GUI）或 `windeploy.exe`（CLI）。
+前往 [Releases](../../releases) 页面，下载 `OwOWinDeployer.exe`（GUI）或 `owowindeployer.exe`（CLI，另附更短的别名 `owodeploy.exe`）。
 
 > **推荐下载 ZIP 版**：ZIP 内为文件夹版（exe + 运行库），触发杀软启发式的概率低于单文件自解压版。
 
@@ -311,7 +311,8 @@ dotnet run --project src/OwOWinDeployer.Cli -- apply --profile dev --yes
 ```powershell
 pwsh -File scripts/publish.ps1
 # 产出：artifacts/app/OwOWinDeployer.exe（GUI）
-#       artifacts/cli/windeploy.exe（CLI）
+#       artifacts/cli/owowindeployer.exe（CLI）
+#       artifacts/cli/owodeploy.exe      （CLI 别名 —— 同一程序，短名）
 ```
 
 推送 `v*` tag 后，`.github/workflows/release.yml` 自动构建并挂到 GitHub Release。
@@ -321,7 +322,9 @@ pwsh -File scripts/publish.ps1
 ## CLI 命令参考
 
 ```
-windeploy <命令> [选项]
+owowindeployer <命令> [选项]
+# 或使用更短的别名：
+owodeploy <命令> [选项]
 ```
 
 | 命令 | 说明 |

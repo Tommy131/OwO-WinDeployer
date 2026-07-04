@@ -335,7 +335,7 @@ int CmdExportDsc(Catalog cat, Profile? prof, IReadOnlyCollection<string>? sel, b
 {
     var items = Selection.Resolve(cat, prof, sel, selAll, cat2);
     var yaml = DscExport.Build(items);
-    var path = outPath ?? "windeploy.dsc.yaml";
+    var path = outPath ?? "owowindeployer.dsc.yaml";
     File.WriteAllText(path, yaml);
     Log.Ok(Localizer.Format("cli.exportDsc.done", Path.GetFullPath(path)));
     Log.Info(Localizer.Format("cli.exportDsc.hint", path));
@@ -363,7 +363,7 @@ async Task<int> CmdDownloadOnly(Catalog cat, PathResolver pr, string root, Profi
 {
     var items = Selection.Resolve(cat, prof, sel, selAll, cat2);
     if (items.Count == 0) { Log.Warn(Localizer.T("cli.noMatch")); return 0; }
-    var dir = outDir ?? Path.Combine(Directory.GetCurrentDirectory(), "windeploy-offline");
+    var dir = outDir ?? Path.Combine(Directory.GetCurrentDirectory(), "owowindeployer-offline");
     Log.Step(Localizer.Format("cli.downloadOnly.predownload", items.Count, dir));
     var ctx = new EngineContext
     {
@@ -441,7 +441,7 @@ static class Tee
         var full = System.IO.Path.GetFullPath(path);
         System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(full)!);
         var writer = new System.IO.StreamWriter(full, append: true) { AutoFlush = true };
-        writer.WriteLine($"==== {DateTime.Now:yyyy-MM-dd HH:mm:ss} windeploy ====");
+        writer.WriteLine($"==== {DateTime.Now:yyyy-MM-dd HH:mm:ss} owowindeployer ====");
         Console.SetOut(new TeeWriter(Console.Out, writer));
     }
 

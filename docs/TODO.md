@@ -22,7 +22,7 @@
   - 实现：`DeployReport.ToHtml`（逐项 状态/耗时/信息 + 成功/失败/跳过 汇总，沿用 inventory 样式）。apply 实际执行后写入 `%APPDATA% 应用目录/reports/deploy-<stamp>.html` 并弹窗询问是否打开。
 
 - [x] **SHA256 回填工具** ✅
-  - 实现：CLI `windeploy hash [--all] [--only ids] [--write]` —— 下载便携项安装包算 SHA256，`--write` 用「定位 url 字符串就地插入」方式回写 catalog.json（保留注释/格式）。默认只读打印。
+  - 实现：CLI `owowindeployer hash [--all] [--only ids] [--write]` —— 下载便携项安装包算 SHA256，`--write` 用「定位 url 字符串就地插入」方式回写 catalog.json（保留注释/格式）。默认只读打印。
 
 - [x] **自动化测试基线** ✅
   - 实现：`src/OwOWinDeployer.Core.Tests`（xUnit，net10.0），47 个测试覆盖 `Selection.Resolve`、`CatalogLoader`、`Secrets.Redact`/`IsTextConfig`、i18n 三语键对齐+占位符、`CatalogValidator`。`dotnet test` 全绿。
@@ -32,7 +32,7 @@
 
 - [x] **还原点（Restore Point）** ✅ — `RestorePoint.CreateAsync`（`Checkpoint-Computer`）+ 设置页「批量安装前创建系统还原点」开关；安装前创建，失败（需管理员且启用系统还原）时询问是否仍继续。
 - [x] **定时导出** ✅ — App 新增无界面入口 `--capture <repoRoot>`（跑导出管线，仅非敏感，置于单实例守卫之前，GUI 开着也能跑）+ `ScheduledExport`（schtasks）每日/每周/登录时任务；采集页加「定时采集」开关+频率。
-- [x] **远程 apply** ✅ — `RemoteDeploy`（内置 ssh.exe/scp.exe，仅密钥认证、无密码）+ 自包含对话框：测试连通 → 推送仓库到目标机 → 运行部署命令（默认 `windeploy apply --silent`）并显示输出；入口在配置同步页的卡片。
+- [x] **远程 apply** ✅ — `RemoteDeploy`（内置 ssh.exe/scp.exe，仅密钥认证、无密码）+ 自包含对话框：测试连通 → 推送仓库到目标机 → 运行部署命令（默认 `owowindeployer apply --silent`）并显示输出；入口在配置同步页的卡片。
 
 ## 杂项 / 已知待办
 

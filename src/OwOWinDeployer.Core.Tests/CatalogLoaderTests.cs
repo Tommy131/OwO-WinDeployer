@@ -17,7 +17,7 @@ public sealed class CatalogLoaderTests : IDisposable
 
     public CatalogLoaderTests()
     {
-        _dir = Path.Combine(Path.GetTempPath(), "windeploy-tests-" + Guid.NewGuid().ToString("N"));
+        _dir = Path.Combine(Path.GetTempPath(), "owowindeployer-tests-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_dir);
     }
 

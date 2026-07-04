@@ -294,7 +294,7 @@ The script verifies winget, downloads the latest `OwOWinDeployer.exe` from GitHu
 
 ### Direct Download
 
-Visit the [Releases](../../releases) page and download `OwOWinDeployer.exe` (GUI) or `windeploy.exe` (CLI).
+Visit the [Releases](../../releases) page and download `OwOWinDeployer.exe` (GUI) or `owowindeployer.exe` (CLI, also shipped as the shorter alias `owodeploy.exe`).
 
 > **Prefer the ZIP package**: the folder-based ZIP is less likely to trigger antivirus heuristics than the single-file self-extracting EXE.
 
@@ -320,7 +320,8 @@ dotnet run --project src/OwOWinDeployer.Cli -- apply --profile dev --yes
 ```powershell
 pwsh -File scripts/publish.ps1
 # Output: artifacts/app/OwOWinDeployer.exe (GUI)
-#         artifacts/cli/windeploy.exe (CLI)
+#         artifacts/cli/owowindeployer.exe (CLI)
+#         artifacts/cli/owodeploy.exe      (CLI alias — same program, shorter name)
 ```
 
 Pushing a `v*` tag triggers `.github/workflows/release.yml`, which builds and attaches both EXEs to a GitHub Release automatically.
@@ -330,7 +331,9 @@ Pushing a `v*` tag triggers `.github/workflows/release.yml`, which builds and at
 ## CLI Reference
 
 ```
-windeploy <command> [options]
+owowindeployer <command> [options]
+# or use the shorter alias:
+owodeploy <command> [options]
 ```
 
 | Command | Description |

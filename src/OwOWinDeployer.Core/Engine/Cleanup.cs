@@ -12,8 +12,8 @@ public static class Cleanup
         var ins = item.Install;
         var tmp = System.IO.Path.GetTempPath();
 
-        freed += TryDeleteFile(System.IO.Path.Combine(tmp, $"windeploy_{item.Id}.zip"));
-        freed += TryDeleteDir(System.IO.Path.Combine(tmp, $"windeploy_{item.Id}_x"));
+        freed += TryDeleteFile(System.IO.Path.Combine(tmp, $"owowindeployer_{item.Id}.zip"));
+        freed += TryDeleteDir(System.IO.Path.Combine(tmp, $"owowindeployer_{item.Id}_x"));
 
         if (ins.Method == "portable" && ins.ExtractTo != null)
             freed += TryDeleteDir(pr.Resolve(item.InstallPathOverride ?? ins.ExtractTo));

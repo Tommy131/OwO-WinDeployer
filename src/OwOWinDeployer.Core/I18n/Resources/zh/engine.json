@@ -91,7 +91,7 @@
   "engine.migrate.manifestFrom": "来自 {0}，{1} 个应用",
   "engine.migrate.noConfigsKit": "工具包内无 configs/",
   "engine.migrate.noConfigsRepo": "仓库内无 configs/",
-  "engine.migrate.restoreText": "OwO! Win Deployer 迁移工具包\n来源机器：{0} · {1}\n\n在新机器上还原：\n  1) 拉取/克隆 owo-win-deployer 仓库\n  2) windeploy migrate import \"<此目录>\"      （把 configs/ 拷回仓库）\n  3) windeploy apply --only {2}\n  4) windeploy apply-config                      （套用配置）",
+  "engine.migrate.restoreText": "OwO! Win Deployer 迁移工具包\n来源机器：{0} · {1}\n\n在新机器上还原：\n  1) 拉取/克隆 owo-win-deployer 仓库\n  2) owowindeployer migrate import \"<此目录>\"      （把 configs/ 拷回仓库）\n  3) owowindeployer apply --only {2}\n  4) owowindeployer apply-config                      （套用配置）",
   "engine.offline.cannotPredownload": "{0} 无法离线预下载",
   "engine.offline.downloaded": "已下载 → {0}",
   "engine.offline.downloading": "下载 {0} …",

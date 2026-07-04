@@ -15,7 +15,7 @@ public sealed class CatalogValidatorTests : IDisposable
 
     public CatalogValidatorTests()
     {
-        _repoRoot = Path.Combine(Path.GetTempPath(), "windeploy-validate-" + Guid.NewGuid().ToString("N"));
+        _repoRoot = Path.Combine(Path.GetTempPath(), "owowindeployer-validate-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(_repoRoot);
     }
 
