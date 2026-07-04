@@ -1,11 +1,12 @@
 using System.Net.Http;
 using System.Text.Json;
+using OwOWinDeployer.Core.Util;
 
 namespace OwOWinDeployer.App.Services.Software;
 
 public sealed record GhAsset(string Name, string Url, long Size);
 
-public sealed record GhRelease(string Tag, string Name, string HtmlUrl, bool Prerelease, List<GhAsset> Assets);
+public sealed record GhRelease(string Tag, string Name, string HtmlUrl, bool Prerelease, string Body, List<GhAsset> Assets);
 
 /// <summary>Fetches a repo's releases from the GitHub API, cached per repo for 30 minutes to avoid
 /// hammering the (unauthenticated, 60/hr) API on repeated installs / cancels / update checks.</summary>
@@ -44,12 +45,13 @@ public static class GitHub
         return rel;
     }
 
-    /// <summary>All releases (newest first), for picking a specific tag + asset. Cached 30 min.</summary>
-    public static async Task<List<GhRelease>> ReleasesAsync(string repo)
+    /// <summary>All releases (newest first), for picking a specific tag + asset. Cached 30 min unless <paramref name="force"/>.</summary>
+    public static async Task<List<GhRelease>> ReleasesAsync(string repo, bool force = false)
     {
-        lock (Gate)
-            if (ReleasesCache.TryGetValue(repo, out var c) && DateTime.Now - c.At < Ttl)
-                return c.Releases;
+        if (!force)
+            lock (Gate)
+                if (ReleasesCache.TryGetValue(repo, out var c) && DateTime.Now - c.At < Ttl)
+                    return c.Releases;
 
         var list = new List<GhRelease>();
         var json = await GetAsync($"https://api.github.com/repos/{repo}/releases?per_page=100");
@@ -76,7 +78,37 @@ public static class GitHub
             e.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "",
             e.TryGetProperty("html_url", out var h) ? h.GetString() ?? "" : "",
             e.TryGetProperty("prerelease", out var p) && p.GetBoolean(),
+            e.TryGetProperty("body", out var b) ? b.GetString() ?? "" : "",
             assets);
+    }
+
+    /// <summary>The newest release for the update check. When <paramref name="includePrerelease"/> is false this is
+    /// GitHub's "latest" (stable) release; when true it's the highest release by SemVer precedence across all
+    /// releases, so a pre-release (e.g. v1.3.1-rc.1) can be offered. Returns null on network failure / no releases.</summary>
+    public static async Task<GhRelease?> NewestAsync(string repo, bool includePrerelease, bool force = false)
+    {
+        if (!includePrerelease) return await LatestReleaseAsync(repo, force);
+
+        List<GhRelease> all;
+        try { all = await ReleasesAsync(repo, force); }
+        catch { return null; }
+        GhRelease? best = null;
+        foreach (var r in all)
+        {
+            if (string.IsNullOrWhiteSpace(r.Tag)) continue;
+            if (best == null || SemVer.Compare(r.Tag, best.Tag) > 0) best = r;
+        }
+        return best;
+    }
+
+    /// <summary>Fetch a specific release by its exact tag (needed to download a pre-release, which
+    /// <see cref="LatestReleaseAsync"/> never returns). Returns null if not found.</summary>
+    public static async Task<GhRelease?> ReleaseByTagAsync(string repo, string tag, bool force = false)
+    {
+        List<GhRelease> all;
+        try { all = await ReleasesAsync(repo, force); }
+        catch { return null; }
+        return all.FirstOrDefault(r => string.Equals(r.Tag, tag, StringComparison.OrdinalIgnoreCase));
     }
 
     private static async Task<string> GetAsync(string url)

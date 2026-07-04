@@ -24,5 +24,16 @@
   "update.auto.preparing": "Download wird vorbereitet …",
   "update.pick.title": "Update-Paket auswählen",
   "update.pick.body": "Es konnte kein Paket automatisch zur Installationsart dieser Kopie zugeordnet werden — bitte wählen Sie eines aus:",
-  "update.progress.title": "Update wird heruntergeladen"
+  "update.progress.title": "Update wird heruntergeladen",
+  "update.dialog.title": "Update verfügbar",
+  "update.dialog.heading": "Eine neue Version v{0} ist verfügbar",
+  "update.dialog.versionLine": "Aktuell v{0}  →  neu v{1}",
+  "update.dialog.notes": "Neuerungen",
+  "update.dialog.noNotes": "_Für diese Version wurden keine Versionshinweise bereitgestellt._",
+  "update.prerelease.badge": "Vorschau-Build (Pre-release)",
+  "update.prerelease.warn": "Dies ist eine Vorabversion und kann Fehler, unfertige Funktionen oder instabiles Verhalten enthalten. Installiere sie nur, wenn du die neuesten Änderungen testen möchtest; andernfalls warte auf die stabile Version.",
+  "update.btn.updateNow": "Jetzt aktualisieren",
+  "update.btn.ignore": "Diese Version ignorieren",
+  "update.btn.later": "Später",
+  "update.btn.releasePage": "Release-Seite"
 }

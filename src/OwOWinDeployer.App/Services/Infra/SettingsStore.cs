@@ -18,6 +18,11 @@ public sealed class AppSettings
     public string? ProxyUrl { get; set; }
     public string? Theme { get; set; }   // system | light | dark
 
+    /// <summary>接收预览版（pre-release）更新提示。默认关闭；若当前运行的就是预览版，则无论此项如何都会检测预览版。</summary>
+    public bool PreReleaseUpdates { get; set; }
+    /// <summary>用户选择「忽略此版本」的发布 tag（如 v1.3.1）。启动检查遇到同一 tag 时不再打扰；出现更新的版本会重新提示。手动「检查更新」不受影响。</summary>
+    public string? IgnoredUpdateVersion { get; set; }
+
     /// <summary>界面语言：zh | en | de。null 表示首次运行未设定（按系统语言自动选择）。</summary>
     public string? Language { get; set; }
 

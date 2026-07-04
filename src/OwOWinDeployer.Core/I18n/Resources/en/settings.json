@@ -120,5 +120,8 @@
   "settings.update.checking": "Checking for updates…",
   "settings.update.found": "New version v{0} available",
   "settings.update.upToDate": "You are on the latest version v{0}",
-  "settings.update.dialogTitle": "Check for updates"
+  "settings.update.dialogTitle": "Check for updates",
+  "settings.update.prerelease": "Receive preview (pre-release) updates",
+  "settings.update.prereleaseDesc": "Also notify me about preview builds (e.g. v1.3.1-rc.1). Previews may be unstable. If you're already running a preview, previews are always checked.",
+  "settings.update.runningPrerelease": "You're running a preview build (pre-release). It may be less stable than a stable release — please report any issues you run into."
 }

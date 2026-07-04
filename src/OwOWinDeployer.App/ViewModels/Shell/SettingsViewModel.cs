@@ -44,6 +44,7 @@ public sealed class SettingsViewModel : ObservableObject
         _reminderSeconds = _s.TempReminderSeconds;
         _proxyEnabled = _s.ProxyEnabled;
         _proxyUrl = _s.ProxyUrl ?? "";
+        _preReleaseUpdates = _s.PreReleaseUpdates;
         SettingsPath = SettingsStore.FilePath;
         SaveCommand = new RelayCommand(_ => Save());
         OpenFolderCommand = new RelayCommand(_ => OpenFolder());
@@ -73,6 +74,25 @@ public sealed class SettingsViewModel : ObservableObject
 
     private string _updateNote = "";
     public string UpdateNote { get => _updateNote; set => Set(ref _updateNote, value); }
+
+    private bool _preReleaseUpdates;
+    /// <summary>接收预览版（pre-release）更新。开启后「检查更新」及启动检查会把预览版也纳入；否则仅正式版
+    /// （但当前若运行的就是预览版，则始终纳入预览版）。即时持久化。</summary>
+    public bool PreReleaseUpdates
+    {
+        get => _preReleaseUpdates;
+        set
+        {
+            if (!Set(ref _preReleaseUpdates, value)) return;
+            _s.PreReleaseUpdates = value;
+            SettingsStore.Save(_s);
+            AuditLog.Action($"接收预览版更新：{(value ? "开启" : "关闭")}");
+        }
+    }
+
+    /// <summary>True when the running build is itself a pre-release — the About section calls it out so the user
+    /// knows they're on a preview.</summary>
+    public bool IsRunningPrerelease => OwOWinDeployer.Core.Util.SemVer.IsPrerelease(OwOWinDeployer.App.AppInfo.Version);
 
     private async Task CheckUpdateAsync()
     {

@@ -120,5 +120,8 @@
   "settings.update.checking": "Suche nach Updates…",
   "settings.update.found": "Neue Version v{0} verfügbar",
   "settings.update.upToDate": "Sie haben die neueste Version v{0}",
-  "settings.update.dialogTitle": "Nach Updates suchen"
+  "settings.update.dialogTitle": "Nach Updates suchen",
+  "settings.update.prerelease": "Vorabversionen (Pre-release) beziehen",
+  "settings.update.prereleaseDesc": "Auch über Vorschau-Builds benachrichtigen (z. B. v1.3.1-rc.1). Vorschauversionen können instabil sein. Wenn du bereits eine Vorschau nutzt, werden Vorschauen immer geprüft.",
+  "settings.update.runningPrerelease": "Du nutzt einen Vorschau-Build (Pre-release). Er ist möglicherweise weniger stabil als eine stabile Version — melde auftretende Probleme bitte."
 }

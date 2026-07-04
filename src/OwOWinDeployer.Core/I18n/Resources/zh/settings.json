@@ -120,5 +120,8 @@
   "settings.update.checking": "正在检查更新 …",
   "settings.update.found": "发现新版本 v{0}",
   "settings.update.upToDate": "当前已是最新版本 v{0}",
-  "settings.update.dialogTitle": "检查更新"
+  "settings.update.dialogTitle": "检查更新",
+  "settings.update.prerelease": "接收预览版（pre-release）更新",
+  "settings.update.prereleaseDesc": "同时提示预览版（如 v1.3.1-rc.1）。预览版可能不稳定。若你当前运行的就是预览版，则始终检测预览版。",
+  "settings.update.runningPrerelease": "你正在运行预览版（pre-release），稳定性可能不及正式版；如遇问题欢迎反馈。"
 }

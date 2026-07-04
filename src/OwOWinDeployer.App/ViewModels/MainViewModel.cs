@@ -111,6 +111,10 @@ public sealed class MainViewModel : LocalizedObject
         {
             var r = await SelfUpdate.CheckAsync();
             if (!r.Available) return;   // up-to-date / offline / no release → stay quiet at startup
+            // Respect "ignore this version": don't nag at startup for a release the user dismissed. A newer
+            // release has a different tag, so it will prompt again. The manual「检查更新」button ignores this.
+            if (string.Equals(r.Tag, SettingsStore.Load().IgnoredUpdateVersion, StringComparison.OrdinalIgnoreCase))
+                return;
             await SelfUpdateFlow.OfferAsync(r);
         }
         catch { /* stay quiet */ }

@@ -24,5 +24,16 @@
   "update.auto.preparing": "Preparing download…",
   "update.pick.title": "Choose an update package",
   "update.pick.body": "Couldn't automatically match a package to how this copy was installed — please pick one:",
-  "update.progress.title": "Downloading update"
+  "update.progress.title": "Downloading update",
+  "update.dialog.title": "Update available",
+  "update.dialog.heading": "A new version v{0} is available",
+  "update.dialog.versionLine": "Current v{0}  →  new v{1}",
+  "update.dialog.notes": "What's new",
+  "update.dialog.noNotes": "_No release notes were provided for this version._",
+  "update.prerelease.badge": "Preview build (Pre-release)",
+  "update.prerelease.warn": "This is a preview release and may contain bugs, unfinished features or unstable behaviour. Install it only if you want to test the newest changes; otherwise wait for the stable release.",
+  "update.btn.updateNow": "Update now",
+  "update.btn.ignore": "Ignore this version",
+  "update.btn.later": "Later",
+  "update.btn.releasePage": "Release page"
 }

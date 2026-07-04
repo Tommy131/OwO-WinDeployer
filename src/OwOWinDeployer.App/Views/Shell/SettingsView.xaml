@@ -370,7 +370,18 @@
                       ToolTip="{DynamicResource S.settings.about.openDataDirTip}" />
               <TextBlock Text="{Binding UpdateNote}" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" Margin="10,0,0,0" />
             </StackPanel>
-            <TextBlock FontSize="11" Foreground="{DynamicResource TextTertiary}" Margin="0,8,0,0" TextWrapping="Wrap">
+
+            <CheckBox Content="{DynamicResource S.settings.update.prerelease}" IsChecked="{Binding PreReleaseUpdates}" FontSize="13" Margin="0,12,0,0" />
+            <TextBlock Text="{DynamicResource S.settings.update.prereleaseDesc}" FontSize="12"
+                       Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Margin="0,4,0,0" />
+            <Border Visibility="{Binding IsRunningPrerelease, Converter={StaticResource BoolToVis}}"
+                    Background="{DynamicResource WarnBg}" BorderBrush="{DynamicResource WarnFg}" BorderThickness="1"
+                    CornerRadius="6" Padding="10,7" Margin="0,10,0,0">
+              <TextBlock Text="{DynamicResource S.settings.update.runningPrerelease}" FontSize="12"
+                         Foreground="{DynamicResource WarnFg}" TextWrapping="Wrap" />
+            </Border>
+
+            <TextBlock FontSize="11" Foreground="{DynamicResource TextTertiary}" Margin="0,10,0,0" TextWrapping="Wrap">
               <Run Text="{DynamicResource S.settings.about.dataDir}" /><Run Text="{Binding SettingsPath, Mode=OneWay}" />
             </TextBlock>
           </StackPanel>

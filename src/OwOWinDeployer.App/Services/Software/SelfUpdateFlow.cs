@@ -13,12 +13,23 @@ public static class SelfUpdateFlow
     public static async Task OfferAsync(UpdateCheck check)
     {
         var owner = Application.Current.MainWindow;
-        var msg = Localizer.Format("update.auto.confirm", OwOWinDeployer.App.AppInfo.Name, check.Latest, check.Current);
-        if (Dialogs.Show(msg, Localizer.T("settings.update.dialogTitle"), MessageBoxButton.YesNo, MessageBoxImage.Information)
-            != MessageBoxResult.Yes)
-            return;
 
-        AuditLog.Action($"自更新：用户确认更新到 v{check.Latest}");
+        // Rich dialog: rendered release notes + pre-release warning + update / ignore / later.
+        var updateDlg = new Views.Common.UpdateAvailableDialog(check) { Owner = owner };
+        updateDlg.ShowDialog();
+        switch (updateDlg.Choice)
+        {
+            case Views.Common.UpdateChoice.Ignore:
+                var ig = SettingsStore.Load();
+                ig.IgnoredUpdateVersion = check.Tag;
+                SettingsStore.Save(ig);
+                AuditLog.Action($"自更新：用户忽略版本 {check.Tag}");
+                return;
+            case Views.Common.UpdateChoice.Later:
+                return;
+        }
+
+        AuditLog.Action($"自更新：用户确认更新到 {check.Tag}（{(check.IsPrerelease ? "预览版" : "正式版")}）");
 
         if (!SelfUpdateInstaller.IsInstallDirWritable())
         {
@@ -28,8 +39,9 @@ public static class SelfUpdateFlow
             return;
         }
 
+        // Fetch the exact release BY TAG (not "latest", which never returns a pre-release) so the right assets download.
         GhRelease? rel;
-        try { rel = await GitHub.LatestReleaseAsync(OwOWinDeployer.App.AppInfo.Repo, force: true); }
+        try { rel = await GitHub.ReleaseByTagAsync(OwOWinDeployer.App.AppInfo.Repo, check.Tag, force: true); }
         catch { rel = null; }
         if (rel == null)
         {

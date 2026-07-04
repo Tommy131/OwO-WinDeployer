@@ -21,9 +21,19 @@ public static class AppInfo
     {
         get
         {
+            // Prefer the informational version — it carries the full SemVer from <Version>, INCLUDING any
+            // pre-release suffix (e.g. "1.3.1-rc.1"), which the numeric AssemblyVersion strips. That suffix is
+            // essential: the self-update check must order pre-releases correctly, and the UI must be able to tell
+            // the user they're running a preview. Strip the "+<commit>" build metadata the SDK may append.
+            var info = Assembly.GetExecutingAssembly()
+                .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+            if (!string.IsNullOrWhiteSpace(info))
+            {
+                var plus = info.IndexOf('+');
+                return plus >= 0 ? info[..plus] : info;
+            }
             var v = Assembly.GetExecutingAssembly().GetName().Version;
             if (v == null) return "1.0.0";
-            // Show the 4th part only for patch releases (e.g. 1.2.3.1); plain x.y.z otherwise.
             return v.Revision > 0 ? $"{v.Major}.{v.Minor}.{v.Build}.{v.Revision}" : $"{v.Major}.{v.Minor}.{v.Build}";
         }
     }
