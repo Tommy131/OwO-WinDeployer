@@ -73,6 +73,8 @@ public sealed class AppSettings
     public bool AudioWidgetBeatReactive { get; set; } = true;
     /// <summary>静音时波形平滑淡出「呼吸」，来声音再唤醒。默认开启。</summary>
     public bool AudioWidgetSilenceFade { get; set; } = true;
+    /// <summary>在组件角落显示实时读数（音名 · BPM · 电平）。默认开启。</summary>
+    public bool AudioWidgetReadout { get; set; } = true;
 
     // ── 硬件温度监控（后台定时检测 CPU / GPU / NVMe 硬盘，超阈值时通知 + 可选 TTS 语音）──────────
     /// <summary>启用硬件温度监控。默认关闭（opt-in）。</summary>

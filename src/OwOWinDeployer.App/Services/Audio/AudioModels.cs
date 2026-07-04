@@ -16,6 +16,8 @@ public enum WaveStyle
     Ribbon,
     /// <summary>A scrolling spectrogram waterfall — frequency (x) over time (y) as a heatmap.</summary>
     Spectrogram,
+    /// <summary>The oscilloscope waveform wrapped around a circle — a pulsing polar ring.</summary>
+    Polar,
 }
 
 /// <summary>Colour scheme for the bars/trace. Accent follows the app theme; the rest are fixed gradients.</summary>
@@ -44,6 +46,7 @@ public static class AudioWaveOptions
         "radial" => WaveStyle.Radial,
         "ribbon" => WaveStyle.Ribbon,
         "spectrogram" or "spectro" => WaveStyle.Spectrogram,
+        "polar" => WaveStyle.Polar,
         _ => WaveStyle.Mirror,
     };
 
@@ -54,6 +57,7 @@ public static class AudioWaveOptions
         WaveStyle.Radial => "radial",
         WaveStyle.Ribbon => "ribbon",
         WaveStyle.Spectrogram => "spectrogram",
+        WaveStyle.Polar => "polar",
         _ => "mirror",
     };
 

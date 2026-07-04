@@ -35,6 +35,7 @@ public partial class AudioWaveWidgetWindow : Window
     private bool _placed;
     private readonly DispatcherTimer _settle;
     private readonly DispatcherTimer _refresh;
+    private readonly DispatcherTimer _readoutTimer;   // updates the note · BPM · level readout ~4×/s
     private readonly bool _native;
 
     public AudioWaveWidgetWindow(SettingsViewModel settings)
@@ -52,6 +53,8 @@ public partial class AudioWaveWidgetWindow : Window
         _settle.Tick += (_, _) => { _settle.Stop(); CaptureBackground(); };
         _refresh = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1200) };
         _refresh.Tick += (_, _) => CaptureBackground();
+        _readoutTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
+        _readoutTimer.Tick += (_, _) => UpdateReadout();
 
         Header.MouseLeftButtonDown += (_, e) => { if (e.ChangedButton == MouseButton.Left) { try { DragMove(); } catch { } } };
         CloseButton.Click += (_, _) => CloseRequested?.Invoke();
@@ -126,12 +129,39 @@ public partial class AudioWaveWidgetWindow : Window
         _capture.Start();
         _renderer.Start();
         NoDeviceHint.Visibility = _capture.IsRunning ? Visibility.Collapsed : Visibility.Visible;
+        if (SettingsStore.Load().AudioWidgetReadout && _capture.IsRunning) _readoutTimer.Start();
     }
 
     private void StopAudio()
     {
         _renderer.Stop();
         _capture.Stop();
+        _readoutTimer.Stop();
+        Readout.Text = "";
+    }
+
+    /// <summary>Refresh the corner readout: dominant musical note · estimated BPM · level meter.</summary>
+    private void UpdateReadout()
+    {
+        if (!SettingsStore.Load().AudioWidgetReadout || !_analyzer.HasSignal) { Readout.Text = ""; return; }
+        var parts = new System.Collections.Generic.List<string>(3);
+        var note = NoteName(_analyzer.DominantHz);
+        if (note != null) parts.Add(note);
+        if (_analyzer.Bpm > 0) parts.Add($"{_analyzer.Bpm} BPM");
+        int bars = (int)Math.Round(_analyzer.Level * 5);
+        parts.Add(new string('▮', bars) + new string('▯', 5 - bars));
+        Readout.Text = string.Join("  ·  ", parts);
+    }
+
+    private static readonly string[] NoteNames = { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
+
+    /// <summary>Nearest musical note name (e.g. "A4") for a frequency, or null when there's no clear tone.</summary>
+    private static string? NoteName(float hz)
+    {
+        if (hz < 20f || hz > 8000f) return null;
+        int midi = (int)Math.Round(69 + 12 * Math.Log2(hz / 440.0));
+        if (midi < 12 || midi > 120) return null;
+        return NoteNames[midi % 12] + (midi / 12 - 1);
     }
 
     /// <summary>Re-read the visual settings (style / colour / sensitivity) and push them to the renderer. Called on
@@ -145,6 +175,8 @@ public partial class AudioWaveWidgetWindow : Window
             AudioWaveOptions.ParseStyle(s.AudioWidgetStyle),
             AudioWaveOptions.ParseColor(s.AudioWidgetColor),
             (float)s.AudioWidgetSensitivity);
+        if (s.AudioWidgetReadout && _capture.IsRunning) _readoutTimer.Start();
+        else { _readoutTimer.Stop(); Readout.Text = ""; }
     }
 
     // Advance style/colour via the shared view-model. Its setter persists the choice, notifies the Settings

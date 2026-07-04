@@ -39,6 +39,7 @@ public sealed class SettingsViewModel : ObservableObject
         _audioSensitivity = _s.AudioWidgetSensitivity;
         _audioBeatReactive = _s.AudioWidgetBeatReactive;
         _audioSilenceFade = _s.AudioWidgetSilenceFade;
+        _audioReadout = _s.AudioWidgetReadout;
         _tempMonitorEnabled = _s.TempMonitorEnabled;
         _tempTts = _s.TempTtsEnabled;
         _tempCpu = _s.TempCpuEnabled; _tempGpu = _s.TempGpuEnabled; _tempDisk = _s.TempDiskEnabled;
@@ -389,6 +390,20 @@ public sealed class SettingsViewModel : ObservableObject
         {
             if (!Set(ref _audioSilenceFade, value)) return;
             _s.AudioWidgetSilenceFade = value;
+            SettingsStore.Save(_s);
+            AudioWidgetVisualChanged?.Invoke();
+        }
+    }
+
+    private bool _audioReadout;
+    /// <summary>组件角落显示实时读数（音名 · BPM · 电平）。即时生效并持久化。</summary>
+    public bool AudioWidgetReadout
+    {
+        get => _audioReadout;
+        set
+        {
+            if (!Set(ref _audioReadout, value)) return;
+            _s.AudioWidgetReadout = value;
             SettingsStore.Save(_s);
             AudioWidgetVisualChanged?.Invoke();
         }

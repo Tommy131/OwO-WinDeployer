@@ -105,6 +105,7 @@ public sealed class WaveformRenderer : FrameworkElement
         {
             case WaveStyle.Oscilloscope:
             case WaveStyle.Ribbon:
+            case WaveStyle.Polar:
                 _analyzer.FillWave(_wave);
                 break;
             case WaveStyle.Spectrogram:
@@ -150,6 +151,7 @@ public sealed class WaveformRenderer : FrameworkElement
             case WaveStyle.Oscilloscope: DrawScope(dc, w, h); break;
             case WaveStyle.Ribbon: DrawRibbon(dc, w, h); break;
             case WaveStyle.Spectrogram: DrawSpectrogram(dc, w, h); break;
+            case WaveStyle.Polar: DrawPolar(dc, w, h); break;
         }
     }
 
@@ -237,6 +239,28 @@ public sealed class WaveformRenderer : FrameworkElement
         }
         geo.Freeze();
         dc.DrawGeometry(_ribbonFill, _scopePen, geo);   // translucent fill + glowing top stroke
+    }
+
+    private void DrawPolar(DrawingContext dc, double w, double h)
+    {
+        var c = new Point(w / 2, h / 2);
+        double baseR = Math.Min(w, h) * 0.24;
+        double amp = Math.Min(w, h) * 0.20;
+        var geo = new StreamGeometry();
+        using (var ctx = geo.Open())
+        {
+            for (int i = 0; i <= WavePoints; i++)
+            {
+                int j = i % WavePoints;
+                double ang = -Math.PI / 2 + i / (double)WavePoints * Math.PI * 2;
+                double r = baseR + _wave[j] * amp;
+                var p = new Point(c.X + Math.Cos(ang) * r, c.Y + Math.Sin(ang) * r);
+                if (i == 0) ctx.BeginFigure(p, false, true);
+                else ctx.LineTo(p, true, false);
+            }
+        }
+        geo.Freeze();
+        dc.DrawGeometry(null, _scopePen ?? _barPens[0], geo);
     }
 
     private void DrawSpectrogram(DrawingContext dc, double w, double h)
