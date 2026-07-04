@@ -90,7 +90,7 @@
                        TextTrimming="CharacterEllipsis" />
             <TextBlock x:Name="TrackArtist" FontSize="11" Foreground="{DynamicResource TextSecondary}"
                        TextTrimming="CharacterEllipsis" Margin="0,1,0,0" />
-            <Grid Margin="0,4,0,0">
+            <Grid x:Name="ProgressRow" Margin="0,4,0,0" Visibility="Collapsed">
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />

@@ -135,7 +135,10 @@ public partial class AudioWaveWidgetWindow : Window
     private void UpdateProgress()
     {
         var (pos, dur) = _media.GetProgress();
-        if (dur <= 0) { ProgFill.Width = 0; ProgTime.Text = ""; return; }
+        // Some players (e.g. NetEase Cloud Music) don't report a timeline to SMTC at all — no duration means no
+        // meaningful progress bar, so hide the whole row rather than show an empty one that never fills.
+        if (dur <= 0) { ProgressRow.Visibility = Visibility.Collapsed; return; }
+        ProgressRow.Visibility = Visibility.Visible;
         ProgFill.Width = Math.Max(0, ProgTrack.ActualWidth * Math.Clamp(pos / dur, 0, 1));
         ProgTime.Text = $"{FormatTime(pos)} / {FormatTime(dur)}";
     }
