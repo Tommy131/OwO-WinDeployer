@@ -6,6 +6,23 @@
 
 ---
 
+## v1.3.0 — 2026-07-04
+
+### 调整
+- **品牌重命名：代码根词 `WinDeploy` → `OwOWinDeployer`**。命名空间、程序集名、项目/解决方案/文件夹、CI 与文档引用全部统一（约 800 处）。**用户可见影响**：
+  - **GUI 可执行文件更名** `WinDeploy.exe` → **`OwOWinDeployer.exe`**。指向旧 `WinDeploy.exe` 的桌面快捷方式在升级后会失效，需重新创建（或重装一次）。
+  - **数据回退目录** `%LOCALAPPDATA%\WinDeploy` → `%LOCALAPPDATA%\OwOWinDeployer`。便携模式的 `data\`（exe 同级）目录名不变、零影响；旧 `%LOCALAPPDATA%\WinDeploy` 的数据会被自动识别并迁移到新位置。
+  - **保持不变**：单实例互斥体 / AppUserModelID（`OwO.WinDeployer.*`）、GitHub 仓库名（`OwO-WinDeployer`）、品牌显示名（`OwO! Win Deployer`）。
+- **CLI 命令更名** `windeploy` → **`owowindeployer`**（可执行文件、`--help` 帮助全文、远程部署默认命令等）。自更新为「只增不删」覆盖：老用户跨本次更名升级后目录中会同时留下旧 `WinDeploy.exe` 与新 `OwOWinDeployer.exe`（建议重装一次以清爽）。
+
+### 新增
+- **CLI 短别名 `owodeploy`**：发布包在每种形态里都附带 `owodeploy.exe`（同一 apphost 的副本，单文件版可独立运行、多文件版与 `owowindeployer.dll` 同目录运行），可用更短的 `owodeploy <命令>` 调用。
+
+### 删除
+- 无。
+
+---
+
 ## v1.2.7 — 2026-07-04
 
 ### 新增
