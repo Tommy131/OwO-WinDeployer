@@ -52,6 +52,7 @@
     <Using Include="WinDeploy.App.Services.Infra" />
     <Using Include="WinDeploy.App.Services.Ftp" />
     <Using Include="WinDeploy.App.Services.Clip" />
+    <Using Include="WinDeploy.App.Services.Launch" />
     <Using Include="WinDeploy.App.ViewModels" />
     <Using Include="WinDeploy.App.ViewModels.Deploy" />
     <Using Include="WinDeploy.App.ViewModels.Sys" />
@@ -61,6 +62,7 @@
     <Using Include="WinDeploy.App.ViewModels.Terminal" />
     <Using Include="WinDeploy.App.ViewModels.Tools" />
     <Using Include="WinDeploy.App.ViewModels.Shell" />
+    <Using Include="WinDeploy.App.ViewModels.Launch" />
     <Using Include="WinDeploy.App.Views.Deploy" />
     <Using Include="WinDeploy.App.Views.Sys" />
     <Using Include="WinDeploy.App.Views.Ftp" />
@@ -71,6 +73,7 @@
     <Using Include="WinDeploy.App.Views.Tools" />
     <Using Include="WinDeploy.App.Views.Shell" />
     <Using Include="WinDeploy.App.Views.Common" />
+    <Using Include="WinDeploy.App.Views.Launch" />
   </ItemGroup>
 
   <ItemGroup>

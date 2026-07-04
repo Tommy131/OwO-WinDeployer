@@ -47,6 +47,8 @@ public sealed class MainViewModel : LocalizedObject
     public FtpViewModel Ftp { get; } = new();
     public ClipSyncViewModel ClipSync { get; } = new();
     public CloudflareDdnsViewModel Cloudflare { get; } = new();
+    // Named QuickLaunch (not Launcher) to avoid shadowing the Core `Launcher` type referenced elsewhere in this VM.
+    public LaunchCenterViewModel QuickLaunch { get; } = new();
 
     public string AppName => WinDeploy.App.AppInfo.Name;
     public string WindowTitle => WinDeploy.App.AppInfo.TitleWithRole;
@@ -76,6 +78,10 @@ public sealed class MainViewModel : LocalizedObject
         Settings.ConfirmEnableDeveloperMode += ShowDevModeConfirmDialog;
         Settings.DeveloperModeChanged += on => { _devMode = on; Install.SetDeveloperMode(on); RebuildNav(); };
         Settings.RefreshIconsRequested += () => _ = RefreshIconsManualAsync();
+        // 快速启动页「打开桌面组件」按钮 ↔ 桌面小组件开关：点按钮开小组件，小组件开/关时同步按钮的启用态与文案。
+        QuickLaunch.OpenWidgetRequested += () => Settings.ShowDesktopWidget = true;
+        Settings.ShowDesktopWidgetChanged += on => QuickLaunch.IsWidgetOpen = on;
+        QuickLaunch.IsWidgetOpen = SettingsStore.Load().ShowDesktopWidget;
         TempMonitor.Overheat += OnTempOverheat;
         TempMonitor.Resolved += OnTempResolved;
         SelectNavCommand = new RelayCommand(p => { if (p is NavItemViewModel n) SelectedNav = n; });
@@ -83,8 +89,18 @@ public sealed class MainViewModel : LocalizedObject
 
         BuildNav();
         RebuildNav();
+        ApplyStartupPage();
 
         _ = CheckSelfUpdateAsync();
+    }
+
+    /// <summary>If 「启动时打开快速启动页」 is on, land on the 快速启动 page instead of the default first nav item.
+    /// Runs after RebuildNav (which selects the first visible item), overriding its choice.</summary>
+    private void ApplyStartupPage()
+    {
+        if (!SettingsStore.Load().ShowLauncherOnStartup) return;
+        var item = AllNavItems.FirstOrDefault(n => ReferenceEquals(n.Page, QuickLaunch));
+        if (item is { IsVisible: true }) SelectedNav = item;
     }
 
     /// <summary>Check GitHub for a newer release of the app itself; if found, ask the user to update.
@@ -269,6 +285,7 @@ public sealed class MainViewModel : LocalizedObject
         dev.Items.Add(new("", "nav.advancedTools", AdvancedTools, advanced: true));
 
         var misc = new NavGroupViewModel("", "nav.group.misc");
+        misc.Items.Add(new("", "nav.launcher", QuickLaunch));
         misc.Items.Add(new("", "nav.logs", Logs));
         misc.Items.Add(new("", "nav.settings", Settings));
 

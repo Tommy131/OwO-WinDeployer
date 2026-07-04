@@ -35,9 +35,16 @@ public static class ThemeManager
         ("WarnFg",        "#9A5B00", "#E0A24E"),
         ("WarnBg",        "#FBEFDD", "#3A2A12"),
         ("NavBg",         "#FBFBF9", "#232323"),
+        // Frosted "material" tint for the desktop widget, layered over the real blur-behind (iOS-glass look):
+        // translucent enough to see the blurred background through it, opaque enough to keep text legible.
+        ("WidgetGlass",   "#99FFFFFF", "#99202024"),
     };
 
     private static bool _dark;
+
+    /// <summary>True when the currently-applied theme resolves to dark (explicit dark, or system + OS dark).
+    /// Read by windows that pick native effects (e.g. the desktop widget's glass tint) rather than brushes.</summary>
+    public static bool IsDark => _dark;
 
     public static void Apply(ThemeMode mode)
     {

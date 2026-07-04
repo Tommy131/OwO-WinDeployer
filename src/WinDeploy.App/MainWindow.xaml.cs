@@ -12,6 +12,7 @@ public partial class MainWindow : Window
     private TrayIcon? _tray;
     private bool _exiting;    // set when a real shutdown is in progress
     private bool _resident;   // tray icon stays visible at all times (设置 → 始终在系统托盘显示常驻图标)
+    private LauncherWidgetWindow? _widget;   // desktop 快速启动 gadget (设置 → 桌面小组件)
 
     public MainWindow()
     {
@@ -24,11 +25,16 @@ public partial class MainWindow : Window
         // Always-resident tray icon: react to the setting live, and apply the persisted choice once shown.
         vm.Settings.AlwaysShowTrayChanged += SetResidentTray;
         Loaded += (_, _) => { if (SettingsStore.Load().AlwaysShowTray) ApplyResidentTray(true, announce: false); };
+        // Desktop widget: react to the setting live, and show it on startup if enabled.
+        vm.Settings.ShowDesktopWidgetChanged += SetDesktopWidget;
+        vm.Settings.WidgetOpacityChanged += _ => _widget?.ApplyTint();
+        Loaded += (_, _) => { if (SettingsStore.Load().ShowDesktopWidget) ShowDesktopWidget(); };
         // Returning to the app while a device keeps overheating → show the advanced ignore/adjust prompt.
         Activated += (_, _) => (DataContext as MainViewModel)?.ShowOverheatPromptIfPending();
         Closing += OnClosing;
         Closed += (_, _) =>
         {
+            _widget?.Close();
             _tray?.Dispose();
             (DataContext as MainViewModel)?.Terminal.Dispose();
             (DataContext as MainViewModel)?.Ftp.Shutdown();
@@ -62,6 +68,26 @@ public partial class MainWindow : Window
         {
             _tray?.Hide();
         }
+    }
+
+    /// <summary>Live toggle from 设置 → 桌面小组件: show or hide the desktop 快速启动 gadget.</summary>
+    private void SetDesktopWidget(bool on)
+    {
+        if (on) ShowDesktopWidget();
+        else _widget?.Hide();
+    }
+
+    /// <summary>Create (once) and show the desktop widget, sharing the page's 快速启动 view-model so its list
+    /// stays in sync. The widget's ✕ turns the setting off (which routes back here to hide it).</summary>
+    private void ShowDesktopWidget()
+    {
+        if (DataContext is not MainViewModel vm) return;
+        if (_widget == null)
+        {
+            _widget = new LauncherWidgetWindow(vm.QuickLaunch);
+            _widget.CloseRequested += () => vm.Settings.ShowDesktopWidget = false;
+        }
+        _widget.Show();
     }
 
     /// <summary>Close-button behavior: ask (default) → prompt; tray → minimize to tray; exit → really quit.</summary>

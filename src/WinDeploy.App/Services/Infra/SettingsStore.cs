@@ -27,6 +27,19 @@ public sealed class AppSettings
     /// <summary>始终在系统托盘显示常驻图标：开启后无论窗口是否最小化都常驻一个托盘图标。默认关闭。</summary>
     public bool AlwaysShowTray { get; set; }
 
+    /// <summary>启动应用时自动打开「快速启动」页（否则落在默认首页）。默认开启。</summary>
+    public bool ShowLauncherOnStartup { get; set; } = true;
+
+    /// <summary>在桌面显示「快速启动」毛玻璃小组件（类 Win7 桌面 gadget）。默认关闭（opt-in）。</summary>
+    public bool ShowDesktopWidget { get; set; }
+    /// <summary>小组件在屏幕上的位置（左/上，像素）。null 表示用默认位置（工作区右上角）。</summary>
+    public double? WidgetLeft { get; set; }
+    public double? WidgetTop { get; set; }
+    /// <summary>小组件是否「永远置顶」（图钉）。默认关闭。</summary>
+    public bool WidgetPinned { get; set; }
+    /// <summary>小组件背景填充不透明度 0.1–0.85（越低越通透）。默认 0.4（透视程度 60%）。</summary>
+    public double WidgetOpacity { get; set; } = 0.4;
+
     // ── 硬件温度监控（后台定时检测 CPU / GPU / NVMe 硬盘，超阈值时通知 + 可选 TTS 语音）──────────
     /// <summary>启用硬件温度监控。默认关闭（opt-in）。</summary>
     public bool TempMonitorEnabled { get; set; }

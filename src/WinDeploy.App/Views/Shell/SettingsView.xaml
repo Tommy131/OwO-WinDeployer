@@ -122,6 +122,24 @@
             <CheckBox Content="{DynamicResource S.settings.autostart.tray}" IsChecked="{Binding AlwaysShowTray}" FontSize="13" Margin="0,12,0,0" />
             <TextBlock Text="{DynamicResource S.settings.autostart.trayDesc}" FontSize="12"
                        Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Margin="0,4,0,0" />
+            <CheckBox Content="{DynamicResource S.settings.autostart.launcher}" IsChecked="{Binding ShowLauncherOnStartup}" FontSize="13" Margin="0,12,0,0" />
+            <TextBlock Text="{DynamicResource S.settings.autostart.launcherDesc}" FontSize="12"
+                       Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Margin="0,4,0,0" />
+            <CheckBox Content="{DynamicResource S.settings.widget.show}" IsChecked="{Binding ShowDesktopWidget}" FontSize="13" Margin="0,12,0,0" />
+            <TextBlock Text="{DynamicResource S.settings.widget.showDesc}" FontSize="12"
+                       Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Margin="0,4,0,0" />
+            <Grid Margin="0,10,0,0" IsEnabled="{Binding ShowDesktopWidget}">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="130" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="56" />
+              </Grid.ColumnDefinitions>
+              <TextBlock Grid.Column="0" Text="{DynamicResource S.settings.widget.opacity}" FontSize="12.5" Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" />
+              <Slider Grid.Column="1" Minimum="0.15" Maximum="0.9" Value="{Binding WidgetSeeThrough}" VerticalAlignment="Center" Margin="6,0" />
+              <TextBlock Grid.Column="2" Text="{Binding WidgetSeeThroughText}" FontSize="12" Foreground="{DynamicResource TextTertiary}" VerticalAlignment="Center" HorizontalAlignment="Right" />
+            </Grid>
+            <TextBlock FontSize="11" Foreground="{DynamicResource TextTertiary}" TextWrapping="Wrap" Margin="0,4,0,0"
+                       Text="{DynamicResource S.settings.widget.opacityHint}" />
           </StackPanel>
         </Border>
 

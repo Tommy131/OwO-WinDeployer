@@ -27,6 +27,9 @@ public sealed class SettingsViewModel : ObservableObject
         _restorePointBeforeApply = _s.RestorePointBeforeApply;
         _runAtStartup = Services.Sys.AutoStart.IsEnabled();
         _alwaysShowTray = _s.AlwaysShowTray;
+        _showLauncherOnStartup = _s.ShowLauncherOnStartup;
+        _showDesktopWidget = _s.ShowDesktopWidget;
+        _widgetOpacity = _s.WidgetOpacity;
         _tempMonitorEnabled = _s.TempMonitorEnabled;
         _tempTts = _s.TempTtsEnabled;
         _tempCpu = _s.TempCpuEnabled; _tempGpu = _s.TempGpuEnabled; _tempDisk = _s.TempDiskEnabled;
@@ -232,6 +235,66 @@ public sealed class SettingsViewModel : ObservableObject
 
     /// <summary>切换「托盘常驻图标」时触发，让主窗口立即显示 / 隐藏常驻托盘图标。</summary>
     public event Action<bool>? AlwaysShowTrayChanged;
+
+    private bool _showLauncherOnStartup;
+    /// <summary>启动应用时自动打开「快速启动」页。仅影响下次启动的落地页；即时持久化。</summary>
+    public bool ShowLauncherOnStartup
+    {
+        get => _showLauncherOnStartup;
+        set
+        {
+            if (!Set(ref _showLauncherOnStartup, value)) return;
+            _s.ShowLauncherOnStartup = value;
+            SettingsStore.Save(_s);
+            AuditLog.Action($"启动时打开快速启动页：{(value ? "开启" : "关闭")}");
+        }
+    }
+
+    private bool _showDesktopWidget;
+    /// <summary>在桌面显示「快速启动」毛玻璃小组件。即时生效（显示/隐藏窗口）并持久化。</summary>
+    public bool ShowDesktopWidget
+    {
+        get => _showDesktopWidget;
+        set
+        {
+            if (!Set(ref _showDesktopWidget, value)) return;
+            _s.ShowDesktopWidget = value;
+            SettingsStore.Save(_s);
+            AuditLog.Action($"桌面快速启动小组件：{(value ? "开启" : "关闭")}");
+            ShowDesktopWidgetChanged?.Invoke(value);
+        }
+    }
+
+    /// <summary>切换「桌面小组件」时触发，让主窗口立即显示 / 隐藏桌面小组件。</summary>
+    public event Action<bool>? ShowDesktopWidgetChanged;
+
+    private double _widgetOpacity;
+    /// <summary>小组件背景不透明度（0.1–0.85）。内部量：ApplyTint 用它算填充色 alpha。</summary>
+    public double WidgetOpacity
+    {
+        get => _widgetOpacity;
+        set
+        {
+            var v = Math.Clamp(Math.Round(value, 2), 0.1, 0.85);
+            if (!Set(ref _widgetOpacity, v)) return;
+            _s.WidgetOpacity = v;
+            SettingsStore.Save(_s);
+            OnPropertyChanged(nameof(WidgetSeeThrough));
+            OnPropertyChanged(nameof(WidgetSeeThroughText));
+            WidgetOpacityChanged?.Invoke(v);
+        }
+    }
+
+    /// <summary>「透视程度」滑块绑定的值（0.15–0.9）：越大越透明。它就是 1 − 不透明度。</summary>
+    public double WidgetSeeThrough
+    {
+        get => Math.Round(1 - _widgetOpacity, 2);
+        set => WidgetOpacity = 1 - value;
+    }
+    public string WidgetSeeThroughText => $"{(1 - _widgetOpacity) * 100:0}%";
+
+    /// <summary>调整小组件透视程度时触发，让桌面小组件实时更新背景。</summary>
+    public event Action<double>? WidgetOpacityChanged;
 
     // ── 硬件温度监控（即时生效并持久化）────────────────────────────────────
     public RelayCommand TestTtsCommand { get; }

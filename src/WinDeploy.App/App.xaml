@@ -10,6 +10,7 @@
              xmlns:vmterm="clr-namespace:WinDeploy.App.ViewModels.Terminal"
              xmlns:vmtools="clr-namespace:WinDeploy.App.ViewModels.Tools"
              xmlns:vmshell="clr-namespace:WinDeploy.App.ViewModels.Shell"
+             xmlns:vmlaunch="clr-namespace:WinDeploy.App.ViewModels.Launch"
              xmlns:vd="clr-namespace:WinDeploy.App.Views.Deploy"
              xmlns:vsys="clr-namespace:WinDeploy.App.Views.Sys"
              xmlns:vftp="clr-namespace:WinDeploy.App.Views.Ftp"
@@ -19,6 +20,7 @@
              xmlns:vterm="clr-namespace:WinDeploy.App.Views.Terminal"
              xmlns:vtools="clr-namespace:WinDeploy.App.Views.Tools"
              xmlns:vshell="clr-namespace:WinDeploy.App.Views.Shell"
+             xmlns:vlaunch="clr-namespace:WinDeploy.App.Views.Launch"
              xmlns:app="clr-namespace:WinDeploy.App"
              xmlns:b="clr-namespace:WinDeploy.App.Behaviors">
   <!-- No StartupUri: App.OnStartup creates MainWindow manually so the single-instance guard
@@ -619,6 +621,9 @@
       </DataTemplate>
       <DataTemplate DataType="{x:Type vmtools:WslViewModel}">
         <vtools:WslView />
+      </DataTemplate>
+      <DataTemplate DataType="{x:Type vmlaunch:LaunchCenterViewModel}">
+        <vlaunch:LaunchCenterView />
       </DataTemplate>
       <DataTemplate DataType="{x:Type vmtools:TweaksViewModel}">
         <vtools:TweaksView />
