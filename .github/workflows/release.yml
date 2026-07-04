@@ -149,6 +149,9 @@ jobs:
           name: OwO! Win Deployer ${{ github.ref_name }}
           generate_release_notes: true
           body_path: release-notes.md
+          # SemVer convention: a hyphen in the tag marks a pre-release identifier (e.g. v1.3.1-rc.1) →
+          # publish as a GitHub Pre-release (not marked "Latest"); clean vX.Y.Z tags are full releases.
+          prerelease: ${{ contains(github.ref_name, '-') }}
           files: |
             dist/*.zip
             dist/OwOWinDeployer.exe
