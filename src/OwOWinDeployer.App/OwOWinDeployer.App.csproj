@@ -53,6 +53,7 @@
     <Using Include="OwOWinDeployer.App.Services.Ftp" />
     <Using Include="OwOWinDeployer.App.Services.Clip" />
     <Using Include="OwOWinDeployer.App.Services.Launch" />
+    <Using Include="OwOWinDeployer.App.Services.Audio" />
     <Using Include="OwOWinDeployer.App.ViewModels" />
     <Using Include="OwOWinDeployer.App.ViewModels.Deploy" />
     <Using Include="OwOWinDeployer.App.ViewModels.Sys" />
@@ -74,6 +75,7 @@
     <Using Include="OwOWinDeployer.App.Views.Shell" />
     <Using Include="OwOWinDeployer.App.Views.Common" />
     <Using Include="OwOWinDeployer.App.Views.Launch" />
+    <Using Include="OwOWinDeployer.App.Views.Audio" />
   </ItemGroup>
 
   <ItemGroup>
@@ -84,6 +86,8 @@
     <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.4" />
     <!-- 系统 TTS 语音播报（硬件温度告警，按界面语言选择嗓音）。Windows SAPI 封装。 -->
     <PackageReference Include="System.Speech" Version="9.0.0" />
+    <!-- 音频波形组件：WASAPI loopback 采集当前输出设备 + 内置 FFT（NAudio.Dsp）。纯托管，单文件自包含发布兼容。 -->
+    <PackageReference Include="NAudio" Version="2.2.1" />
   </ItemGroup>
 
 </Project>

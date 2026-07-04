@@ -1,0 +1,6 @@
+{
+  "audiowave.title": "音频波形",
+  "audiowave.cycleStyle": "切换风格",
+  "audiowave.cycleColor": "切换配色",
+  "audiowave.noDevice": "未检测到音频输出。请播放声音，或检查默认播放设备。"
+}

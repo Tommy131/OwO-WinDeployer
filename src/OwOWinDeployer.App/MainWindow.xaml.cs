@@ -13,6 +13,7 @@ public partial class MainWindow : Window
     private bool _exiting;    // set when a real shutdown is in progress
     private bool _resident;   // tray icon stays visible at all times (设置 → 始终在系统托盘显示常驻图标)
     private LauncherWidgetWindow? _widget;   // desktop 快速启动 gadget (设置 → 桌面小组件)
+    private AudioWaveWidgetWindow? _audioWidget;   // desktop 音频波形 gadget (设置 → 音频波形组件)
 
     public MainWindow()
     {
@@ -30,12 +31,19 @@ public partial class MainWindow : Window
         vm.Settings.WidgetOpacityChanged += _ => _widget?.ApplyTint();
         vm.Settings.WidgetGlassModeChanged += RecreateDesktopWidget;
         Loaded += (_, _) => { if (SettingsStore.Load().ShowDesktopWidget) ShowDesktopWidget(); };
+        // Audio waveform widget: same live-toggle / opacity / glass-mode pattern, plus a visual-settings hook.
+        vm.Settings.ShowAudioWidgetChanged += SetAudioWidget;
+        vm.Settings.AudioWidgetOpacityChanged += _ => _audioWidget?.ApplyTint();
+        vm.Settings.AudioWidgetGlassModeChanged += RecreateAudioWidget;
+        vm.Settings.AudioWidgetVisualChanged += () => _audioWidget?.ApplyVisualSettings();
+        Loaded += (_, _) => { if (SettingsStore.Load().ShowAudioWidget) ShowAudioWidget(); };
         // Returning to the app while a device keeps overheating → show the advanced ignore/adjust prompt.
         Activated += (_, _) => (DataContext as MainViewModel)?.ShowOverheatPromptIfPending();
         Closing += OnClosing;
         Closed += (_, _) =>
         {
             _widget?.Close();
+            _audioWidget?.Close();
             _tray?.Dispose();
             (DataContext as MainViewModel)?.Terminal.Dispose();
             (DataContext as MainViewModel)?.Ftp.Shutdown();
@@ -98,6 +106,37 @@ public partial class MainWindow : Window
         _widget?.Close();
         _widget = null;
         if (SettingsStore.Load().ShowDesktopWidget) ShowDesktopWidget();
+    }
+
+    /// <summary>Live toggle from 设置 → 音频波形组件: show or hide the desktop audio-waveform gadget. Hiding it
+    /// also stops audio capture (the widget only listens while visible).</summary>
+    private void SetAudioWidget(bool on)
+    {
+        if (on) ShowAudioWidget();
+        else _audioWidget?.Hide();
+    }
+
+    /// <summary>Create (once) and show the audio-waveform widget. Its ✕ turns the setting off (which routes back
+    /// here to hide it).</summary>
+    private void ShowAudioWidget()
+    {
+        if (_audioWidget == null)
+        {
+            _audioWidget = new AudioWaveWidgetWindow();
+            _audioWidget.CloseRequested += () =>
+            {
+                if (DataContext is MainViewModel vm) vm.Settings.ShowAudioWidget = false;
+            };
+        }
+        _audioWidget.Show();
+    }
+
+    /// <summary>The glass mode is chosen when the widget window is built, so switching it rebuilds the widget.</summary>
+    private void RecreateAudioWidget()
+    {
+        _audioWidget?.Close();
+        _audioWidget = null;
+        if (SettingsStore.Load().ShowAudioWidget) ShowAudioWidget();
     }
 
     /// <summary>Close-button behavior: ask (default) → prompt; tray → minimize to tray; exit → really quit.</summary>

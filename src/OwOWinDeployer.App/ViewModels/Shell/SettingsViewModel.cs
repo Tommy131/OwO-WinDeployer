@@ -31,6 +31,12 @@ public sealed class SettingsViewModel : ObservableObject
         _showDesktopWidget = _s.ShowDesktopWidget;
         _widgetOpacity = _s.WidgetOpacity;
         _widgetNativeGlass = _s.WidgetNativeGlass;
+        _showAudioWidget = _s.ShowAudioWidget;
+        _audioWidgetOpacity = _s.AudioWidgetOpacity;
+        _audioWidgetNativeGlass = _s.AudioWidgetNativeGlass;
+        _audioStyleIndex = (int)AudioWaveOptions.ParseStyle(_s.AudioWidgetStyle);
+        _audioColorIndex = (int)AudioWaveOptions.ParseColor(_s.AudioWidgetColor);
+        _audioSensitivity = _s.AudioWidgetSensitivity;
         _tempMonitorEnabled = _s.TempMonitorEnabled;
         _tempTts = _s.TempTtsEnabled;
         _tempCpu = _s.TempCpuEnabled; _tempGpu = _s.TempGpuEnabled; _tempDisk = _s.TempDiskEnabled;
@@ -314,6 +320,120 @@ public sealed class SettingsViewModel : ObservableObject
 
     /// <summary>切换小组件毛玻璃模式时触发，让主窗口按新模式重建桌面小组件。</summary>
     public event Action? WidgetGlassModeChanged;
+
+    // ── 音频波形桌面组件（即时生效并持久化）────────────────────────────────
+    private bool _showAudioWidget;
+    /// <summary>在桌面显示「音频波形」毛玻璃小组件。即时生效（显示/隐藏窗口）并持久化。</summary>
+    public bool ShowAudioWidget
+    {
+        get => _showAudioWidget;
+        set
+        {
+            if (!Set(ref _showAudioWidget, value)) return;
+            _s.ShowAudioWidget = value;
+            SettingsStore.Save(_s);
+            AuditLog.Action($"桌面音频波形小组件：{(value ? "开启" : "关闭")}");
+            ShowAudioWidgetChanged?.Invoke(value);
+        }
+    }
+
+    /// <summary>切换「音频波形组件」时触发，让主窗口立即显示 / 隐藏。</summary>
+    public event Action<bool>? ShowAudioWidgetChanged;
+
+    private double _audioWidgetOpacity;
+    /// <summary>音频组件背景不透明度（0.1–0.85）。内部量：ApplyTint 用它算填充色 alpha。</summary>
+    public double AudioWidgetOpacity
+    {
+        get => _audioWidgetOpacity;
+        set
+        {
+            var v = Math.Clamp(Math.Round(value, 2), 0.1, 0.85);
+            if (!Set(ref _audioWidgetOpacity, v)) return;
+            _s.AudioWidgetOpacity = v;
+            SettingsStore.Save(_s);
+            OnPropertyChanged(nameof(AudioWidgetSeeThrough));
+            OnPropertyChanged(nameof(AudioWidgetSeeThroughText));
+            AudioWidgetOpacityChanged?.Invoke(v);
+        }
+    }
+
+    /// <summary>「透视程度」滑块绑定的值（0.15–0.9）：越大越透明。它就是 1 − 不透明度。</summary>
+    public double AudioWidgetSeeThrough
+    {
+        get => Math.Round(1 - _audioWidgetOpacity, 2);
+        set => AudioWidgetOpacity = 1 - value;
+    }
+    public string AudioWidgetSeeThroughText => $"{(1 - _audioWidgetOpacity) * 100:0}%";
+
+    /// <summary>调整音频组件透视程度时触发，让桌面组件实时更新背景。</summary>
+    public event Action<double>? AudioWidgetOpacityChanged;
+
+    private bool _audioWidgetNativeGlass;
+    /// <summary>音频组件毛玻璃：原生 DWM（即时、无圆角）vs WPF 截图模糊（平滑圆角）。即时生效（重建组件）并持久化。</summary>
+    public bool AudioWidgetNativeGlass
+    {
+        get => _audioWidgetNativeGlass;
+        set
+        {
+            if (!Set(ref _audioWidgetNativeGlass, value)) return;
+            _s.AudioWidgetNativeGlass = value;
+            SettingsStore.Save(_s);
+            AudioWidgetGlassModeChanged?.Invoke();
+        }
+    }
+
+    /// <summary>切换音频组件毛玻璃模式时触发，让主窗口按新模式重建。</summary>
+    public event Action? AudioWidgetGlassModeChanged;
+
+    private int _audioStyleIndex;
+    /// <summary>波形风格下拉框（0=镜像频谱 1=频谱柱 2=示波器 3=环形）。即时生效并持久化。</summary>
+    public int AudioStyleIndex
+    {
+        get => _audioStyleIndex;
+        set
+        {
+            var v = Math.Clamp(value, 0, 3);
+            if (!Set(ref _audioStyleIndex, v)) return;
+            _s.AudioWidgetStyle = AudioWaveOptions.ToToken((WaveStyle)v);
+            SettingsStore.Save(_s);
+            AudioWidgetVisualChanged?.Invoke();
+        }
+    }
+
+    private int _audioColorIndex;
+    /// <summary>配色方案下拉框（0=主题强调色 1=彩虹 2=火焰 3=海洋）。即时生效并持久化。</summary>
+    public int AudioColorIndex
+    {
+        get => _audioColorIndex;
+        set
+        {
+            var v = Math.Clamp(value, 0, 3);
+            if (!Set(ref _audioColorIndex, v)) return;
+            _s.AudioWidgetColor = AudioWaveOptions.ToToken((WaveColor)v);
+            SettingsStore.Save(_s);
+            AudioWidgetVisualChanged?.Invoke();
+        }
+    }
+
+    private double _audioSensitivity;
+    /// <summary>波形灵敏度（0.3–3.0）。即时生效并持久化。</summary>
+    public double AudioWidgetSensitivity
+    {
+        get => _audioSensitivity;
+        set
+        {
+            var v = Math.Clamp(Math.Round(value, 2), 0.3, 3.0);
+            if (!Set(ref _audioSensitivity, v)) return;
+            _s.AudioWidgetSensitivity = v;
+            SettingsStore.Save(_s);
+            OnPropertyChanged(nameof(AudioWidgetSensitivityText));
+            AudioWidgetVisualChanged?.Invoke();
+        }
+    }
+    public string AudioWidgetSensitivityText => $"{_audioSensitivity:0.0}×";
+
+    /// <summary>调整风格/配色/灵敏度时触发，让桌面组件实时应用新的可视化设置。</summary>
+    public event Action? AudioWidgetVisualChanged;
 
     // ── 硬件温度监控（即时生效并持久化）────────────────────────────────────
     public RelayCommand TestTtsCommand { get; }

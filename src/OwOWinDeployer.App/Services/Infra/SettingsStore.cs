@@ -42,6 +42,25 @@ public sealed class AppSettings
     /// <summary>小组件使用原生 DWM 毛玻璃（即时、无圆角）而非 WPF 截图模糊（平滑圆角、拖动略延迟）。默认 false。</summary>
     public bool WidgetNativeGlass { get; set; }
 
+    // ── 音频波形桌面组件（实时可视化当前设备的音频输出，WASAPI loopback）───────────────
+    /// <summary>在桌面显示「音频波形」毛玻璃小组件。默认关闭（opt-in）。仅在显示时采集音频。</summary>
+    public bool ShowAudioWidget { get; set; }
+    /// <summary>音频组件在屏幕上的位置（左/上，像素）。null 表示用默认位置。</summary>
+    public double? AudioWidgetLeft { get; set; }
+    public double? AudioWidgetTop { get; set; }
+    /// <summary>音频组件是否「永远置顶」（图钉）。默认关闭。</summary>
+    public bool AudioWidgetPinned { get; set; }
+    /// <summary>音频组件背景填充不透明度 0.1–0.85（越低越通透）。默认 0.35。</summary>
+    public double AudioWidgetOpacity { get; set; } = 0.35;
+    /// <summary>音频组件使用原生 DWM 毛玻璃（即时、无圆角）而非 WPF 截图模糊。默认 false。</summary>
+    public bool AudioWidgetNativeGlass { get; set; }
+    /// <summary>波形风格：mirror（镜像频谱，默认）| bars（频谱柱）| scope（示波器）| radial（环形频谱）。</summary>
+    public string? AudioWidgetStyle { get; set; }
+    /// <summary>配色方案：accent（主题强调色，默认）| rainbow（彩虹）| fire（火焰）| ocean（海洋）。</summary>
+    public string? AudioWidgetColor { get; set; }
+    /// <summary>灵敏度倍率 0.3–3.0（越大波形越高）。默认 1.0。</summary>
+    public double AudioWidgetSensitivity { get; set; } = 1.0;
+
     // ── 硬件温度监控（后台定时检测 CPU / GPU / NVMe 硬盘，超阈值时通知 + 可选 TTS 语音）──────────
     /// <summary>启用硬件温度监控。默认关闭（opt-in）。</summary>
     public bool TempMonitorEnabled { get; set; }

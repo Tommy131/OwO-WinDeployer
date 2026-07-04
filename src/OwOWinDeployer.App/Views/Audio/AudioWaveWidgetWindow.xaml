@@ -1,0 +1,68 @@
+<Window x:Class="OwOWinDeployer.App.Views.Audio.AudioWaveWidgetWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="音频波形"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ShowInTaskbar="False" ResizeMode="NoResize" Topmost="False"
+        Width="360" Height="176">
+  <!-- Same pure-WPF frosted glass as the Quick Launch widget: one rounded clip (RoundClip) shapes every layer so
+       blur + corners are a single anti-aliased whole. Layer 1 = blurred capture of the screen behind (grabbed in
+       code-behind, this window excluded from capture); layer 2 = theme/see-through tint; layer 3 = content. -->
+  <Grid x:Name="RootGrid">
+    <Grid.Clip>
+      <RectangleGeometry x:Name="RoundClip" RadiusX="16" RadiusY="16" Rect="0,0,360,176" />
+    </Grid.Clip>
+
+    <Border x:Name="BgLayer" IsHitTestVisible="False">
+      <Border.Effect>
+        <BlurEffect x:Name="BgBlur" Radius="34" KernelType="Gaussian" RenderingBias="Performance" />
+      </Border.Effect>
+    </Border>
+
+    <Border x:Name="TintLayer" IsHitTestVisible="False" />
+
+    <Border Padding="4,4,4,6">
+      <Grid>
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Header: doubles as the drag handle (see code-behind). -->
+        <Grid x:Name="Header" Grid.Row="0" Background="Transparent" Margin="8,6,6,4">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Grid.Column="0" Text="🎵" FontSize="14" VerticalAlignment="Center" Margin="0,0,7,0" />
+          <TextBlock Grid.Column="1" Text="{DynamicResource S.audiowave.title}" FontSize="13" FontWeight="SemiBold"
+                     Foreground="{DynamicResource TextPrimary}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+          <Button Grid.Column="2" x:Name="StyleButton" Content="🌀" Width="24" Height="22" Padding="0" FontSize="12"
+                  Background="Transparent" BorderThickness="0" Cursor="Hand"
+                  Foreground="{DynamicResource TextSecondary}" ToolTip="{DynamicResource S.audiowave.cycleStyle}" />
+          <Button Grid.Column="3" x:Name="ColorButton" Content="🎨" Width="24" Height="22" Padding="0" FontSize="12"
+                  Background="Transparent" BorderThickness="0" Cursor="Hand"
+                  Foreground="{DynamicResource TextSecondary}" ToolTip="{DynamicResource S.audiowave.cycleColor}" />
+          <Button Grid.Column="4" x:Name="PinButton" Content="📌" Width="24" Height="22" Padding="0" FontSize="12"
+                  Background="Transparent" BorderThickness="0" Cursor="Hand"
+                  Foreground="{DynamicResource TextSecondary}" ToolTip="{DynamicResource S.widget.pin}" />
+          <Button Grid.Column="5" x:Name="CloseButton" Content="✕" Width="24" Height="22" Padding="0"
+                  Background="Transparent" BorderThickness="0" Cursor="Hand"
+                  Foreground="{DynamicResource TextSecondary}" ToolTip="{DynamicResource S.widget.close}" />
+        </Grid>
+
+        <!-- Visualization host: the WaveformRenderer element is inserted here in code-behind. -->
+        <Grid Grid.Row="1" Margin="8,2,8,4">
+          <Border x:Name="VizHost" />
+          <TextBlock x:Name="NoDeviceHint" Text="{DynamicResource S.audiowave.noDevice}" FontSize="12"
+                     Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" TextAlignment="Center"
+                     VerticalAlignment="Center" Visibility="Collapsed" Margin="10,0" />
+        </Grid>
+      </Grid>
+    </Border>
+  </Grid>
+</Window>
