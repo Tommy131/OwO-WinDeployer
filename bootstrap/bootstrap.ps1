@@ -5,7 +5,7 @@ $ErrorActionPreference = 'Stop'
 
 $Root = Join-Path $env:USERPROFILE '.owo-win-deployer'
 $Repo = 'https://github.com/Tommy131/owo-win-deployer.git'
-$ExeUrl = 'https://github.com/Tommy131/owo-win-deployer/releases/latest/download/WinDeploy.exe'
+$ExeUrl = 'https://github.com/Tommy131/owo-win-deployer/releases/latest/download/OwOWinDeployer.exe'
 
 function Have($c) { [bool](Get-Command $c -ErrorAction SilentlyContinue) }
 
@@ -29,9 +29,9 @@ if (Test-Path (Join-Path $Root '.git')) {
 }
 
 # 优先用 Release 的自包含 exe（目标机免装 .NET）；失败则回退到源码运行
-$Exe = Join-Path $Root 'WinDeploy.exe'
+$Exe = Join-Path $Root 'OwOWinDeployer.exe'
 try {
-    Write-Host '下载最新 WinDeploy.exe ...' -ForegroundColor Cyan
+    Write-Host '下载最新 OwOWinDeployer.exe ...' -ForegroundColor Cyan
     Invoke-WebRequest -Uri $ExeUrl -OutFile $Exe -UseBasicParsing
     # 去除“来自 Internet”标记（Mark-of-the-Web），避免 SmartScreen「未知发布者」拦截
     Unblock-File -Path $Exe -ErrorAction SilentlyContinue
@@ -41,7 +41,7 @@ try {
     Write-Warning "下载 Release exe 失败（可能尚未发布）：$($_.Exception.Message)"
     if (Have 'dotnet') {
         Write-Host '回退：从源码运行 GUI ...' -ForegroundColor Cyan
-        Start-Process dotnet -ArgumentList @('run', '--project', (Join-Path $Root 'src/WinDeploy.App')) -WorkingDirectory $Root
+        Start-Process dotnet -ArgumentList @('run', '--project', (Join-Path $Root 'src/OwOWinDeployer.App')) -WorkingDirectory $Root
     } else {
         Write-Warning '无 Release exe 且未装 .NET SDK。请安装 .NET SDK 后重试，或等仓库发布 Release。'
     }

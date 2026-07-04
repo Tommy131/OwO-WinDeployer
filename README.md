@@ -108,7 +108,7 @@ All milestones are complete:
 
 ### Clipboard Sync (M6 · Developer Mode)
 
-- **Discover & pair**: finds other machines on the LAN that also run OwO! WinDeploy (UDP multicast beacon — presence only), then pairs them with a one-time **6-digit PIN**. The PIN never goes on the wire — both sides prove it via a mutual HMAC challenge/response (PBKDF2), then derive an **AES-256-GCM** session key for an end-to-end encrypted link.
+- **Discover & pair**: finds other machines on the LAN that also run OwO! OwOWinDeployer (UDP multicast beacon — presence only), then pairs them with a one-time **6-digit PIN**. The PIN never goes on the wire — both sides prove it via a mutual HMAC challenge/response (PBKDF2), then derive an **AES-256-GCM** session key for an end-to-end encrypted link.
 - **Share text + images**: a shared board syncs both ways — preview entries, add text manually, **delete propagates across devices**, and copy any entry back to the local clipboard. Image thumbnails + a fit-to-pane preview; click to open full size in a window.
 - **Robust discovery**: per-interface multicast + directed subnet broadcast, a **listen-NIC picker** for machines with many virtual adapters, and a **manual connect-by-IP** fallback for networks that block multicast.
 - **Optional, off by default**: *auto-mirror to the local clipboard* (true sync) and *persist history to disk*; otherwise clipboard content stays in memory and clears on exit.
@@ -218,7 +218,7 @@ All milestones are complete:
 ```
 owo-win-deployer/
 ├── src/
-│   ├── WinDeploy.Core/          # Pure library: install engine, config sync, data models, i18n
+│   ├── OwOWinDeployer.Core/          # Pure library: install engine, config sync, data models, i18n
 │   │   ├── Catalog/             # JSON parsing, profile resolution
 │   │   ├── Engine/              # Install orchestration, detection, method dispatch
 │   │   ├── Config/              # Config apply / capture / redaction
@@ -226,8 +226,8 @@ owo-win-deployer/
 │   │   ├── I18n/                # Localizer (zh/en/de embedded JSON, runtime switching)
 │   │   ├── Models/              # Data models
 │   │   └── Util/                # Logging, process helpers, path utilities
-│   ├── WinDeploy.Cli/           # CLI entry point (thin wrapper over Core)
-│   └── WinDeploy.App/           # WPF GUI (self-contained single EXE)
+│   ├── OwOWinDeployer.Cli/           # CLI entry point (thin wrapper over Core)
+│   └── OwOWinDeployer.App/           # WPF GUI (self-contained single EXE)
 │       ├── Views/               # 20+ pages + dialogs (folder = sub-namespace)
 │       │   ├── Deploy/          # Install center, progress, config sync, export
 │       │   ├── Sys/             # System overview, maintenance, WSL, tweaks
@@ -261,16 +261,16 @@ owo-win-deployer/
 │   ├── publish.ps1              # Build self-contained EXEs
 │   └── check-i18n.ps1           # Validate zh/en/de key parity
 ├── docs/DESIGN.md               # Full design document (authoritative source)
-└── WinDeploy.sln
+└── OwOWinDeployer.sln
 ```
 
 ### Layer Summary
 
 | Layer | Project | Notes |
 |---|---|---|
-| Engine | `WinDeploy.Core` | Pure .NET 10 library; no registry/WMI dependency (usable in CLI and GUI) |
-| CLI | `WinDeploy.Cli` | Thin wrapper exposing 14 commands; suitable for scripts and CI |
-| GUI | `WinDeploy.App` | WPF MVVM; system integration (WMI · ConPTY · P/Invoke) isolated to this layer |
+| Engine | `OwOWinDeployer.Core` | Pure .NET 10 library; no registry/WMI dependency (usable in CLI and GUI) |
+| CLI | `OwOWinDeployer.Cli` | Thin wrapper exposing 14 commands; suitable for scripts and CI |
+| GUI | `OwOWinDeployer.App` | WPF MVVM; system integration (WMI · ConPTY · P/Invoke) isolated to this layer |
 
 ### Key Design Principles
 
@@ -290,11 +290,11 @@ owo-win-deployer/
 irm https://raw.githubusercontent.com/Tommy131/owo-win-deployer/main/bootstrap/bootstrap.ps1 | iex
 ```
 
-The script verifies winget, downloads the latest `WinDeploy.exe` from GitHub Releases, and launches it.
+The script verifies winget, downloads the latest `OwOWinDeployer.exe` from GitHub Releases, and launches it.
 
 ### Direct Download
 
-Visit the [Releases](../../releases) page and download `WinDeploy.exe` (GUI) or `windeploy.exe` (CLI).
+Visit the [Releases](../../releases) page and download `OwOWinDeployer.exe` (GUI) or `windeploy.exe` (CLI).
 
 > **Prefer the ZIP package**: the folder-based ZIP is less likely to trigger antivirus heuristics than the single-file self-extracting EXE.
 
@@ -304,22 +304,22 @@ Visit the [Releases](../../releases) page and download `WinDeploy.exe` (GUI) or 
 
 ```powershell
 # Build the full solution
-dotnet build WinDeploy.sln
+dotnet build OwOWinDeployer.sln
 
 # Run the GUI
-dotnet run --project src/WinDeploy.App
+dotnet run --project src/OwOWinDeployer.App
 
 # Run the CLI
-dotnet run --project src/WinDeploy.Cli -- list
-dotnet run --project src/WinDeploy.Cli -- plan  --profile dev
-dotnet run --project src/WinDeploy.Cli -- apply --profile dev --yes
+dotnet run --project src/OwOWinDeployer.Cli -- list
+dotnet run --project src/OwOWinDeployer.Cli -- plan  --profile dev
+dotnet run --project src/OwOWinDeployer.Cli -- apply --profile dev --yes
 ```
 
 ### Publish (self-contained single EXE, no .NET required on target)
 
 ```powershell
 pwsh -File scripts/publish.ps1
-# Output: artifacts/app/WinDeploy.exe (GUI)
+# Output: artifacts/app/OwOWinDeployer.exe (GUI)
 #         artifacts/cli/windeploy.exe (CLI)
 ```
 
@@ -692,7 +692,7 @@ This application is **not code-signed**. Windows SmartScreen / Defender may bloc
 | Situation | Resolution |
 |---|---|
 | SmartScreen blue dialog | Click "More info → Run anyway" |
-| Prefer the ZIP package | Extract and run `WinDeploy.exe` from the folder — less likely to trigger heuristics than the single-file EXE |
+| Prefer the ZIP package | Extract and run `OwOWinDeployer.exe` from the folder — less likely to trigger heuristics than the single-file EXE |
 | Defender quarantined the file | Go to "Windows Security → Virus & threat protection → Protection history" and restore the file; you can also submit a false-positive report at [Microsoft WDSI](https://www.microsoft.com/wdsi/filesubmission) |
 | Permanent fix (developers) | Set repository secrets `SIGN_PFX_BASE64` + `SIGN_PFX_PASSWORD` — the Release CI already includes an Authenticode signing step |
 

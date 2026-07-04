@@ -87,7 +87,7 @@ flowchart TD
 
   REPO -->|② 读取清单/配置| APP
 
-  subgraph APP[WinDeploy · .NET 自包含单 exe]
+  subgraph APP[OwOWinDeployer · .NET 自包含单 exe]
     SEL[勾选层 / Profile]
     ENG[安装引擎 Core<br/>幂等·提权·日志]
     SEL --> ENG
@@ -102,7 +102,7 @@ flowchart TD
 ### 4.1 三段式
 
 1. **数据层**：`catalog.json`（软件主清单）+ `profiles/`（预设）+ `configs/`（配置仓库）。唯一事实来源，纯数据。
-2. **引擎层（WinDeploy.Core）**：检测、各方式安装、环境变量/PATH、配置应用/导出、提权、日志。可被 GUI 与 CLI 复用。
+2. **引擎层（OwOWinDeployer.Core）**：检测、各方式安装、环境变量/PATH、配置应用/导出、提权、日志。可被 GUI 与 CLI 复用。
 3. **交互层**：WPF GUI（主）+ 可选 CLI（无人值守 / 引导阶段）。
 
 ### 4.2 三条数据流
@@ -128,10 +128,10 @@ flowchart TD
 ### 5.1 解决方案结构
 
 ```
-src/WinDeploy.sln
-├─ WinDeploy.Core/     类库：模型、引擎、各安装方式、配置同步、环境变量
-├─ WinDeploy.App/      WPF GUI（引用 Core）
-└─ WinDeploy.Cli/      可选：无人值守 / 引导用的薄命令行（引用 Core）
+src/OwOWinDeployer.sln
+├─ OwOWinDeployer.Core/     类库：模型、引擎、各安装方式、配置同步、环境变量
+├─ OwOWinDeployer.App/      WPF GUI（引用 Core）
+└─ OwOWinDeployer.Cli/      可选：无人值守 / 引导用的薄命令行（引用 Core）
 ```
 
 > Core 为纯库，GUI 与 CLI 同源——便于先用 CLI 跑通引擎，再投入 GUI。
@@ -140,7 +140,7 @@ src/WinDeploy.sln
 
 运行时可切换的多语言，复用 `ThemeManager` 已验证的 `DynamicResource` 即时刷新机制：
 
-- **译文核心**：`WinDeploy.Core.I18n.Localizer`（静态，Core/App/CLI 共享一份），从内嵌 JSON `I18n/Resources/<lang>/<area>.json`（按 area 拆分、加载时合并）读取扁平 `key → text`。`T(key)` / `Format(key, args…)`（位置式 `{0}`，InvariantCulture）；回退链 `当前语言 → en → key 本身`（缺键直接显示 key，便于发现遗漏）；`SetLanguage` 触发 `CultureChanged` 事件。
+- **译文核心**：`OwOWinDeployer.Core.I18n.Localizer`（静态，Core/App/CLI 共享一份），从内嵌 JSON `I18n/Resources/<lang>/<area>.json`（按 area 拆分、加载时合并）读取扁平 `key → text`。`T(key)` / `Format(key, args…)`（位置式 `{0}`，InvariantCulture）；回退链 `当前语言 → en → key 本身`（缺键直接显示 key，便于发现遗漏）；`SetLanguage` 触发 `CultureChanged` 事件。
 - **WPF 即时切换**：`LocalizationManager`（镜像 `ThemeManager`）把当前语言灌入 `Application.Current.Resources["S.<key>"]`，XAML 用 `{DynamicResource S.<key>}`；带参/动态文案走 VM 属性（`LocalizedObject` 基类订阅 `CultureChanged` 并在 UI 线程刷新）。
 - **首启**：按 Windows UI 语言映射（de→de、zh→zh，其余→en），写入 `AppSettings.Language`；设置页可随时切换。CLI 用 `--lang` / `WINDEPLOY_LANG`。
 - **数据层译文**：软件描述 `summary` 走磁盘侧车 `catalog/i18n/{en,de}.json`（id→译文，zh 用 catalog.json 原文），`CatalogLoader.ApplyLocalizedSummaries` 预载、`CatalogItem.SummaryFor(lang)` 解析。
@@ -248,7 +248,7 @@ src/WinDeploy.sln
 
 ### 6.4 路径变量解析
 
-- 变量来源：`catalog.pathVars` 默认值 → 本机首次设定（写入 `%LOCALAPPDATA%/WinDeploy/state.json`）。
+- 变量来源：`catalog.pathVars` 默认值 → 本机首次设定（写入 `%LOCALAPPDATA%/OwOWinDeployer/state.json`）。
 - 首次运行向导：探测可用盘符，提示确认 `DevRoot` / `ToolsDir`（默认 `%USERPROFILE%/dev`、`%LOCALAPPDATA%/tools`）。
 - 解析顺序：`${Var}` → state.json → 环境变量(`%...%`) → 绝对路径。
 
@@ -275,7 +275,7 @@ configs/
 
 ---
 
-## 7. 安装引擎设计（WinDeploy.Core）
+## 7. 安装引擎设计（OwOWinDeployer.Core）
 
 ### 7.1 执行流程
 
@@ -298,7 +298,7 @@ load(catalog) → resolve(selection: profile + GUI 勾选)
 - **PATH/环境变量**：通过注册表（`HKCU/HKLM Environment`）写入，去重，结束广播 `WM_SETTINGCHANGE`；区分用户级 / 机器级。
 - **失败处理**：continue-on-fail，单项失败不阻断其余，最后统一列出。
 - **dry-run**：只检测与打印计划，不执行。
-- **日志**：结构化（JSONL）+ 控制台友好输出，落 `%LOCALAPPDATA%/WinDeploy/logs/`。
+- **日志**：结构化（JSONL）+ 控制台友好输出，落 `%LOCALAPPDATA%/OwOWinDeployer/logs/`。
 
 ---
 
@@ -402,7 +402,7 @@ winget 等来源无统一图标 API，方案：
 irm https://raw.githubusercontent.com/Tommy131/owo-win-deployer/main/bootstrap/bootstrap.ps1 | iex
 ```
 
-流程：确保 winget(App Installer) → `winget install Git.Git`（若缺）→ 从 GitHub Release 下自包含 `WinDeploy.exe`（或 `git clone` 仓库取数据）→ 启动 GUI。
+流程：确保 winget(App Installer) → `winget install Git.Git`（若缺）→ 从 GitHub Release 下自包含 `OwOWinDeployer.exe`（或 `git clone` 仓库取数据）→ 启动 GUI。
 
 ### 10.2 两种分发（你已选）
 
@@ -417,10 +417,10 @@ irm https://raw.githubusercontent.com/Tommy131/owo-win-deployer/main/bootstrap/b
 ```
 owo-win-deployer/
 ├─ src/
-│  ├─ WinDeploy.Core/      模型 · 引擎 · 安装方式 · 配置同步 · 环境变量
-│  ├─ WinDeploy.App/       WPF GUI
-│  ├─ WinDeploy.Cli/       可选：无人值守 / 引导
-│  └─ WinDeploy.sln
+│  ├─ OwOWinDeployer.Core/      模型 · 引擎 · 安装方式 · 配置同步 · 环境变量
+│  ├─ OwOWinDeployer.App/       WPF GUI
+│  ├─ OwOWinDeployer.Cli/       可选：无人值守 / 引导
+│  └─ OwOWinDeployer.sln
 ├─ catalog/
 │  ├─ catalog.json         软件主清单（本次扫描可生成种子）
 │  └─ profiles/            dev.json · full.json · ai-station.json
@@ -451,7 +451,7 @@ owo-win-deployer/
 
 1. **默认根目录值**：`DevRoot=%USERPROFILE%/dev`、`ToolsDir=%LOCALAPPDATA%/tools` 是否合适？还是沿用你习惯的 `C:\Path` 风格（变量化后默认值）。
 2. **配置内 secrets 脱敏**：LM Studio 等应用配置是否含 API key/token？需要一份「导出排除/脱敏清单」——哪些配置只带框架、不带密钥。
-3. **是否需要 CLI 模式**：除 GUI 外，是否要一个无人值守 `WinDeploy.exe --profile full --silent`（也供引导阶段用）？
+3. **是否需要 CLI 模式**：除 GUI 外，是否要一个无人值守 `OwOWinDeployer.exe --profile full --silent`（也供引导阶段用）？
 4. **初始 profiles 集合**：除 dev / full / ai-station，还想要哪些（如 laptop-lite、vm-min）。
 5. **Microsoft Store 应用**：本机有 4 个 Store 应用（winget id 形如 `XP…`），是否纳入（Store 类安装方式）。
 6. **GUI 范围 v1**：是否需要「与本机差异对比」视图，还是 v1 先做勾选+运行+导出。

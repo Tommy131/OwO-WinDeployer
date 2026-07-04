@@ -6,7 +6,7 @@
 # Exit code 0 = OK, 1 = problems found. Run from the repo root: pwsh scripts/check-i18n.ps1
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
-$base = Join-Path $root 'src/WinDeploy.Core/I18n/Resources'
+$base = Join-Path $root 'src/OwOWinDeployer.Core/I18n/Resources'
 $langs = 'en', 'zh', 'de'
 $problems = 0
 

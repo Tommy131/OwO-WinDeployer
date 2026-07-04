@@ -1,0 +1,89 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <!-- Versioned Windows moniker enables WinRT (Windows.UI.Notifications) for modern toast notifications,
+         so tray notifications show the app's name + icon via our registered AppUserModelID. -->
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <!-- Keep the runtime floor low (Win10 1809); toast send is wrapped in try/catch with a legacy fallback. -->
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <!-- 后台常驻托管用到 System.Windows.Forms.NotifyIcon（系统托盘图标）。 -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>OwOWinDeployer.App</RootNamespace>
+    <AssemblyName>OwOWinDeployer</AssemblyName>
+    <Product>OwO! Win Deployer</Product>
+    <!-- 版本号见根 Directory.Build.props（App / CLI / Core 跨产物单一来源） -->
+    <AssemblyTitle>OwO! Win Deployer</AssemblyTitle>
+    <Description>OwO! Win Deployer — 一键复刻 Windows 开发环境、应用与个人配置</Description>
+    <Authors>Tommy131</Authors>
+    <Company>Tommy131</Company>
+    <Copyright>© 2026 Tommy131</Copyright>
+
+    <!-- EXE 文件图标（资源管理器/任务栏/窗口） -->
+    <ApplicationIcon>app.ico</ApplicationIcon>
+
+    <!-- 降低 Windows Defender 误报：不压缩单文件（压缩自解压会被启发式当作“打包壳/释放器”） -->
+    <EnableCompressionInSingleFile>false</EnableCompressionInSingleFile>
+
+    <!-- 只保留中性(英文)框架资源；去掉 cs/de/es/fr/it/ja/ko/pl/pt-BR/ru/tr/zh-Hans/zh-Hant
+         等十余个本地化卫星资源子目录（界面文案本身已硬编码中文），发行目录更整洁。 -->
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <!-- WinForms 仅用于托盘图标（TrayIcon.cs 显式 using）。移除其全局隐式 using，避免
+       System.Drawing / System.Windows.Forms 的 Brush/Color/FontFamily 等与 WPF 类型在全项目冲突。 -->
+  <ItemGroup>
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+
+  <!-- Folder = namespace: code is organized into feature subfolders, each carrying a sub-namespace.
+       These are global-imported so existing unqualified references resolve project-wide (XAML uses
+       explicit xmlns instead). -->
+  <ItemGroup>
+    <Using Include="OwOWinDeployer.App.Services.Sys" />
+    <Using Include="OwOWinDeployer.App.Services.Net" />
+    <Using Include="OwOWinDeployer.App.Services.Software" />
+    <Using Include="OwOWinDeployer.App.Services.Terminal" />
+    <Using Include="OwOWinDeployer.App.Services.Infra" />
+    <Using Include="OwOWinDeployer.App.Services.Ftp" />
+    <Using Include="OwOWinDeployer.App.Services.Clip" />
+    <Using Include="OwOWinDeployer.App.Services.Launch" />
+    <Using Include="OwOWinDeployer.App.ViewModels" />
+    <Using Include="OwOWinDeployer.App.ViewModels.Deploy" />
+    <Using Include="OwOWinDeployer.App.ViewModels.Sys" />
+    <Using Include="OwOWinDeployer.App.ViewModels.Ftp" />
+    <Using Include="OwOWinDeployer.App.ViewModels.Clip" />
+    <Using Include="OwOWinDeployer.App.ViewModels.Net" />
+    <Using Include="OwOWinDeployer.App.ViewModels.Terminal" />
+    <Using Include="OwOWinDeployer.App.ViewModels.Tools" />
+    <Using Include="OwOWinDeployer.App.ViewModels.Shell" />
+    <Using Include="OwOWinDeployer.App.ViewModels.Launch" />
+    <Using Include="OwOWinDeployer.App.Views.Deploy" />
+    <Using Include="OwOWinDeployer.App.Views.Sys" />
+    <Using Include="OwOWinDeployer.App.Views.Ftp" />
+    <Using Include="OwOWinDeployer.App.Views.Clip" />
+    <Using Include="OwOWinDeployer.App.Views.Cloudflare" />
+    <Using Include="OwOWinDeployer.App.Views.Server" />
+    <Using Include="OwOWinDeployer.App.Views.Terminal" />
+    <Using Include="OwOWinDeployer.App.Views.Tools" />
+    <Using Include="OwOWinDeployer.App.Views.Shell" />
+    <Using Include="OwOWinDeployer.App.Views.Common" />
+    <Using Include="OwOWinDeployer.App.Views.Launch" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\OwOWinDeployer.Core\OwOWinDeployer.Core.csproj" />
+    <!-- 配置文件编辑器：行号 + 语法高亮（服务配置页） -->
+    <PackageReference Include="AvalonEdit" Version="6.3.0.90" />
+    <!-- 硬件传感器：CPU/GPU 功耗、温度、负载（系统概览功耗监控）。附带 WinRing0 驱动，部分传感器需管理员。 -->
+    <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.4" />
+    <!-- 系统 TTS 语音播报（硬件温度告警，按界面语言选择嗓音）。Windows SAPI 封装。 -->
+    <PackageReference Include="System.Speech" Version="9.0.0" />
+  </ItemGroup>
+
+</Project>

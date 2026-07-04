@@ -25,7 +25,7 @@
   - 实现：CLI `windeploy hash [--all] [--only ids] [--write]` —— 下载便携项安装包算 SHA256，`--write` 用「定位 url 字符串就地插入」方式回写 catalog.json（保留注释/格式）。默认只读打印。
 
 - [x] **自动化测试基线** ✅
-  - 实现：`src/WinDeploy.Core.Tests`（xUnit，net10.0），47 个测试覆盖 `Selection.Resolve`、`CatalogLoader`、`Secrets.Redact`/`IsTextConfig`、i18n 三语键对齐+占位符、`CatalogValidator`。`dotnet test` 全绿。
+  - 实现：`src/OwOWinDeployer.Core.Tests`（xUnit，net10.0），47 个测试覆盖 `Selection.Resolve`、`CatalogLoader`、`Secrets.Redact`/`IsTextConfig`、i18n 三语键对齐+占位符、`CatalogValidator`。`dotnet test` 全绿。
   - 注：`EnvCapture.Glob()` 为 private，未直接测；改测公开纯逻辑。
 
 ## 🥉 第三档：进阶 / 锦上添花

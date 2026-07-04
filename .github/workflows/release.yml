@@ -6,7 +6,7 @@ name: release
 # 三种构建版本（均自带 catalog/ configs/ assets/ 数据链）：
 #   1) with-runtime —— 集成 .NET 运行环境版：自包含、多文件，目标机免装 .NET。
 #   2) framework    —— 纯 App 版：依赖框架，体积最小，需目标机安装 .NET 10 桌面运行时。
-#   3) singlefile   —— 单文件版：自包含、单个 WinDeploy.exe，目标机免装 .NET。
+#   3) singlefile   —— 单文件版：自包含、单个 OwOWinDeployer.exe，目标机免装 .NET。
 on:
   push:
     tags: ['v*']
@@ -43,11 +43,11 @@ jobs:
             if ($v.Single -eq 'true') { $pubArgs += '-p:IncludeNativeLibrariesForSelfExtract=true' }
 
             Write-Host "== publish [$($v.Key)] GUI =="
-            dotnet publish src/WinDeploy.App/WinDeploy.App.csproj @pubArgs -o "dist/$($v.Key)/app"
+            dotnet publish src/OwOWinDeployer.App/OwOWinDeployer.App.csproj @pubArgs -o "dist/$($v.Key)/app"
             if ($LASTEXITCODE -ne 0) { throw "GUI publish failed: $($v.Key)" }
 
             Write-Host "== publish [$($v.Key)] CLI =="
-            dotnet publish src/WinDeploy.Cli/WinDeploy.Cli.csproj @pubArgs -o "dist/$($v.Key)/cli"
+            dotnet publish src/OwOWinDeployer.Cli/OwOWinDeployer.Cli.csproj @pubArgs -o "dist/$($v.Key)/cli"
             if ($LASTEXITCODE -ne 0) { throw "CLI publish failed: $($v.Key)" }
           }
 
@@ -62,7 +62,7 @@ jobs:
           if (-not $signtool) { throw 'signtool.exe not found on runner' }
           # Sign every variant's GUI + CLI executable before packaging.
           $files = Get-ChildItem dist -Recurse -File |
-                   Where-Object { $_.Name -in @('WinDeploy.exe', 'windeploy.exe') } |
+                   Where-Object { $_.Name -in @('OwOWinDeployer.exe', 'windeploy.exe') } |
                    Select-Object -ExpandProperty FullName
           & $signtool.FullName sign /f $pfx /p $env:SIGN_PFX_PASSWORD /fd SHA256 `
             /tr http://timestamp.digicert.com /td SHA256 @files
@@ -87,7 +87,7 @@ jobs:
 
             if ($v.Single) {
               # 单文件：仅一个 exe（运行库已并入）+ CLI 单文件
-              Copy-Item "$appOut/WinDeploy.exe"  "$stage/WinDeploy.exe"     -Force
+              Copy-Item "$appOut/OwOWinDeployer.exe"  "$stage/OwOWinDeployer.exe"     -Force
               Copy-Item "$cliOut/windeploy.exe"  "$stage/windeploy-cli.exe" -Force
             } else {
               # 多文件：GUI 全量输出放根目录；CLI 放 cli/ 子目录（两者运行库 DLL 集不同，分目录避免冲突）
@@ -109,7 +109,7 @@ jobs:
           }
 
           # 供裸机引导 bootstrap.ps1 直链下载的单文件 GUI
-          Copy-Item "dist/singlefile/app/WinDeploy.exe" "dist/WinDeploy.exe" -Force
+          Copy-Item "dist/singlefile/app/OwOWinDeployer.exe" "dist/OwOWinDeployer.exe" -Force
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v6
@@ -147,4 +147,4 @@ jobs:
           body_path: release-notes.md
           files: |
             dist/*.zip
-            dist/WinDeploy.exe
+            dist/OwOWinDeployer.exe

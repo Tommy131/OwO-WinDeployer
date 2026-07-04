@@ -106,7 +106,7 @@
 
 ### 剪贴板同步（M6 · 开发人员模式）
 
-- **发现与配对**：发现局域网内同样运行 OwO! WinDeploy 的设备（UDP 多播信标，仅暴露在线状态），用一次性 **6 位 PIN** 配对。PIN 永不上线——双方经 PBKDF2 + 双向 HMAC 挑战应答互证，再派生 **AES-256-GCM** 会话密钥，建立端到端加密链路。
+- **发现与配对**：发现局域网内同样运行 OwO! OwOWinDeployer 的设备（UDP 多播信标，仅暴露在线状态），用一次性 **6 位 PIN** 配对。PIN 永不上线——双方经 PBKDF2 + 双向 HMAC 挑战应答互证，再派生 **AES-256-GCM** 会话密钥，建立端到端加密链路。
 - **共享文本 + 图片**：共享列表双向同步——预览、手动新增文本、**删除跨设备同步**、一键复制回本机剪贴板。图片带缩略图 + 自适应预览，点击可在独立窗口查看大图。
 - **稳健的发现**：逐网卡多播 + 定向子网广播，多虚拟网卡机器可用**监听网卡选择器**指定真实网卡；自动发现不通时可用**手动按 IP 连接**兜底。
 - **可选项（默认关闭，更安全）**：「自动镜像到本机剪贴板」（真·同步）与「历史落盘」；否则剪贴板内容仅存内存、退出即清。
@@ -216,15 +216,15 @@
 ```
 owo-win-deployer/
 ├── src/
-│   ├── WinDeploy.Core/          # 纯库：安装引擎、配置同步、数据模型
+│   ├── OwOWinDeployer.Core/          # 纯库：安装引擎、配置同步、数据模型
 │   │   ├── Catalog/             # JSON 解析、Profile 解析
 │   │   ├── Engine/              # 安装编排、检测、方法派发
 │   │   ├── Config/              # 配置套用 / 采集 / 脱敏
 │   │   ├── Export/              # DSC 导出、软件清单、迁移包
 │   │   ├── Models/              # 数据模型
 │   │   └── Util/                # 日志、进程、路径工具
-│   ├── WinDeploy.Cli/           # CLI 入口（薄包装，转发到 Core）
-│   └── WinDeploy.App/           # WPF GUI（自包含单文件）
+│   ├── OwOWinDeployer.Cli/           # CLI 入口（薄包装，转发到 Core）
+│   └── OwOWinDeployer.App/           # WPF GUI（自包含单文件）
 │       ├── Views/               # 20+ 页面 + 对话框
 │       ├── ViewModels/          # 对应 ViewModel（MVVM）
 │       ├── Services/            # 40+ 系统集成服务
@@ -252,16 +252,16 @@ owo-win-deployer/
 ├── assets/                      # 图片 · 图标资源
 ├── .github/
 │   └── workflows/release.yml   # Release CI（打 tag 自动构建）
-└── WinDeploy.sln
+└── OwOWinDeployer.sln
 ```
 
 ### 分层说明
 
 | 层 | 项目 | 说明 |
 |---|---|---|
-| 引擎层 | `WinDeploy.Core` | 纯 .NET 10 库，**不依赖注册表 / WMI**（CLI 和 GUI 均可调用） |
-| CLI 层 | `WinDeploy.Cli` | 薄包装，暴露 13 条命令，适合脚本 / CI 场景 |
-| GUI 层 | `WinDeploy.App` | WPF MVVM，系统集成（WMI · ConPTY · P/Invoke）仅在此层 |
+| 引擎层 | `OwOWinDeployer.Core` | 纯 .NET 10 库，**不依赖注册表 / WMI**（CLI 和 GUI 均可调用） |
+| CLI 层 | `OwOWinDeployer.Cli` | 薄包装，暴露 13 条命令，适合脚本 / CI 场景 |
+| GUI 层 | `OwOWinDeployer.App` | WPF MVVM，系统集成（WMI · ConPTY · P/Invoke）仅在此层 |
 
 ### 关键设计原则
 
@@ -281,11 +281,11 @@ owo-win-deployer/
 irm https://raw.githubusercontent.com/Tommy131/owo-win-deployer/main/bootstrap/bootstrap.ps1 | iex
 ```
 
-脚本会自动确认 winget 可用、从 GitHub Release 下载最新版 `WinDeploy.exe` 并启动。
+脚本会自动确认 winget 可用、从 GitHub Release 下载最新版 `OwOWinDeployer.exe` 并启动。
 
 ### 直接下载
 
-前往 [Releases](../../releases) 页面，下载 `WinDeploy.exe`（GUI）或 `windeploy.exe`（CLI）。
+前往 [Releases](../../releases) 页面，下载 `OwOWinDeployer.exe`（GUI）或 `windeploy.exe`（CLI）。
 
 > **推荐下载 ZIP 版**：ZIP 内为文件夹版（exe + 运行库），触发杀软启发式的概率低于单文件自解压版。
 
@@ -295,22 +295,22 @@ irm https://raw.githubusercontent.com/Tommy131/owo-win-deployer/main/bootstrap/b
 
 ```powershell
 # 构建整个解决方案
-dotnet build WinDeploy.sln
+dotnet build OwOWinDeployer.sln
 
 # 运行 GUI（软件安装中心）
-dotnet run --project src/WinDeploy.App
+dotnet run --project src/OwOWinDeployer.App
 
 # 运行 CLI
-dotnet run --project src/WinDeploy.Cli -- list
-dotnet run --project src/WinDeploy.Cli -- plan  --profile dev
-dotnet run --project src/WinDeploy.Cli -- apply --profile dev --yes
+dotnet run --project src/OwOWinDeployer.Cli -- list
+dotnet run --project src/OwOWinDeployer.Cli -- plan  --profile dev
+dotnet run --project src/OwOWinDeployer.Cli -- apply --profile dev --yes
 ```
 
 ### 发布（自包含单文件，目标机免装 .NET）
 
 ```powershell
 pwsh -File scripts/publish.ps1
-# 产出：artifacts/app/WinDeploy.exe（GUI）
+# 产出：artifacts/app/OwOWinDeployer.exe（GUI）
 #       artifacts/cli/windeploy.exe（CLI）
 ```
 
@@ -681,7 +681,7 @@ windeploy <命令> [选项]
 | 情况 | 处理方式 |
 |---|---|
 | SmartScreen 蓝色弹窗 | 点「更多信息 → 仍要运行」 |
-| 优先下载 ZIP 版 | 解压后运行文件夹内 `WinDeploy.exe`，比单文件版触发杀软的概率低 |
+| 优先下载 ZIP 版 | 解压后运行文件夹内 `OwOWinDeployer.exe`，比单文件版触发杀软的概率低 |
 | Defender 删除 / 隔离 | 「Windows 安全中心 → 病毒和威胁防护 → 保护历史记录」恢复文件；可在 [Microsoft 误报提交](https://www.microsoft.com/wdsi/filesubmission) 报告 |
 | 彻底解决（开发者） | 配置仓库 Secrets：`SIGN_PFX_BASE64` + `SIGN_PFX_PASSWORD`，Release CI 已内置 Authenticode 签名步骤 |
 
