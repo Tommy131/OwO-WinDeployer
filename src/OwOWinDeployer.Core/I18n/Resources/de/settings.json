@@ -59,6 +59,7 @@
   "settings.audiowave.style.particles": "Partikel",
   "settings.audiowave.style.vu": "VU-Meter",
   "settings.audiowave.style.blob": "Blob",
+  "settings.audiowave.style.dual": "Zwei Kanäle (Stereo)",
   "settings.audiowave.color": "Farbe",
   "settings.audiowave.color.accent": "Akzentfarbe des Themes",
   "settings.audiowave.color.rainbow": "Regenbogen",

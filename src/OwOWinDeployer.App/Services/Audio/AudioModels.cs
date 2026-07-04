@@ -24,6 +24,8 @@ public enum WaveStyle
     Vu,
     /// <summary>A smooth, glowing blob that bulges with the low frequencies.</summary>
     Blob,
+    /// <summary>Two oscilloscope traces — left channel on top, right channel on the bottom (stereo).</summary>
+    DualChannel,
 }
 
 /// <summary>Colour scheme for the bars/trace. Accent follows the app theme; the rest are fixed gradients.</summary>
@@ -56,6 +58,7 @@ public static class AudioWaveOptions
         "particles" => WaveStyle.Particles,
         "vu" => WaveStyle.Vu,
         "blob" => WaveStyle.Blob,
+        "dual" or "stereo" => WaveStyle.DualChannel,
         _ => WaveStyle.Mirror,
     };
 
@@ -70,6 +73,7 @@ public static class AudioWaveOptions
         WaveStyle.Particles => "particles",
         WaveStyle.Vu => "vu",
         WaveStyle.Blob => "blob",
+        WaveStyle.DualChannel => "dual",
         _ => "mirror",
     };
 

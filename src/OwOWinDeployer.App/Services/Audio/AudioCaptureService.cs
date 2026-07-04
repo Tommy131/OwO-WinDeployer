@@ -12,7 +12,9 @@ public sealed class AudioCaptureService : IDisposable
 {
     private readonly SpectrumAnalyzer _analyzer;
     private WasapiLoopbackCapture? _capture;
-    private float[] _mono = new float[4096];   // reused mono scratch, grown as needed
+    private float[] _mono = new float[4096];   // reused scratch, grown as needed
+    private float[] _left = new float[4096];
+    private float[] _right = new float[4096];
     private bool _running;                      // caller intends capture to be on (survives device-switch restarts)
     private bool _restarting;
 
@@ -81,7 +83,7 @@ public sealed class AudioCaptureService : IDisposable
             int frameSize = bytesPerSample * channels;
             int frames = e.BytesRecorded / frameSize;
             if (frames <= 0) return;
-            if (_mono.Length < frames) _mono = new float[frames];
+            if (_mono.Length < frames) { _mono = new float[frames]; _left = new float[frames]; _right = new float[frames]; }
 
             bool isFloat = wf.Encoding == WaveFormatEncoding.IeeeFloat
                 || (wf.Encoding == WaveFormatEncoding.Extensible && bytesPerSample == 4);
@@ -89,7 +91,7 @@ public sealed class AudioCaptureService : IDisposable
             for (int f = 0; f < frames; f++)
             {
                 int baseOff = f * frameSize;
-                float sum = 0f;
+                float sum = 0f, first = 0f, second = 0f;
                 for (int c = 0; c < channels; c++)
                 {
                     int off = baseOff + c * bytesPerSample;
@@ -98,10 +100,13 @@ public sealed class AudioCaptureService : IDisposable
                     else if (bytesPerSample == 2) v = BitConverter.ToInt16(e.Buffer, off) / 32768f;
                     else v = 0f;
                     sum += v;
+                    if (c == 0) first = v; else if (c == 1) second = v;
                 }
                 _mono[f] = sum / channels;
+                _left[f] = first;
+                _right[f] = channels > 1 ? second : first;
             }
-            _analyzer.AddSamples(_mono, frames);
+            _analyzer.AddSamples(_mono, _left, _right, frames);
         }
         catch { /* transient buffer/format hiccup — drop this chunk, keep running */ }
     }

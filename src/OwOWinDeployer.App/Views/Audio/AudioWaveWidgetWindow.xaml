@@ -3,8 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="音频波形"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
-        ShowInTaskbar="False" ResizeMode="NoResize" Topmost="False"
-        Width="360" Height="200">
+        ShowInTaskbar="False" ResizeMode="CanResize" Topmost="False"
+        Width="360" Height="200" MinWidth="280" MinHeight="150" MaxWidth="960" MaxHeight="600">
   <!-- Same pure-WPF frosted glass as the Quick Launch widget: one rounded clip (RoundClip) shapes every layer so
        blur + corners are a single anti-aliased whole. Layer 1 = blurred capture of the screen behind (grabbed in
        code-behind, this window excluded from capture); layer 2 = theme/see-through tint; layer 3 = content. -->

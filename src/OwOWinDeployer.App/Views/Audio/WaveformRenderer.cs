@@ -23,6 +23,8 @@ public sealed class WaveformRenderer : FrameworkElement
     private readonly float[] _display = new float[BarCount];   // eased for display
     private readonly float[] _peak = new float[BarCount];      // slowly-falling peak caps
     private readonly float[] _wave = new float[WavePoints];
+    private readonly float[] _waveL = new float[WavePoints];   // dual-channel: left / right
+    private readonly float[] _waveR = new float[WavePoints];
 
     private const int SpecCols = 96;                           // spectrogram frequency columns
 
@@ -127,6 +129,9 @@ public sealed class WaveformRenderer : FrameworkElement
             case WaveStyle.Spectrogram:
                 _analyzer.FillSpectrum(_spec, Sensitivity);
                 break;
+            case WaveStyle.DualChannel:
+                _analyzer.FillWaveStereo(_waveL, _waveR);
+                break;
             case WaveStyle.Particles:
                 UpdateParticles();
                 break;
@@ -188,7 +193,27 @@ public sealed class WaveformRenderer : FrameworkElement
             case WaveStyle.Particles: DrawParticles(dc, w, h); break;
             case WaveStyle.Vu: DrawVu(dc, w, h); break;
             case WaveStyle.Blob: DrawBlob(dc, w, h); break;
+            case WaveStyle.DualChannel: DrawDual(dc, w, h); break;
         }
+    }
+
+    private void DrawDual(DrawingContext dc, double w, double h)
+    {
+        DrawTrace(dc, w, _waveL, h * 0.28, h * 0.22);   // left on top
+        DrawTrace(dc, w, _waveR, h * 0.72, h * 0.22);   // right on bottom
+    }
+
+    private void DrawTrace(DrawingContext dc, double w, float[] wave, double cy, double amp)
+    {
+        var geo = new StreamGeometry();
+        using (var ctx = geo.Open())
+        {
+            ctx.BeginFigure(new Point(0, cy - wave[0] * amp), false, false);
+            for (int i = 1; i < wave.Length; i++)
+                ctx.LineTo(new Point(i / (double)(wave.Length - 1) * w, cy - wave[i] * amp), true, false);
+        }
+        geo.Freeze();
+        dc.DrawGeometry(null, _scopePen ?? _barPens[0], geo);
     }
 
     private static void SmoothBand(ref float cur, ref float peak, float target)

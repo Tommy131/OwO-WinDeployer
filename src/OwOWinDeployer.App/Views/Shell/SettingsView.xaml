@@ -177,6 +177,7 @@
                 <ComboBoxItem Content="{DynamicResource S.settings.audiowave.style.particles}" />
                 <ComboBoxItem Content="{DynamicResource S.settings.audiowave.style.vu}" />
                 <ComboBoxItem Content="{DynamicResource S.settings.audiowave.style.blob}" />
+                <ComboBoxItem Content="{DynamicResource S.settings.audiowave.style.dual}" />
               </ComboBox>
               <TextBlock Grid.Row="1" Grid.Column="0" Text="{DynamicResource S.settings.audiowave.color}" FontSize="12.5"
                          Foreground="{DynamicResource TextSecondary}" VerticalAlignment="Center" Margin="0,8,0,0" />

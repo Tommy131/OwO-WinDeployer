@@ -18,6 +18,8 @@ public sealed class SpectrumAnalyzer
 
     private readonly object _gate = new();
     private readonly float[] _ring = new float[FftSize];
+    private readonly float[] _ringL = new float[FftSize];   // left channel (dual-channel style)
+    private readonly float[] _ringR = new float[FftSize];   // right channel
     private int _writePos;
     private bool _hasSignal;
 
@@ -59,8 +61,9 @@ public sealed class SpectrumAnalyzer
 
     public bool HasSignal { get { lock (_gate) return _hasSignal; } }
 
-    /// <summary>Append mono samples (range ~[-1,1]) to the ring buffer. Called on the WASAPI capture thread.</summary>
-    public void AddSamples(float[] mono, int count)
+    /// <summary>Append samples (range ~[-1,1]) to the ring buffers. <paramref name="left"/>/<paramref name="right"/>
+    /// are optional (mono source → they mirror <paramref name="mono"/>). Called on the WASAPI capture thread.</summary>
+    public void AddSamples(float[] mono, float[]? left, float[]? right, int count)
     {
         lock (_gate)
         {
@@ -69,6 +72,8 @@ public sealed class SpectrumAnalyzer
                 var s = mono[i];
                 if (s > 0.0004f || s < -0.0004f) _hasSignal = true;
                 _ring[_writePos] = s;
+                _ringL[_writePos] = left != null ? left[i] : s;
+                _ringR[_writePos] = right != null ? right[i] : s;
                 _writePos = (_writePos + 1) % FftSize;
             }
         }
@@ -78,7 +83,7 @@ public sealed class SpectrumAnalyzer
     {
         lock (_gate)
         {
-            Array.Clear(_ring);
+            Array.Clear(_ring); Array.Clear(_ringL); Array.Clear(_ringR);
             _writePos = 0;
             _hasSignal = false;
         }
@@ -191,6 +196,23 @@ public sealed class SpectrumAnalyzer
             int src = FftSize - n + i;
             if (src < 0) src = 0;
             wave[i] = _scratch[src];
+        }
+    }
+
+    /// <summary>Fill the latest left/right waveforms (for the dual-channel style). Snapshots the L/R rings in order
+    /// under the lock, then copies the most recent samples.</summary>
+    public void FillWaveStereo(float[] left, float[] right)
+    {
+        int n = Math.Min(left.Length, right.Length);
+        lock (_gate)
+        {
+            int p = _writePos;
+            for (int i = 0; i < n; i++)
+            {
+                int src = (p + FftSize - n + i) % FftSize;
+                left[i] = _ringL[src];
+                right[i] = _ringR[src];
+            }
         }
     }
 

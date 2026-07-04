@@ -70,6 +70,7 @@ public partial class AudioWaveWidgetWindow : Window
         {
             HideFromAltTab();
             ApplyClickThrough(SettingsStore.Load().AudioWidgetClickThrough);
+            HwndSource.FromHwnd(new WindowInteropHelper(this).Handle)?.AddHook(HitTestHook);   // edge-drag resize
             if (_native) ScreenBlur.EnableBlurBehind(this);
             else ScreenBlur.ExcludeFromCapture(this);
         };
@@ -80,7 +81,7 @@ public partial class AudioWaveWidgetWindow : Window
             if (_native) RootGrid.Clip = null;
             else { UpdateClip(); CaptureBackground(); }
         };
-        SizeChanged += (_, _) => { if (_native) return; UpdateClip(); ScheduleCapture(); };
+        SizeChanged += (_, _) => { SaveSize(); if (_native) return; UpdateClip(); ScheduleCapture(); };
         LocationChanged += (_, _) => { SavePosition(); if (!_native) ScheduleCapture(); };
         IsVisibleChanged += (_, e) =>
         {
@@ -268,6 +269,8 @@ public partial class AudioWaveWidgetWindow : Window
     {
         var s = SettingsStore.Load();
         var wa = SystemParameters.WorkArea;
+        if (s.AudioWidgetWidth is { } sw && sw >= MinWidth) Width = Math.Min(sw, MaxWidth);
+        if (s.AudioWidgetHeight is { } sh && sh >= MinHeight) Height = Math.Min(sh, MaxHeight);
         if (s.AudioWidgetLeft is { } l && s.AudioWidgetTop is { } t && IsOnScreen(l, t))
         {
             Left = l; Top = t;
@@ -294,6 +297,15 @@ public partial class AudioWaveWidgetWindow : Window
         SettingsStore.Save(s);
     }
 
+    private void SaveSize()
+    {
+        if (!_placed) return;
+        var s = SettingsStore.Load();
+        s.AudioWidgetWidth = ActualWidth;
+        s.AudioWidgetHeight = ActualHeight;
+        SettingsStore.Save(s);
+    }
+
     // ── keep the gadget out of Alt+Tab (WS_EX_TOOLWINDOW) ──
     private void HideFromAltTab()
     {
@@ -307,6 +319,39 @@ public partial class AudioWaveWidgetWindow : Window
         catch { /* non-critical */ }
     }
 
+    // ── edge-drag resize on the borderless window (WM_NCHITTEST) ──
+    private const int WM_NCHITTEST = 0x0084;
+    private const int HTCLIENT = 1, HTLEFT = 10, HTRIGHT = 11, HTTOP = 12, HTTOPLEFT = 13,
+        HTTOPRIGHT = 14, HTBOTTOM = 15, HTBOTTOMLEFT = 16, HTBOTTOMRIGHT = 17;
+
+    /// <summary>Report the window edges/corners as resize zones so the borderless glass widget can be dragged
+    /// bigger/smaller; everything else stays client (so the header still drags the whole window).</summary>
+    private IntPtr HitTestHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (msg != WM_NCHITTEST) return IntPtr.Zero;
+        if (SettingsStore.Load().AudioWidgetClickThrough) return IntPtr.Zero;   // don't grab when click-through
+        if (!GetWindowRect(hwnd, out var r)) return IntPtr.Zero;
+        int x = unchecked((short)(long)lParam);
+        int y = unchecked((short)((long)lParam >> 16));
+        const int m = 8;
+        bool left = x < r.L + m, right = x > r.R - m, top = y < r.T + m, bottom = y > r.B - m;
+        int ht = (top, bottom, left, right) switch
+        {
+            (true, _, true, _) => HTTOPLEFT,
+            (true, _, _, true) => HTTOPRIGHT,
+            (_, true, true, _) => HTBOTTOMLEFT,
+            (_, true, _, true) => HTBOTTOMRIGHT,
+            (true, _, _, _) => HTTOP,
+            (_, true, _, _) => HTBOTTOM,
+            (_, _, true, _) => HTLEFT,
+            (_, _, _, true) => HTRIGHT,
+            _ => HTCLIENT,
+        };
+        if (ht == HTCLIENT) return IntPtr.Zero;   // let normal processing (header drag etc.) run
+        handled = true;
+        return new IntPtr(ht);
+    }
+
     private const int GWL_EXSTYLE = -20;
     private const int WS_EX_TOOLWINDOW = 0x00000080;
 
@@ -315,4 +360,10 @@ public partial class AudioWaveWidgetWindow : Window
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct RECT { public int L, T, R, B; }
+
+    [DllImport("user32.dll")]
+    private static extern bool GetWindowRect(IntPtr hWnd, out RECT rect);
 }

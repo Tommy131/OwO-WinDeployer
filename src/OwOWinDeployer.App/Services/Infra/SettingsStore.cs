@@ -57,6 +57,9 @@ public sealed class AppSettings
     /// <summary>音频组件在屏幕上的位置（左/上，像素）。null 表示用默认位置。</summary>
     public double? AudioWidgetLeft { get; set; }
     public double? AudioWidgetTop { get; set; }
+    /// <summary>音频组件尺寸（宽/高，DIP）。null 表示用默认尺寸。可拖动边缘缩放。</summary>
+    public double? AudioWidgetWidth { get; set; }
+    public double? AudioWidgetHeight { get; set; }
     /// <summary>音频组件是否「永远置顶」（图钉）。默认关闭。</summary>
     public bool AudioWidgetPinned { get; set; }
     /// <summary>音频组件背景填充不透明度 0.1–0.85（越低越通透）。默认 0.35。</summary>

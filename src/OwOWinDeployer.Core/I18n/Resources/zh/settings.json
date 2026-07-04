@@ -59,6 +59,7 @@
   "settings.audiowave.style.particles": "粒子",
   "settings.audiowave.style.vu": "VU 电平表",
   "settings.audiowave.style.blob": "液态球 Blob",
+  "settings.audiowave.style.dual": "双声道（立体声）",
   "settings.audiowave.color": "配色方案",
   "settings.audiowave.color.accent": "主题强调色",
   "settings.audiowave.color.rainbow": "彩虹",

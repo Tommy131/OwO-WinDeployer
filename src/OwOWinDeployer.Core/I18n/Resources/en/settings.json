@@ -59,6 +59,7 @@
   "settings.audiowave.style.particles": "Particles",
   "settings.audiowave.style.vu": "VU meters",
   "settings.audiowave.style.blob": "Blob",
+  "settings.audiowave.style.dual": "Dual channel (stereo)",
   "settings.audiowave.color": "Colour",
   "settings.audiowave.color.accent": "Theme accent",
   "settings.audiowave.color.rainbow": "Rainbow",
