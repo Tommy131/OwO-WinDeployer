@@ -73,6 +73,12 @@ public sealed class WaveformRenderer : FrameworkElement
     /// <summary>Slowly rotate the palette hue over time.</summary>
     public bool HueDrift { get; set; }
 
+    /// <summary>Whether the source shown in the now-playing strip is the one actually producing sound. When false
+    /// (the selected source is paused, or the user switched to a source that isn't playing), the waveform collapses
+    /// to a dimmed idle line instead of visualizing the system mix — so the waveform always corresponds to the
+    /// selected source. Defaults true (no media session → just visualize the raw system output).</summary>
+    public bool SourceActive { get; set; } = true;
+
     private double _hueOffset;
     private int _hueFrame;
     private long _lastRenderMs;      // frame-rate cap
@@ -130,26 +136,37 @@ public sealed class WaveformRenderer : FrameworkElement
 
         _analyzer.Update(now);
 
+        // When the selected media source isn't the one making sound (paused, or the user switched to another app),
+        // render silence — a flat, dimmed idle line — even though loopback still carries the system mix. This keeps
+        // the waveform tied to the source shown in the now-playing strip.
+        bool active = SourceActive;
+        float lvl = active ? _analyzer.Level : 0f;
+        bool sig = active && _analyzer.HasSignal;
+
         switch (Kind)
         {
             case WaveStyle.Oscilloscope:
             case WaveStyle.Ribbon:
             case WaveStyle.Polar:
                 _analyzer.FillWave(_wave);
+                if (!active) Array.Clear(_wave);
                 break;
             case WaveStyle.Spectrogram:
                 _analyzer.FillSpectrum(_spec, Sensitivity);
+                if (!active) Array.Clear(_spec);
                 break;
             case WaveStyle.DualChannel:
                 _analyzer.FillWaveStereo(_waveL, _waveR);
+                if (!active) { Array.Clear(_waveL); Array.Clear(_waveR); }
                 break;
             case WaveStyle.Particles:
-                UpdateParticles();
+                UpdateParticles(active);
                 break;
             case WaveStyle.Vu:
                 break;   // DrawVU reads the smoothed bands below
             default:     // Bars, Mirror, Radial, Blob
                 _analyzer.FillBars(_bars, Sensitivity);
+                if (!active) Array.Clear(_bars);
                 for (int i = 0; i < BarCount; i++)
                 {
                     float target = _bars[i], cur = _display[i];
@@ -161,10 +178,10 @@ public sealed class WaveformRenderer : FrameworkElement
                 break;
         }
 
-        // Smoothed band levels + peak holds (used by the VU style).
-        SmoothBand(ref _vuBass, ref _vuBassPk, _analyzer.Bass * Sensitivity);
-        SmoothBand(ref _vuMid, ref _vuMidPk, _analyzer.Mid * Sensitivity);
-        SmoothBand(ref _vuTreble, ref _vuTreblePk, _analyzer.Treble * Sensitivity);
+        // Smoothed band levels + peak holds (used by the VU style) — zeroed when the source is inactive.
+        SmoothBand(ref _vuBass, ref _vuBassPk, (active ? _analyzer.Bass : 0f) * Sensitivity);
+        SmoothBand(ref _vuMid, ref _vuMidPk, (active ? _analyzer.Mid : 0f) * Sensitivity);
+        SmoothBand(ref _vuTreble, ref _vuTreblePk, (active ? _analyzer.Treble : 0f) * Sensitivity);
 
         // Hue drift: slowly rotate the palette (rebuild a few times a second, not every frame).
         if (HueDrift)
@@ -173,19 +190,19 @@ public sealed class WaveformRenderer : FrameworkElement
             if (++_hueFrame % 3 == 0) BuildPalette();
         }
 
-        // Beat → glow + subtle scale pulse.
-        float beatTarget = BeatReactive ? _analyzer.BeatPulse : 0f;
+        // Beat → glow + subtle scale pulse (suppressed when the source is inactive).
+        float beatTarget = (BeatReactive && active) ? _analyzer.BeatPulse : 0f;
         _beat += (beatTarget - _beat) * 0.5f;
         if (_glow != null) { _glow.BlurRadius = (16 + _beat * 22) * GlowScale; _glow.Opacity = Math.Min(1.0, (0.8 + _beat * 0.2) * GlowScale); }
         _scale.ScaleX = _scale.ScaleY = 1f + _beat * 0.035f;
 
-        // Silence → breathe: dim the waveform when quiet, wake up when sound returns.
-        float targetOp = SilenceFade ? Math.Clamp(0.32f + 1.5f * _analyzer.Level, 0.32f, 1f) : 1f;
+        // Silence / inactive source → breathe: dim toward the idle floor, wake up when the shown source plays again.
+        float targetOp = !active ? 0.32f : (SilenceFade ? Math.Clamp(0.32f + 1.5f * lvl, 0.32f, 1f) : 1f);
         _fadeOpacity += (targetOp - _fadeOpacity) * 0.08f;
         Opacity = _fadeOpacity;
 
-        // Idle detection → slower frame cap when there's nothing to show (silent + not mid-beat/animation).
-        if (!_analyzer.HasSignal && _beat <= 0.002f && _particles.Count == 0) _idleFrames++;
+        // Idle detection → slower frame cap when there's nothing to show (silent/inactive + not mid-beat/animation).
+        if (!sig && _beat <= 0.002f && _particles.Count == 0) _idleFrames++;
         else _idleFrames = 0;
 
         InvalidateVisual();
@@ -239,21 +256,26 @@ public sealed class WaveformRenderer : FrameworkElement
     }
 
     // ── Particles: a field pushed outward by bass / beats ──────────────────────
-    private void UpdateParticles()
+    private void UpdateParticles(bool active)
     {
-        double push = _analyzer.Bass * Sensitivity;
-        int spawn = (int)Math.Round(push * 6 + _analyzer.BeatPulse * 10);
-        for (int i = 0; i < spawn && _particles.Count < 220; i++)
+        // Only spawn while the shown source is playing; existing particles always finish their arc and fade out, so
+        // an inactive source empties the field smoothly rather than freezing it.
+        if (active)
         {
-            double ang = _rng.NextDouble() * Math.PI * 2;
-            double spd = 0.6 + _rng.NextDouble() * 2.2 * (0.5 + push + _analyzer.BeatPulse);
-            _particles.Add(new Particle
+            double push = _analyzer.Bass * Sensitivity;
+            int spawn = (int)Math.Round(push * 6 + _analyzer.BeatPulse * 10);
+            for (int i = 0; i < spawn && _particles.Count < 220; i++)
             {
-                X = 0.5, Y = 0.5,                                   // spawn at centre (normalised)
-                Vx = Math.Cos(ang) * spd, Vy = Math.Sin(ang) * spd,
-                Life = 1, Max = 0.7 + _rng.NextDouble() * 0.8,
-                Hue = _rng.Next(BarCount),
-            });
+                double ang = _rng.NextDouble() * Math.PI * 2;
+                double spd = 0.6 + _rng.NextDouble() * 2.2 * (0.5 + push + _analyzer.BeatPulse);
+                _particles.Add(new Particle
+                {
+                    X = 0.5, Y = 0.5,                                   // spawn at centre (normalised)
+                    Vx = Math.Cos(ang) * spd, Vy = Math.Sin(ang) * spd,
+                    Life = 1, Max = 0.7 + _rng.NextDouble() * 0.8,
+                    Hue = _rng.Next(BarCount),
+                });
+            }
         }
         for (int i = _particles.Count - 1; i >= 0; i--)
         {

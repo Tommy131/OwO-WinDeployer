@@ -36,6 +36,7 @@ public partial class AudioWaveWidgetWindow : Window
     private bool _seeking;         // dragging the progress bar
     private double _lastDur;       // last known track duration (seconds)
     private bool _canSeek;         // the current player supports seeking
+    private bool _sourceActive = true;   // shown media source is the one actually playing (gates waveform + readout)
     private readonly DispatcherTimer _settle;
     private readonly DispatcherTimer _refresh;
     private readonly DispatcherTimer _readoutTimer;   // updates the note · BPM · level readout ~4×/s
@@ -154,6 +155,11 @@ public partial class AudioWaveWidgetWindow : Window
         if (multi) SourceBadgeText.Text = $"{np.SourceIndex}/{np.SourceCount}";
         SourceSwitch.Cursor = multi ? Cursors.Hand : Cursors.Arrow;
 
+        // Tie the waveform to the shown source: visualize only while it's actually playing. With no tracked source
+        // (e.g. a game with no media session) fall back to the raw system mix so the widget still reacts.
+        _sourceActive = !np.HasTrack || np.IsPlaying;
+        _renderer.SourceActive = _sourceActive;
+
         if (np.Accent is { } ac) ProgFill.Background = new SolidColorBrush(ac);   // tint progress to the album colour
         _renderer.AlbumColor = np.Accent;
         if (_renderer.Color == WaveColor.Album)
@@ -224,7 +230,9 @@ public partial class AudioWaveWidgetWindow : Window
     /// <summary>Refresh the corner readout: dominant musical note · estimated BPM · level meter.</summary>
     private void UpdateReadout()
     {
-        if (!SettingsStore.Load().AudioWidgetReadout || !_analyzer.HasSignal) { HideReadout(); return; }
+        // No readout when the shown source is paused/switched-away — the waveform is idle, so the note/BPM/level would
+        // be misleading (they'd describe whatever else is in the system mix).
+        if (!_sourceActive || !SettingsStore.Load().AudioWidgetReadout || !_analyzer.HasSignal) { HideReadout(); return; }
         var parts = new System.Collections.Generic.List<string>(3);
         var note = NoteName(_analyzer.DominantHz);
         if (note != null) parts.Add(note);
