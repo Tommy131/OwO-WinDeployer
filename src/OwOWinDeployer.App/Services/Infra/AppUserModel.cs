@@ -17,6 +17,13 @@ public static class AppUserModel
     [DllImport("shell32.dll", PreserveSig = true)]
     private static extern int SetCurrentProcessExplicitAppUserModelID([MarshalAs(UnmanagedType.LPWStr)] string appID);
 
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int PrivateExtractIcons(string szFileName, int nIconIndex, int cxIcon, int cyIcon,
+        IntPtr[] phicon, int[] piconid, int nIcons, int flags);
+
+    [DllImport("user32.dll")]
+    private static extern bool DestroyIcon(IntPtr hIcon);
+
     /// <summary>Register the friendly name/icon and bind the AUMID to this process. Call once at startup,
     /// before any tray balloon / toast is shown. Best-effort — never throws.</summary>
     public static void Configure()
@@ -44,18 +51,47 @@ public static class AppUserModel
             var dir = AppPaths.DataRoot;
             Directory.CreateDirectory(dir);
             // PNG (not .ico) — recommended for toast images; the toast renderer handles it reliably.
-            var pngPath = Path.Combine(dir, "app.png");
+            // Stamp the filename with the app version: when a release ships a new icon, a fixed "app.png" would
+            // keep serving the previous icon forever (it's only written when missing), and Windows would also hold
+            // its own toast-image cache keyed by path. A version-stamped name misses on upgrade → regenerates from
+            // the new exe icon, and the fresh path busts Windows' cache. Stale stamps are swept first.
+            var pngPath = Path.Combine(dir, $"app-{AppInfo.Version}.png");
             if (!File.Exists(pngPath))
             {
+                foreach (var stale in Directory.EnumerateFiles(dir, "app*.png"))
+                    try { File.Delete(stale); } catch { /* held open by another instance / already gone */ }
+
                 var exe = Environment.ProcessPath;
                 if (string.IsNullOrEmpty(exe)) return null;
-                using var ico = System.Drawing.Icon.ExtractAssociatedIcon(exe);
-                if (ico == null) return null;
-                using var bmp = ico.ToBitmap();
+                using var bmp = ExtractIcon(exe, 256);
+                if (bmp == null) return null;
                 bmp.Save(pngPath, System.Drawing.Imaging.ImageFormat.Png);
             }
             return pngPath;
         }
+        catch { return null; }
+    }
+
+    /// <summary>Extract the app icon from the exe as a bitmap, preferring a large <paramref name="size"/>px frame
+    /// (the toast logo renders far bigger than the 32px default) via PrivateExtractIcons; falls back to the default
+    /// associated icon if the OS won't return the requested size.</summary>
+    private static System.Drawing.Bitmap? ExtractIcon(string exe, int size)
+    {
+        try
+        {
+            var handles = new IntPtr[1];
+            var ids = new int[1];
+            if (PrivateExtractIcons(exe, 0, size, size, handles, ids, 1, 0) > 0 && handles[0] != IntPtr.Zero)
+            {
+                var hicon = handles[0];
+                using var large = System.Drawing.Icon.FromHandle(hicon);
+                try { return large.ToBitmap(); }   // copies pixels → safe to destroy the source handle next
+                finally { DestroyIcon(hicon); }
+            }
+        }
+        catch { /* fall through to the default extractor */ }
+
+        try { using var ico = System.Drawing.Icon.ExtractAssociatedIcon(exe); return ico?.ToBitmap(); }
         catch { return null; }
     }
 }
