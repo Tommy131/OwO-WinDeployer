@@ -75,6 +75,12 @@ public sealed class AppSettings
     public bool AudioWidgetSilenceFade { get; set; } = true;
     /// <summary>在组件角落显示实时读数（音名 · BPM · 电平）。默认开启。</summary>
     public bool AudioWidgetReadout { get; set; } = true;
+    /// <summary>辉光强度倍率 0.2–2.5。默认 1.0。</summary>
+    public double AudioWidgetGlow { get; set; } = 1.0;
+    /// <summary>色相随时间缓慢流动（强调色 / 专辑 / 彩虹）。默认关闭。</summary>
+    public bool AudioWidgetHueDrift { get; set; }
+    /// <summary>鼠标穿透：开启后点击穿过组件落到桌面（组件变为纯装饰、不可交互，需在设置页关闭）。默认关闭。</summary>
+    public bool AudioWidgetClickThrough { get; set; }
 
     // ── 硬件温度监控（后台定时检测 CPU / GPU / NVMe 硬盘，超阈值时通知 + 可选 TTS 语音）──────────
     /// <summary>启用硬件温度监控。默认关闭（opt-in）。</summary>

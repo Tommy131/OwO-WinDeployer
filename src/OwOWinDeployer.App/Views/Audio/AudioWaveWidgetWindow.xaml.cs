@@ -69,6 +69,7 @@ public partial class AudioWaveWidgetWindow : Window
         SourceInitialized += (_, _) =>
         {
             HideFromAltTab();
+            ApplyClickThrough(SettingsStore.Load().AudioWidgetClickThrough);
             if (_native) ScreenBlur.EnableBlurBehind(this);
             else ScreenBlur.ExcludeFromCapture(this);
         };
@@ -174,12 +175,32 @@ public partial class AudioWaveWidgetWindow : Window
         var s = SettingsStore.Load();
         _renderer.BeatReactive = s.AudioWidgetBeatReactive;
         _renderer.SilenceFade = s.AudioWidgetSilenceFade;
+        _renderer.GlowScale = (float)Math.Clamp(s.AudioWidgetGlow, 0.2, 2.5);
+        _renderer.HueDrift = s.AudioWidgetHueDrift;
         _renderer.Apply(
             AudioWaveOptions.ParseStyle(s.AudioWidgetStyle),
             AudioWaveOptions.ParseColor(s.AudioWidgetColor),
             (float)s.AudioWidgetSensitivity);
         if (s.AudioWidgetReadout && _capture.IsRunning) _readoutTimer.Start();
         else { _readoutTimer.Stop(); HideReadout(); }
+        ApplyClickThrough(s.AudioWidgetClickThrough);
+    }
+
+    private const int WS_EX_TRANSPARENT = 0x00000020;
+
+    /// <summary>Toggle mouse click-through (WS_EX_TRANSPARENT): when on, clicks pass through to the desktop and the
+    /// widget becomes purely decorative (turn it back off from the Settings page).</summary>
+    private void ApplyClickThrough(bool on)
+    {
+        try
+        {
+            var hwnd = new WindowInteropHelper(this).Handle;
+            if (hwnd == IntPtr.Zero) return;   // applied again at SourceInitialized once the handle exists
+            var ex = GetWindowLong(hwnd, GWL_EXSTYLE);
+            ex = on ? (ex | WS_EX_TRANSPARENT) : (ex & ~WS_EX_TRANSPARENT);
+            SetWindowLong(hwnd, GWL_EXSTYLE, ex);
+        }
+        catch { /* non-critical */ }
     }
 
     // Advance style/colour via the shared view-model. Its setter persists the choice, notifies the Settings

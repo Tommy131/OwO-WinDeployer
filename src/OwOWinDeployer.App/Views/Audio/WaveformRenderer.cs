@@ -65,6 +65,13 @@ public sealed class WaveformRenderer : FrameworkElement
     public bool BeatReactive { get; set; } = true;
     /// <summary>Dim the waveform when the audio goes quiet (a calm "breathing" idle).</summary>
     public bool SilenceFade { get; set; } = true;
+    /// <summary>Neon-glow intensity multiplier (0.2–2.5).</summary>
+    public float GlowScale { get; set; } = 1f;
+    /// <summary>Slowly rotate the palette hue over time.</summary>
+    public bool HueDrift { get; set; }
+
+    private double _hueOffset;
+    private int _hueFrame;
 
     public WaveformRenderer(SpectrumAnalyzer analyzer)
     {
@@ -143,10 +150,17 @@ public sealed class WaveformRenderer : FrameworkElement
         SmoothBand(ref _vuMid, ref _vuMidPk, _analyzer.Mid * Sensitivity);
         SmoothBand(ref _vuTreble, ref _vuTreblePk, _analyzer.Treble * Sensitivity);
 
+        // Hue drift: slowly rotate the palette (rebuild a few times a second, not every frame).
+        if (HueDrift)
+        {
+            _hueOffset = (_hueOffset + 0.5) % 360;
+            if (++_hueFrame % 3 == 0) BuildPalette();
+        }
+
         // Beat → glow + subtle scale pulse.
         float beatTarget = BeatReactive ? _analyzer.BeatPulse : 0f;
         _beat += (beatTarget - _beat) * 0.5f;
-        if (_glow != null) { _glow.BlurRadius = 16 + _beat * 22; _glow.Opacity = 0.8 + _beat * 0.2; }
+        if (_glow != null) { _glow.BlurRadius = (16 + _beat * 22) * GlowScale; _glow.Opacity = Math.Min(1.0, (0.8 + _beat * 0.2) * GlowScale); }
         _scale.ScaleX = _scale.ScaleY = 1f + _beat * 0.035f;
 
         // Silence → breathe: dim the waveform when quiet, wake up when sound returns.
@@ -441,6 +455,23 @@ public sealed class WaveformRenderer : FrameworkElement
 
     private static Color WithA(Color c, double a) => System.Windows.Media.Color.FromArgb((byte)(a * 255), c.R, c.G, c.B);
 
+    /// <summary>Rotate a colour's hue by <paramref name="deg"/> degrees (RGB → HSV → back), for the hue-drift effect.</summary>
+    private static Color RotateHue(Color c, double deg)
+    {
+        double r = c.R / 255.0, g = c.G / 255.0, b = c.B / 255.0;
+        double max = Math.Max(r, Math.Max(g, b)), min = Math.Min(r, Math.Min(g, b)), d = max - min;
+        double h = 0;
+        if (d > 1e-6)
+        {
+            if (max == r) h = ((g - b) / d) % 6;
+            else if (max == g) h = (b - r) / d + 2;
+            else h = (r - g) / d + 4;
+            h *= 60; if (h < 0) h += 360;
+        }
+        double s = max <= 0 ? 0 : d / max, v = max;
+        return Hsv(h + deg, s, v);
+    }
+
     // ── palette ─────────────────────────────────────────────────────────────
     private Pen? _scopePen;
 
@@ -467,6 +498,7 @@ public sealed class WaveformRenderer : FrameworkElement
                 WaveColor.Ocean => (Rgb(0x0A, 0x2A, 0x66), Rgb(0x46, 0xEC, 0xE8), Rgb(0x1E, 0x8F, 0xE0)),
                 _ => (Mul(accent, 0.45), Lighten(accent, 0.55), accent),
             };
+            if (HueDrift) { bottom = RotateHue(bottom, _hueOffset); top = RotateHue(top, _hueOffset); solid = RotateHue(solid, _hueOffset); }
             var g = new LinearGradientBrush
             {
                 StartPoint = new Point(0, 1), EndPoint = new Point(0, 0),
@@ -518,6 +550,7 @@ public sealed class WaveformRenderer : FrameworkElement
             WaveColor.Rainbow => Rgb(0x9A, 0x6C, 0xFF),
             _ => accent,
         };
+        if (HueDrift) glow = RotateHue(glow, _hueOffset);
         _glow = new DropShadowEffect { Color = glow, BlurRadius = 16, ShadowDepth = 0, Opacity = 0.85 };
         Effect = _glow;
     }

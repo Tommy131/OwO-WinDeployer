@@ -40,6 +40,9 @@ public sealed class SettingsViewModel : ObservableObject
         _audioBeatReactive = _s.AudioWidgetBeatReactive;
         _audioSilenceFade = _s.AudioWidgetSilenceFade;
         _audioReadout = _s.AudioWidgetReadout;
+        _audioGlow = _s.AudioWidgetGlow;
+        _audioHueDrift = _s.AudioWidgetHueDrift;
+        _audioClickThrough = _s.AudioWidgetClickThrough;
         _tempMonitorEnabled = _s.TempMonitorEnabled;
         _tempTts = _s.TempTtsEnabled;
         _tempCpu = _s.TempCpuEnabled; _tempGpu = _s.TempGpuEnabled; _tempDisk = _s.TempDiskEnabled;
@@ -404,6 +407,51 @@ public sealed class SettingsViewModel : ObservableObject
         {
             if (!Set(ref _audioReadout, value)) return;
             _s.AudioWidgetReadout = value;
+            SettingsStore.Save(_s);
+            AudioWidgetVisualChanged?.Invoke();
+        }
+    }
+
+    private double _audioGlow;
+    /// <summary>辉光强度（0.2–2.5）。即时生效并持久化。</summary>
+    public double AudioWidgetGlow
+    {
+        get => _audioGlow;
+        set
+        {
+            var v = Math.Clamp(Math.Round(value, 2), 0.2, 2.5);
+            if (!Set(ref _audioGlow, v)) return;
+            _s.AudioWidgetGlow = v;
+            SettingsStore.Save(_s);
+            OnPropertyChanged(nameof(AudioWidgetGlowText));
+            AudioWidgetVisualChanged?.Invoke();
+        }
+    }
+    public string AudioWidgetGlowText => $"{_audioGlow:0.0}×";
+
+    private bool _audioHueDrift;
+    /// <summary>色相随时间流动。即时生效并持久化。</summary>
+    public bool AudioWidgetHueDrift
+    {
+        get => _audioHueDrift;
+        set
+        {
+            if (!Set(ref _audioHueDrift, value)) return;
+            _s.AudioWidgetHueDrift = value;
+            SettingsStore.Save(_s);
+            AudioWidgetVisualChanged?.Invoke();
+        }
+    }
+
+    private bool _audioClickThrough;
+    /// <summary>鼠标穿透。即时生效并持久化。</summary>
+    public bool AudioWidgetClickThrough
+    {
+        get => _audioClickThrough;
+        set
+        {
+            if (!Set(ref _audioClickThrough, value)) return;
+            _s.AudioWidgetClickThrough = value;
             SettingsStore.Save(_s);
             AudioWidgetVisualChanged?.Invoke();
         }
