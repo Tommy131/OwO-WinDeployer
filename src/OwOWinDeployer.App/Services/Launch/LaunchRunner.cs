@@ -43,7 +43,12 @@ public static class LaunchRunner
                 // Run through the shell so PATH lookup, built-ins and redirection behave as typed.
                 psi.FileName = "cmd.exe";
                 var tail = string.IsNullOrWhiteSpace(item.Args) ? "" : " " + item.Args;
-                psi.Arguments = $"/c {target}{tail}";
+                // cd /d into the working directory first — reliable across drives (plain `cd` won't switch
+                // drive), and it survives elevation, where ShellExecute drops psi.WorkingDirectory.
+                var cd = string.IsNullOrWhiteSpace(workDir) ? "" : $"cd /d \"{workDir}\" & ";
+                // /k keeps the console open (dev servers, interactive commands); /c closes it when done.
+                // No outer quotes around the whole line, so cmd doesn't strip the inner quotes.
+                psi.Arguments = $"{(item.KeepOpen ? "/k" : "/c")} {cd}{target}{tail}";
                 break;
 
             default: // App / file / shortcut

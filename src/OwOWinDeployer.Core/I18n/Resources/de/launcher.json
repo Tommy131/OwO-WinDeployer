@@ -32,12 +32,17 @@
   "launcher.edit.name": "Name",
   "launcher.edit.kind": "Typ",
   "launcher.edit.target": "Ziel",
+  "launcher.edit.target.app": "Ziel (Pfad zu App, Datei oder Verknüpfung)",
+  "launcher.edit.target.url": "Webadresse",
+  "launcher.edit.target.command": "Befehl (z. B. npm run dev — kein eigenes cd nötig)",
   "launcher.edit.browse": "Durchsuchen…",
   "launcher.edit.args": "Argumente (optional)",
   "launcher.edit.workDir": "Arbeitsverzeichnis (optional)",
   "launcher.edit.admin": "Als Administrator ausführen",
+  "launcher.edit.keepOpen": "Konsolenfenster geöffnet lassen (cmd /k)",
   "launcher.edit.needTarget": "Bitte ein Ziel angeben (Pfad, URL oder Befehl).",
+  "launcher.edit.badUrl": "Bitte eine gültige Webadresse eingeben, z. B. https://github.com, github.com oder localhost:3000.",
   "launcher.edit.hint.app": "Vollständiger Pfad zu einer Anwendung, Datei oder Verknüpfung (.lnk). Umgebungsvariablen wie %USERPROFILE% werden unterstützt.",
   "launcher.edit.hint.url": "Eine Webadresse, z. B. https://github.com (das https:// kann entfallen).",
-  "launcher.edit.hint.command": "Eine Befehlszeile, ausgeführt über cmd.exe /c."
+  "launcher.edit.hint.command": "Eine Befehlszeile, ausgeführt über cmd.exe (z. B. npm run dev). Wechselt zuerst in das obige Arbeitsverzeichnis, ein eigenes cd ist also nicht nötig; die Option unten hält das Fenster offen."
 }

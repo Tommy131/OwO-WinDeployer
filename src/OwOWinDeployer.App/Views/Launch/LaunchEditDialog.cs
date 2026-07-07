@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -18,9 +19,22 @@ public sealed class LaunchEditDialog : Window
     private readonly TextBox _args;
     private readonly TextBox _workDir;
     private readonly CheckBox _admin;
+    private readonly CheckBox _keepOpen;
+    private readonly TextBlock _targetLabel;
+    private readonly Button _targetBrowse;
+    private readonly TextBlock _argsLabel;
+    private readonly TextBlock _workLabel;
+    private readonly UIElement _workRow;
 
     /// <summary>The edited item, populated when the dialog is accepted; null while cancelled.</summary>
     public LaunchItem? Result { get; private set; }
+
+    /// <summary>Strict web-address shape for the URL kind: an optional http/https scheme, then a host that is a
+    /// dotted domain (label.label.tld), <c>localhost</c>, or an IPv4 address, then an optional :port and path/
+    /// query/fragment (no whitespace). Matches how <see cref="LaunchRunner"/> later prepends https:// to a bare host.</summary>
+    private static readonly Regex UrlPattern = new(
+        @"^(?:https?://)?(?:localhost|(?:\d{1,3}\.){3}\d{1,3}|(?:[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,})(?::\d{1,5})?(?:[/?#]\S*)?$",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
     public LaunchEditDialog(LaunchItem? existing)
     {
@@ -54,22 +68,35 @@ public sealed class LaunchEditDialog : Window
         _kind.SelectionChanged += (_, _) => UpdateHints();
         root.Children.Add(_kind);
 
-        // Target + Browse (browse only meaningful for App/file)
-        root.Children.Add(Label("launcher.edit.target"));
-        _target = Field(_item.Target, out var targetRow, browseKey: "launcher.edit.browse", onBrowse: BrowseTarget);
+        // Target + Browse (the label + the file picker both adapt to the kind in UpdateHints — for a
+        // command the "target" is the command line, not a file, so the picker is hidden there).
+        _targetLabel = Label("launcher.edit.target");
+        root.Children.Add(_targetLabel);
+        _target = Field(_item.Target, out var targetRow, out _targetBrowse, browseKey: "launcher.edit.browse", onBrowse: BrowseTarget);
         root.Children.Add(targetRow);
         _targetHint = Hint();
         root.Children.Add(_targetHint);
 
-        // Arguments
-        root.Children.Add(Label("launcher.edit.args"));
+        // Arguments (hidden for URLs — a website takes no arguments)
+        _argsLabel = Label("launcher.edit.args");
+        root.Children.Add(_argsLabel);
         _args = Field(_item.Args ?? "");
         root.Children.Add(_args);
 
-        // Working directory + Browse
-        root.Children.Add(Label("launcher.edit.workDir"));
-        _workDir = Field(_item.WorkingDir ?? "", out var workRow, browseKey: "launcher.edit.browse", onBrowse: BrowseWorkDir);
-        root.Children.Add(workRow);
+        // Working directory + Browse (only meaningful for a command — an app is opened via ShellExecute
+        // and a URL has no working directory, so the picker is hidden for both)
+        _workLabel = Label("launcher.edit.workDir");
+        root.Children.Add(_workLabel);
+        _workDir = Field(_item.WorkingDir ?? "", out _workRow, out _, browseKey: "launcher.edit.browse", onBrowse: BrowseWorkDir);
+        root.Children.Add(_workRow);
+
+        // Keep the console window open (Command kind only — visibility toggled in UpdateHints)
+        _keepOpen = new CheckBox
+        {
+            Content = Localizer.T("launcher.edit.keepOpen"), IsChecked = _item.KeepOpen,
+            Foreground = Brush("TextPrimary"), Margin = new Thickness(0, 4, 0, 0),
+        };
+        root.Children.Add(_keepOpen);
 
         // Run as admin
         _admin = new CheckBox
@@ -102,16 +129,44 @@ public sealed class LaunchEditDialog : Window
     private LaunchKind SelectedKind => (LaunchKind)(((ComboBoxItem)_kind.SelectedItem).Tag);
 
     private void UpdateHints()
-        => _targetHint.Text = SelectedKind switch
+    {
+        var kind = SelectedKind;
+
+        // The "target" means different things per kind — relabel it so it's unambiguous.
+        _targetLabel.Text = Localizer.T(kind switch
+        {
+            LaunchKind.Url => "launcher.edit.target.url",
+            LaunchKind.Command => "launcher.edit.target.command",
+            _ => "launcher.edit.target.app",
+        });
+        _targetHint.Text = kind switch
         {
             LaunchKind.Url => Localizer.T("launcher.edit.hint.url"),
             LaunchKind.Command => Localizer.T("launcher.edit.hint.command"),
             _ => Localizer.T("launcher.edit.hint.app"),
         };
 
+        // The file picker only makes sense when the target is a file/app — a URL or command is typed.
+        // For an app this is the single selector the user needs, so the working-directory picker is hidden.
+        _targetBrowse.Visibility = kind == LaunchKind.App ? Visibility.Visible : Visibility.Collapsed;
+
+        // Arguments are hidden for a website (a URL takes none).
+        var showArgs = kind != LaunchKind.Url ? Visibility.Visible : Visibility.Collapsed;
+        _argsLabel.Visibility = showArgs;
+        _args.Visibility = showArgs;
+
+        // Working directory only applies to a command (an app opens via ShellExecute, a URL has none).
+        var showWorkDir = kind == LaunchKind.Command ? Visibility.Visible : Visibility.Collapsed;
+        _workLabel.Visibility = showWorkDir;
+        _workRow.Visibility = showWorkDir;
+
+        // "Keep window open" only applies to a shell command.
+        _keepOpen.Visibility = kind == LaunchKind.Command ? Visibility.Visible : Visibility.Collapsed;
+    }
+
     private void BrowseTarget()
     {
-        var dlg = new OpenFileDialog { Title = Localizer.T("launcher.edit.target"), CheckFileExists = false };
+        var dlg = new OpenFileDialog { Title = Localizer.T("launcher.edit.target.app"), CheckFileExists = false };
         if (dlg.ShowDialog(this) == true)
         {
             _target.Text = dlg.FileName;
@@ -135,12 +190,23 @@ public sealed class LaunchEditDialog : Window
                 MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
+        // A website must look like a real address — reject anything that isn't a valid URL / host.
+        if (SelectedKind == LaunchKind.Url && !UrlPattern.IsMatch(target))
+        {
+            Dialogs.Show(Localizer.T("launcher.edit.badUrl"), Title,
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            _target.Focus();
+            _target.SelectAll();
+            return;
+        }
         _item.Title = _title.Text.Trim();
         _item.Kind = SelectedKind;
         _item.Target = target;
-        _item.Args = Blank(_args.Text);
-        _item.WorkingDir = Blank(_workDir.Text);
+        // Only persist fields the kind actually uses, so a hidden box's stale text never leaks onto the item.
+        _item.Args = SelectedKind == LaunchKind.Url ? null : Blank(_args.Text);
+        _item.WorkingDir = SelectedKind == LaunchKind.Command ? Blank(_workDir.Text) : null;
         _item.RunAsAdmin = _admin.IsChecked == true;
+        _item.KeepOpen = SelectedKind == LaunchKind.Command && _keepOpen.IsChecked == true;
         Result = _item;
         DialogResult = true;
     }
@@ -166,8 +232,9 @@ public sealed class LaunchEditDialog : Window
         Background = Brush("CardBg"), Foreground = Brush("TextPrimary"), BorderBrush = Brush("BorderStrong"),
     };
 
-    /// <summary>A text field with a trailing Browse button, returned via <paramref name="row"/>.</summary>
-    private static TextBox Field(string initial, out UIElement row, string browseKey, Action onBrowse)
+    /// <summary>A text field with a trailing Browse button, returned via <paramref name="row"/>; the button
+    /// itself comes back in <paramref name="browse"/> so callers can show/hide it per kind.</summary>
+    private static TextBox Field(string initial, out UIElement row, out Button browse, string browseKey, Action onBrowse)
     {
         var grid = new Grid { Margin = new Thickness(0, 0, 0, 10) };
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -185,6 +252,7 @@ public sealed class LaunchEditDialog : Window
         grid.Children.Add(box);
         grid.Children.Add(btn);
         row = grid;
+        browse = btn;
         return box;
     }
 

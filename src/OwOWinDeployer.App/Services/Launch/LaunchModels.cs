@@ -35,6 +35,10 @@ public sealed class LaunchItem
     /// <summary>Launch elevated (ShellExecute verb "runas"); triggers a UAC prompt.</summary>
     public bool RunAsAdmin { get; set; }
 
+    /// <summary>Command kind only: keep the console window open after the command runs (<c>cmd /k</c> instead of
+    /// <c>/c</c>), so long-running / interactive commands (e.g. a dev server) stay visible. Ignored for App/URL.</summary>
+    public bool KeepOpen { get; set; }
+
     /// <summary>To-do "done" checkbox state (visual only — a done item is still launchable).</summary>
     public bool Done { get; set; }
 
@@ -42,14 +46,14 @@ public sealed class LaunchItem
     public LaunchItem Clone() => new()
     {
         Id = Id, Title = Title, Target = Target, Args = Args,
-        WorkingDir = WorkingDir, Kind = Kind, RunAsAdmin = RunAsAdmin, Done = Done,
+        WorkingDir = WorkingDir, Kind = Kind, RunAsAdmin = RunAsAdmin, KeepOpen = KeepOpen, Done = Done,
     };
 
     /// <summary>Copy the editable fields from another item into this one (Id/Done are preserved).</summary>
     public void CopyEditableFrom(LaunchItem o)
     {
         Title = o.Title; Target = o.Target; Args = o.Args;
-        WorkingDir = o.WorkingDir; Kind = o.Kind; RunAsAdmin = o.RunAsAdmin;
+        WorkingDir = o.WorkingDir; Kind = o.Kind; RunAsAdmin = o.RunAsAdmin; KeepOpen = o.KeepOpen;
     }
 
     /// <summary>Duplicate key for the "no repeated items" rule: same kind + same target + same args

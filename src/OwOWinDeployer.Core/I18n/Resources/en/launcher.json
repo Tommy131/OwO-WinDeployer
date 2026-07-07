@@ -32,12 +32,17 @@
   "launcher.edit.name": "Name",
   "launcher.edit.kind": "Type",
   "launcher.edit.target": "Target",
+  "launcher.edit.target.app": "Target (path to an app, file or shortcut)",
+  "launcher.edit.target.url": "Web address",
+  "launcher.edit.target.command": "Command (e.g. npm run dev — no need to write cd)",
   "launcher.edit.browse": "Browse…",
   "launcher.edit.args": "Arguments (optional)",
   "launcher.edit.workDir": "Working directory (optional)",
   "launcher.edit.admin": "Run as administrator",
+  "launcher.edit.keepOpen": "Keep the console window open (cmd /k)",
   "launcher.edit.needTarget": "Please enter a target (path, URL or command).",
+  "launcher.edit.badUrl": "Please enter a valid web address, e.g. https://github.com, github.com or localhost:3000.",
   "launcher.edit.hint.app": "Full path to an application, file or shortcut (.lnk). Environment variables like %USERPROFILE% are supported.",
   "launcher.edit.hint.url": "A web address, e.g. https://github.com (the https:// may be omitted).",
-  "launcher.edit.hint.command": "A command line run through cmd.exe /c."
+  "launcher.edit.hint.command": "A command line run through cmd.exe (e.g. npm run dev). It changes into the working directory above first, so there's no need to write cd yourself; tick the option below to keep the window open."
 }

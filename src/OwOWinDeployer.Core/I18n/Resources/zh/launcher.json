@@ -32,12 +32,17 @@
   "launcher.edit.name": "名称",
   "launcher.edit.kind": "类型",
   "launcher.edit.target": "目标",
+  "launcher.edit.target.app": "目标（应用 / 文件 / 快捷方式的路径）",
+  "launcher.edit.target.url": "网址",
+  "launcher.edit.target.command": "命令（例如 npm run dev，不用自己写 cd）",
   "launcher.edit.browse": "浏览…",
   "launcher.edit.args": "参数（可选）",
   "launcher.edit.workDir": "工作目录（可选）",
   "launcher.edit.admin": "以管理员身份运行",
+  "launcher.edit.keepOpen": "保持命令行窗口打开（cmd /k）",
   "launcher.edit.needTarget": "请填写目标（路径、网址或命令）。",
+  "launcher.edit.badUrl": "请输入合法的网址，例如 https://github.com、github.com 或 localhost:3000。",
   "launcher.edit.hint.app": "应用程序、文件或快捷方式（.lnk）的完整路径，支持 %USERPROFILE% 等环境变量。",
   "launcher.edit.hint.url": "网址，如 https://github.com（省略 https:// 也可）。",
-  "launcher.edit.hint.command": "通过 cmd.exe /c 执行的命令行。"
+  "launcher.edit.hint.command": "通过 cmd.exe 执行的命令行（如 npm run dev）。会先切换到上面的工作目录，无需自己写 cd；勾选下方选项可保持窗口打开。"
 }
