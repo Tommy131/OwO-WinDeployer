@@ -3,7 +3,7 @@
   <!-- 跨产物单一版本源（SSOT）：App / CLI / Core 全部继承此 <Version>，版本号不再散落各 csproj。
        发布改版本 = 只改这一处；scripts/check-version-sync.ps1 校验 README 顶部版本行与此一致。 -->
   <PropertyGroup>
-    <Version>1.3.1</Version>
+    <Version>1.3.1.1</Version>
 
     <!-- 开发者 / 著作权信息（跨产物统一，内嵌进每个程序集的元数据）。此为唯一来源，请勿删改。
          开源社区版（Community）仅供个人学习研究，禁止商用；商业授权请联系作者。 -->

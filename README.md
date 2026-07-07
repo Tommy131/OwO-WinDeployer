@@ -15,7 +15,7 @@ Replicate your entire Windows development environment, applications, and persona
 
 Supports **Chinese (zh) / English (en) / Deutsch (de)** with live in-app language switching.
 
-> **Current version: v1.3.1** &nbsp;|&nbsp; 🌐 [中文说明](README_CH.md)
+> **Current version: v1.3.1.1** &nbsp;|&nbsp; 🌐 [中文说明](README_CH.md)
 
 ## Table of Contents
 
@@ -258,7 +258,7 @@ owo-win-deployer/
 ├── tools/                       # Bundled binaries (smartctl, drivedb.h)
 ├── bootstrap/bootstrap.ps1      # Bare-metal bootstrap (one-liner)
 ├── scripts/
-│   ├── publish.ps1              # Build self-contained EXEs
+│   ├── build.ps1               # Build all release variants locally (with-runtime · framework · singlefile)
 │   └── check-i18n.ps1           # Validate zh/en/de key parity
 ├── docs/DESIGN.md               # Full design document (authoritative source)
 └── OwOWinDeployer.sln
@@ -315,13 +315,20 @@ dotnet run --project src/OwOWinDeployer.Cli -- plan  --profile dev
 dotnet run --project src/OwOWinDeployer.Cli -- apply --profile dev --yes
 ```
 
-### Publish (self-contained single EXE, no .NET required on target)
+### Build release packages (locally, same variants as the release CI)
 
 ```powershell
-pwsh -File scripts/publish.ps1
-# Output: artifacts/app/OwOWinDeployer.exe (GUI)
-#         artifacts/cli/owowindeployer.exe (CLI)
-#         artifacts/cli/owodeploy.exe      (CLI alias — same program, shorter name)
+powershell -ExecutionPolicy Bypass -File scripts/build.ps1
+# Prompts which variant(s) to build (default: framework only). Each becomes one ZIP under build/
+# (GUI + CLI + catalog/configs/assets/tools); intermediate folders are removed after zipping:
+#   OwO-Win-Deployer-v<ver>-win-x64-framework.zip     (framework-dependent, smallest — needs .NET 10 desktop runtime)
+#   OwO-Win-Deployer-v<ver>-win-x64-singlefile.zip    (self-contained single OwOWinDeployer.exe)
+#   OwO-Win-Deployer-v<ver>-win-x64-with-runtime.zip  (self-contained, multi-file — no .NET needed on target)
+# The singlefile variant also leaves build/OwOWinDeployer.exe, runnable as-is.
+
+# Skip the prompt with -Variant (framework | singlefile | with-runtime | all):
+powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -Variant all
+powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -Variant singlefile -Run   # build, then launch
 ```
 
 Pushing a `v*` tag triggers `.github/workflows/release.yml`, which builds and attaches both EXEs to a GitHub Release automatically.

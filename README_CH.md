@@ -13,7 +13,7 @@
 
 一键在任意 Windows 设备上**复刻开发环境、应用与个人配置**，并集成系统管理、终端、FTP、进程/服务管理、Cloudflare DDNS、局域网剪贴板同步等专业工具。支持中文 / English / Deutsch 运行时切换。完整设计文档见 [`docs/DESIGN.md`](docs/DESIGN.md)。
 
-> **当前版本：v1.3.1** &nbsp;|&nbsp; 🌐 [English README](README.md)
+> **当前版本：v1.3.1.1** &nbsp;|&nbsp; 🌐 [English README](README.md)
 
 ## 目录
 
@@ -246,7 +246,7 @@ owo-win-deployer/
 ├── bootstrap/
 │   └── bootstrap.ps1            # 裸机引导脚本
 ├── scripts/
-│   └── publish.ps1              # 构建发布（自包含单 EXE）
+│   └── build.ps1               # 本地构建全部发行形态（集成运行环境 · 纯App · 单文件）
 ├── docs/
 │   └── DESIGN.md                # 完整设计文档（权威来源）
 ├── assets/                      # 图片 · 图标资源
@@ -306,13 +306,20 @@ dotnet run --project src/OwOWinDeployer.Cli -- plan  --profile dev
 dotnet run --project src/OwOWinDeployer.Cli -- apply --profile dev --yes
 ```
 
-### 发布（自包含单文件，目标机免装 .NET）
+### 构建发行包（本地执行，形态与发布 CI 一致）
 
 ```powershell
-pwsh -File scripts/publish.ps1
-# 产出：artifacts/app/OwOWinDeployer.exe（GUI）
-#       artifacts/cli/owowindeployer.exe（CLI）
-#       artifacts/cli/owodeploy.exe      （CLI 别名 —— 同一程序，短名）
+powershell -ExecutionPolicy Bypass -File scripts/build.ps1
+# 会先询问要构建哪种形态（默认仅 framework 纯 App 版）。每种形态打成 build/ 下一个 ZIP
+# （含 GUI + CLI + catalog/configs/assets/tools）；打包后自动删除中间文件夹，不留残留：
+#   OwO-Win-Deployer-v<版本>-win-x64-framework.zip     （纯 App：依赖框架、体积最小，需装 .NET 10 桌面运行时）
+#   OwO-Win-Deployer-v<版本>-win-x64-singlefile.zip    （单文件：自包含、单个 OwOWinDeployer.exe）
+#   OwO-Win-Deployer-v<版本>-win-x64-with-runtime.zip  （集成运行环境：自包含、多文件，目标机免装 .NET）
+# 其中 singlefile 形态会额外在 build/OwOWinDeployer.exe 留一份可直接运行的单文件。
+
+# 用 -Variant 跳过询问（framework | singlefile | with-runtime | all）：
+powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -Variant all
+powershell -ExecutionPolicy Bypass -File scripts/build.ps1 -Variant singlefile -Run   # 构建后启动
 ```
 
 推送 `v*` tag 后，`.github/workflows/release.yml` 自动构建并挂到 GitHub Release。

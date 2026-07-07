@@ -427,7 +427,7 @@ owo-win-deployer/
 ├─ configs/                配置仓库（与是否安装解耦）
 │  └─ vscode/ git/ ssh/ env/ lmstudio/ …
 ├─ bootstrap/bootstrap.ps1
-├─ scripts/                publish.ps1 · release（CI）
+├─ scripts/                build.ps1（本地三形态） · release（CI）
 ├─ docs/DESIGN.md          本文档
 └─ README.md
 ```
