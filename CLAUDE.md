@@ -21,6 +21,7 @@ M1 引擎打通（CLI）→ M2 配置同步+导出 → M3 WPF GUI（软件安装
 - 弹窗用 `Dialogs.Show(body, title, MessageBoxButton, MessageBoxImage)`（`Views/Common/MessageDialog.cs`，按钮跟随应用语言）替代系统 `MessageBox`；崩溃弹窗仍用系统 MessageBox。
 
 ## 约定
+- **分支归属（开发前必问）**：本仓库为 open-core 双分支 —— `main`（免费公开版）/ `pro`（专业版），合并只允许 `main → pro` 单向。**开发任何功能/修复前，先询问开发者该功能属于哪个分支**；未明确说明时，**默认切换到 `main` 分支开发**（免费版有的功能一律修在 `main`，再合并进 `pro`），只有 pro 专属功能才直接在 `pro` 上开发。
 - 加软件 = 改 `catalog.json`（主清单）+ `catalog/i18n/{en,de}.json`（软件 `summary` 译文，zh 用 catalog.json 原文），不动引擎。
 - 加界面文案 = 在 `src/OwOWinDeployer.Core/I18n/Resources/{en,zh,de}/<area>.json` 三语同步加 key（保持键集一致），XAML 用 `{DynamicResource S.<key>}`，代码用 `Localizer.T/Format`。改后跑 `scripts/check-i18n.ps1` 校验三语键对齐。
 - Core 中匹配外部工具输出的中文（如 winget stdout 的 `Contains("已是最新")`）**绝不本地化**（已加 `// MATCHED:` 注释）。

@@ -77,7 +77,7 @@ public sealed class TerminalSurface : FrameworkElement
         var v = _screen.Version;
         // Snap to the bottom whenever new output arrives, so a streaming command stays in view.
         if (v != _lastVersion) { _scrollOffset = 0; _lastVersion = v; InvalidateVisual(); }
-        if (++_caretTick >= 16) { _caretTick = 0; _caretOn = !_caretOn; if (IsFocused) InvalidateVisual(); }
+        if (++_caretTick >= 16) { _caretTick = 0; _caretOn = !_caretOn; if (Active) InvalidateVisual(); }
     }
 
     protected override void OnRenderSizeChanged(SizeChangedInfo info)
@@ -131,13 +131,29 @@ public sealed class TerminalSurface : FrameworkElement
             while (c < cols)
             {
                 var cell = frame.Cells[r * cols + c];
+                if ((cell.Flags & VtCell.WideCont) != 0) { c++; continue; }   // covered by its lead cell
                 var (cf, cb) = Resolve(cell, fg, bg);
-                // Coalesce a run of same-attribute cells into one draw.
+                if ((cell.Flags & VtCell.Wide) != 0)
+                {
+                    // Draw each double-width glyph individually at its exact grid x so glyph advance
+                    // (which may not be exactly 2×_cw) never accumulates drift along the row.
+                    var wx = c * _cw;
+                    if (cb != bg) dc.DrawRectangle(new SolidColorBrush(cb), null, new Rect(wx, y, 2 * _cw + 0.5, _ch + 0.5));
+                    var wft = new FormattedText(cell.Ch.ToString(), CultureInfo.InvariantCulture, FlowDirection.LeftToRight,
+                        _typeface, FontSize, new SolidColorBrush(cf), dpi);
+                    if ((cell.Flags & VtCell.Bold) != 0) wft.SetFontWeight(FontWeights.Bold);
+                    if ((cell.Flags & VtCell.Underline) != 0) wft.SetTextDecorations(TextDecorations.Underline);
+                    dc.DrawText(wft, new Point(wx, y));
+                    c += 2;
+                    continue;
+                }
+                // Coalesce a run of same-attribute narrow cells into one draw.
                 var start = c;
                 var run = new System.Text.StringBuilder();
                 while (c < cols)
                 {
                     var n = frame.Cells[r * cols + c];
+                    if ((n.Flags & (VtCell.Wide | VtCell.WideCont)) != 0) break;
                     var (nf, nb) = Resolve(n, fg, bg);
                     if (nf != cf || nb != cb || (n.Flags & VtCell.Underline) != (cell.Flags & VtCell.Underline)) break;
                     run.Append(n.Ch == '\0' ? ' ' : n.Ch);
@@ -158,11 +174,13 @@ public sealed class TerminalSurface : FrameworkElement
             }
         }
 
-        if (frame.CursorVisible && IsFocused && _caretOn)
+        if (frame.CursorVisible && Active && _caretOn)
         {
             var cx = frame.CursorX * _cw;
             var cy = frame.CursorY * _ch;
-            dc.DrawRectangle(new SolidColorBrush(CursorColor) { Opacity = 0.6 }, null, new Rect(cx, cy, _cw, _ch));
+            var idx = frame.CursorY * cols + frame.CursorX;
+            var cw = idx >= 0 && idx < frame.Cells.Length && (frame.Cells[idx].Flags & VtCell.Wide) != 0 ? 2 * _cw : _cw;
+            dc.DrawRectangle(new SolidColorBrush(CursorColor) { Opacity = 0.6 }, null, new Rect(cx, cy, cw, _ch));
         }
     }
 
@@ -174,9 +192,28 @@ public sealed class TerminalSurface : FrameworkElement
         return (f, b);
     }
 
-    // ── input ─────────────────────────────────────────────────────────────────
+    // ── input ────────────────────────────────────────────────────────────────
+    // Keyboard + IME text is captured by a hidden TextBox in the host view (a bare FrameworkElement has no
+    // TSF text store, so IME-composed CJK never commits to it). The view forwards that TextBox's committed
+    // text via SendText and its key events via HandleKey; this surface stays display-only for input.
+
+    /// <summary>True while the host's hidden input box holds focus — drives caret blink and the "snap to
+    /// bottom on new output" behavior even though this element itself isn't keyboard-focused.</summary>
+    public bool InputFocused
+    {
+        get => _inputFocused;
+        set { if (_inputFocused != value) { _inputFocused = value; InvalidateVisual(); } }
+    }
+    private bool _inputFocused;
+
+    private bool Active => IsFocused || _inputFocused;
+
+    /// <summary>Raised on click so the host can move keyboard/IME focus to its hidden input box.</summary>
+    public event Action? FocusRequested;
+
     protected override void OnMouseDown(MouseButtonEventArgs e)
     {
+        FocusRequested?.Invoke();
         Focus();
         base.OnMouseDown(e);
     }
@@ -190,13 +227,30 @@ public sealed class TerminalSurface : FrameworkElement
         e.Handled = true;
     }
 
+    /// <summary>Forward committed text (regular typing OR an IME commit) to the shell. Called by the host view
+    /// from its hidden input box; ESC is dropped (it arrives via the Escape key as a VT sequence instead).</summary>
+    public void SendText(string text)
+    {
+        if (!string.IsNullOrEmpty(text) && text != "\x1b") Send?.Invoke(text);
+    }
+
     protected override void OnTextInput(TextCompositionEventArgs e)
     {
-        if (!string.IsNullOrEmpty(e.Text) && e.Text != "") { Send?.Invoke(e.Text); e.Handled = true; }
+        // Fallback for the rare case this element itself is focused (normally the host's input box owns text).
+        if (!string.IsNullOrEmpty(e.Text) && e.Text != "\x1b") { Send?.Invoke(e.Text); e.Handled = true; }
         base.OnTextInput(e);
     }
 
     protected override void OnPreviewKeyDown(KeyEventArgs e)
+    {
+        HandleKey(e);
+        base.OnPreviewKeyDown(e);
+    }
+
+    /// <summary>Translate a key into the VT byte sequence the shell expects (arrows, Home/End, Ctrl+letter,
+    /// paste, scrollback paging). Returns true and marks the event handled when it consumed the key. Public so
+    /// the host's hidden input box can route its key events here while keeping this surface display-only.</summary>
+    public bool HandleKey(KeyEventArgs e)
     {
         var ctrl = (Keyboard.Modifiers & ModifierKeys.Control) != 0;
         var shift = (Keyboard.Modifiers & ModifierKeys.Shift) != 0;
@@ -207,14 +261,14 @@ public sealed class TerminalSurface : FrameworkElement
         {
             _scrollOffset = Math.Max(0, _scrollOffset + (e.Key == Key.PageUp ? _rows - 1 : -(_rows - 1)));
             _lastVersion = _screen?.Version ?? _lastVersion;
-            InvalidateVisual(); e.Handled = true; return;
+            InvalidateVisual(); e.Handled = true; return true;
         }
 
         if (ctrl && !alt)
         {
-            if (e.Key == Key.V) { Paste(); e.Handled = true; return; }
-            if (e.Key == Key.C && shift) { e.Handled = false; return; }   // leave Ctrl+Shift+C for future copy
-            if (e.Key >= Key.A && e.Key <= Key.Z) { Send?.Invoke(((char)(e.Key - Key.A + 1)).ToString()); e.Handled = true; return; }
+            if (e.Key == Key.V) { Paste(); e.Handled = true; return true; }
+            if (e.Key == Key.C && shift) { e.Handled = false; return false; }   // leave Ctrl+Shift+C for future copy
+            if (e.Key >= Key.A && e.Key <= Key.Z) { Send?.Invoke(((char)(e.Key - Key.A + 1)).ToString()); e.Handled = true; return true; }
         }
 
         string? seq = e.Key switch
@@ -235,8 +289,8 @@ public sealed class TerminalSurface : FrameworkElement
             Key.PageDown => "\x1b[6~",
             _ => null,
         };
-        if (seq != null) { Send?.Invoke(seq); e.Handled = true; }
-        base.OnPreviewKeyDown(e);
+        if (seq != null) { Send?.Invoke(seq); e.Handled = true; return true; }
+        return false;
     }
 
     private void Paste()

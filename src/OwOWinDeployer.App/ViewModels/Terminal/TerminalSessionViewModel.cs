@@ -1,4 +1,5 @@
 using System.IO;
+using System.Threading;
 using System.Windows;
 using System.Windows.Media;
 using OwOWinDeployer.App.Services;
@@ -108,6 +109,7 @@ public sealed class TerminalSessionViewModel : ObservableObject, IDisposable
             _pty.Output += OnOutput;
             _pty.Exited += OnExited;
             Screen.Respond = s => _pty?.Write(s);   // cursor-position reports etc. go back to the shell
+            Screen.ParseError = OnParseError;
             _pty.Start(Shell.CommandLine, dir, _cols, _rows);
             _started = true;
             Status = Shell.Name + " · " + dir;
@@ -117,6 +119,22 @@ public sealed class TerminalSessionViewModel : ObservableObject, IDisposable
     }
 
     private void OnOutput(string s) => Screen.Feed(s);   // VtScreen.Feed is lock-guarded (reader thread)
+
+    private int _parseErrors;
+    /// <summary>Log the first few VT parse faults (with the offending char + emulator size) to crash.log, so a
+    /// terminal rendering regression is diagnosable instead of silently killing the tab.</summary>
+    private void OnParseError(Exception ex, char ch)
+    {
+        if (Interlocked.Increment(ref _parseErrors) > 20) return;   // don't flood on a persistent fault
+        try
+        {
+            var dir = SettingsStore.Folder;
+            Directory.CreateDirectory(dir);
+            File.AppendAllText(Path.Combine(dir, "crash.log"),
+                $"==== {DateTime.Now:O} [VtParse] ====\nchar=U+{(int)ch:X4} cols={Screen.Cols} rows={Screen.Rows}\n{ex}\n\n");
+        }
+        catch { /* best effort */ }
+    }
 
     private void OnExited()
     {

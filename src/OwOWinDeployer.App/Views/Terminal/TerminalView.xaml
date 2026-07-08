@@ -72,6 +72,13 @@
       <Grid>
         <v:CodeRain x:Name="Rain" />
         <v:TerminalSurface x:Name="Surface" />
+        <!-- Invisible IME/keyboard sink: a bare FrameworkElement has no TSF text store, so IME-composed CJK
+             never commits to the surface. This 1×1 transparent TextBox holds focus, lets the IME compose, and
+             forwards committed text + key sequences to the active session. -->
+        <TextBox x:Name="Ime" Width="1" Height="1" HorizontalAlignment="Left" VerticalAlignment="Top"
+                 Opacity="0" Background="Transparent" Foreground="Transparent" CaretBrush="Transparent"
+                 BorderThickness="0" Padding="0" AcceptsReturn="False" AcceptsTab="False"
+                 IsUndoEnabled="False" AutoWordSelection="False" />
         <Rectangle x:Name="Scanlines" IsHitTestVisible="False">
           <Rectangle.Fill>
             <DrawingBrush TileMode="Tile" Viewport="0,0,3,3" ViewportUnits="Absolute" Opacity="0.32">

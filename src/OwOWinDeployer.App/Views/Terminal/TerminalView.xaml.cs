@@ -35,6 +35,15 @@ public partial class TerminalView : UserControl
             // is currently active — sessions persist in the background regardless of which tab is shown.
             Surface.Send += s => _vm?.ActiveSession?.Send(s);
             Surface.ViewportChanged += (c, r) => _vm?.ActiveSession?.SetViewport(c, r);
+
+            // Keyboard + IME text is captured by the hidden Ime TextBox (a bare FrameworkElement can't host an
+            // IME composition, so CJK never commits to the surface). Committed text (regular typing or an IME
+            // commit) flows through TextChanged; special keys are translated to VT sequences by the surface.
+            Surface.FocusRequested += () => Ime.Focus();
+            Ime.GotKeyboardFocus += (_, _) => Surface.InputFocused = true;
+            Ime.LostKeyboardFocus += (_, _) => Surface.InputFocused = false;
+            Ime.PreviewKeyDown += (_, e) => Surface.HandleKey(e);
+            Ime.TextChanged += OnImeText;
         }
         // The VM outlives the view, so (un)subscribe its events per load to avoid leaks / duplicates.
         vm.ActiveChanged -= OnActiveChanged;
@@ -49,7 +58,7 @@ public partial class TerminalView : UserControl
         // at the right width (a start-at-80-then-resize desyncs PSReadLine's line wrapping).
         Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
         {
-            if (_vm?.ActiveSession != null) { Surface.ReportSize(); Surface.Focus(); }
+            if (_vm?.ActiveSession != null) { Surface.ReportSize(); Ime.Focus(); }
         }));
     }
 
@@ -65,8 +74,18 @@ public partial class TerminalView : UserControl
         => Dispatcher.BeginInvoke(new Action(() =>
         {
             BindActiveSurface();
-            if (_vm?.ActiveSession != null) { Surface.ReportSize(); Surface.Focus(); }
+            if (_vm?.ActiveSession != null) { Surface.ReportSize(); Ime.Focus(); }
         }));
+
+    /// <summary>The hidden IME box committed text — regular typing or a composed CJK string. Forward it to the
+    /// shell, then clear the box (which re-enters here with empty text; guarded).</summary>
+    private void OnImeText(object sender, TextChangedEventArgs e)
+    {
+        var t = Ime.Text;
+        if (t.Length == 0) return;
+        Surface.SendText(t);
+        Ime.Clear();
+    }
 
     private void BindActiveSurface()
     {

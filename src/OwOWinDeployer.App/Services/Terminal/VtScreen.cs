@@ -7,8 +7,8 @@ public struct VtCell
     public char Ch;
     public int Fg;     // 0xRRGGBB, or -1 = default foreground
     public int Bg;     // 0xRRGGBB, or -1 = default background
-    public byte Flags; // bit0 bold, bit1 underline, bit2 inverse
-    public const byte Bold = 1, Underline = 2, Inverse = 4;
+    public byte Flags; // bit0 bold, bit1 underline, bit2 inverse, bit3 wide lead, bit4 wide continuation
+    public const byte Bold = 1, Underline = 2, Inverse = 4, Wide = 8, WideCont = 16;
 }
 
 /// <summary>A compact VT100/ANSI terminal emulator: a grid of <see cref="VtCell"/> driven by the UTF-8 escape
@@ -40,6 +40,10 @@ public sealed class VtScreen
 
     /// <summary>Send a reply back to the PTY (e.g. a cursor-position report). Wired by the host to PTY input.</summary>
     public Action<string>? Respond;
+
+    /// <summary>Reports a per-character parse fault (with the offending char) so the host can log it. A single
+    /// bad char is skipped, never fatal — the PTY reader thread must keep the session alive.</summary>
+    public Action<Exception, char>? ParseError;
 
     private readonly List<VtCell[]> _scrollback = new();
     private const int MaxScrollback = 5000;
@@ -119,7 +123,19 @@ public sealed class VtScreen
     {
         lock (_lock)
         {
-            foreach (var ch in data) Step(ch);
+            foreach (var ch in data)
+            {
+                // A single malformed/edge char must never terminate the shell session: skip it, keep the
+                // parser in a sane state, and surface the fault for diagnosis. (The PTY reader thread's only
+                // catch is a bare swallow that raises Exited, so an escaping throw here silently kills the tab.)
+                try { Step(ch); }
+                catch (Exception ex)
+                {
+                    _state = St.Ground; _params.Clear(); _escInter = '\0';
+                    _cx = Clamp(_cx, Cols); _cy = Clamp(_cy, Rows); _wrapPending = false;
+                    try { ParseError?.Invoke(ex, ch); } catch { /* logging must not throw */ }
+                }
+            }
             Version++;
         }
     }
@@ -325,10 +341,59 @@ public sealed class VtScreen
     // ── text + scrolling primitives ─────────────────────────────────────────────
     private void Put(char ch)
     {
+        var wide = IsWide(ch);
         if (_wrapPending) { _cx = 0; LineFeed(); _wrapPending = false; }
-        Cur[_cy * Cols + _cx] = new VtCell { Ch = ch, Fg = _fg, Bg = _bg, Flags = _flags };
-        if (_cx >= Cols - 1) { if (_autowrap) _wrapPending = true; }   // DECAWM off: overwrite the last column in place
+        if (wide && _cx >= Cols - 1)
+        {
+            // A double-width glyph doesn't fit in the last column: pad it and wrap (matching conhost).
+            if (_autowrap) { Cur[_cy * Cols + _cx] = Blank(_bg); _cx = 0; LineFeed(); }
+            else _cx = Cols - 2;
+        }
+        // Overwriting one half of an existing double-width glyph must blank the other half, or the
+        // renderer would keep painting the stale lead over the new character.
+        ClearWideAt(_cx);
+        if (wide) ClearWideAt(_cx + 1);
+        Cur[_cy * Cols + _cx] = new VtCell { Ch = ch, Fg = _fg, Bg = _bg, Flags = (byte)(_flags | (wide ? VtCell.Wide : 0)) };
+        if (wide)
+        {
+            // ConPTY counts East Asian Wide glyphs as two columns; mirror that so absolute cursor
+            // positions (CUP) it emits after CJK text stay aligned with our grid.
+            Cur[_cy * Cols + _cx + 1] = new VtCell { Ch = '\0', Fg = _fg, Bg = _bg, Flags = (byte)(_flags | VtCell.WideCont) };
+            if (_cx + 2 > Cols - 1) { if (_autowrap) _wrapPending = true; _cx = Cols - 1; }
+            else _cx += 2;
+        }
+        else if (_cx >= Cols - 1) { if (_autowrap) _wrapPending = true; }   // DECAWM off: overwrite the last column in place
         else _cx++;
+    }
+
+    /// <summary>If the cell at column <paramref name="x"/> is half of a double-width pair, blank the
+    /// other half so no orphaned lead/continuation survives an overwrite.</summary>
+    private void ClearWideAt(int x)
+    {
+        if (x < 0 || x >= Cols) return;
+        var g = Cur; var row = _cy * Cols;
+        if ((g[row + x].Flags & VtCell.WideCont) != 0 && x > 0 && (g[row + x - 1].Flags & VtCell.Wide) != 0)
+            g[row + x - 1] = Blank(_bg);
+        else if ((g[row + x].Flags & VtCell.Wide) != 0 && x + 1 < Cols)
+            g[row + x + 1] = Blank(_bg);
+    }
+
+    /// <summary>True for characters that occupy two terminal columns (East Asian Wide / Fullwidth,
+    /// per Unicode UAX #11 — the same table conhost uses to advance the cursor).</summary>
+    public static bool IsWide(char ch)
+    {
+        if (ch < 0x1100) return false;
+        return ch is (>= (char)0x1100 and <= (char)0x115F)   // Hangul Jamo
+            or (>= (char)0x2E80 and <= (char)0x303E)         // CJK radicals … CJK symbols/punctuation
+            or (>= (char)0x3041 and <= (char)0x33FF)         // Hiragana … CJK compatibility
+            or (>= (char)0x3400 and <= (char)0x4DBF)         // CJK ext A
+            or (>= (char)0x4E00 and <= (char)0x9FFF)         // CJK unified
+            or (>= (char)0xA000 and <= (char)0xA4CF)         // Yi
+            or (>= (char)0xAC00 and <= (char)0xD7A3)         // Hangul syllables
+            or (>= (char)0xF900 and <= (char)0xFAFF)         // CJK compatibility ideographs
+            or (>= (char)0xFE30 and <= (char)0xFE4F)         // CJK compatibility forms
+            or (>= (char)0xFF00 and <= (char)0xFF60)         // fullwidth forms
+            or (>= (char)0xFFE0 and <= (char)0xFFE6);        // fullwidth signs
     }
 
     private void LineFeed()
