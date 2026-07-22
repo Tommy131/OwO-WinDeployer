@@ -9,6 +9,9 @@ using OwOWinDeployer.Core.Models;
 
 namespace OwOWinDeployer.App.ViewModels.Deploy;
 
+/// <summary>Install-state filter for the card list: show every item, only installed, or only not-installed.</summary>
+public enum InstallStateFilter { All, Installed, NotInstalled }
+
 /// <summary>The "软件安装中心" page: grouped, icon-forward, per-item selectable software cards.</summary>
 public sealed class InstallCenterViewModel : LocalizedObject
 {
@@ -39,6 +42,7 @@ public sealed class InstallCenterViewModel : LocalizedObject
     public ObservableCollection<CategoryFilterViewModel> CategoryFilters { get; } = new();
     public RelayCommand StartCommand { get; }
     public RelayCommand UpdateSelectedCommand { get; }
+    public RelayCommand UpdateAllUpdatableCommand { get; }
     public RelayCommand OpenDetailCommand { get; }
     public RelayCommand LaunchCommand { get; }
     public RelayCommand StopCommand { get; }
@@ -68,6 +72,9 @@ public sealed class InstallCenterViewModel : LocalizedObject
     /// <summary>Raised when the user clicks 更新选中.</summary>
     public event Action? UpdateRequested;
 
+    /// <summary>Raised when the user clicks 更新全部可更新（every installed item with an available update, regardless of selection）.</summary>
+    public event Action? UpdateAllRequested;
+
     /// <summary>Raised when the user clicks a software card.</summary>
     public event Action<AppItemViewModel>? DetailRequested;
 
@@ -89,6 +96,7 @@ public sealed class InstallCenterViewModel : LocalizedObject
     {
         StartCommand = new RelayCommand(_ => StartRequested?.Invoke(), _ => SelectedCount > 0);
         UpdateSelectedCommand = new RelayCommand(_ => UpdateRequested?.Invoke(), _ => UpdatableSelectedCount > 0);
+        UpdateAllUpdatableCommand = new RelayCommand(_ => UpdateAllRequested?.Invoke(), _ => UpdatableCount > 0);
         OpenDetailCommand = new RelayCommand(p => { if (p is AppItemViewModel vm) DetailRequested?.Invoke(vm); });
         LaunchCommand = new RelayCommand(p => { if (p is AppItemViewModel vm) LaunchRequested?.Invoke(vm); });
         StopCommand = new RelayCommand(p => { if (p is AppItemViewModel vm) StopRequested?.Invoke(vm); });
@@ -197,10 +205,43 @@ public sealed class InstallCenterViewModel : LocalizedObject
         }
     }
 
+    private InstallStateFilter _installFilter = InstallStateFilter.All;
+    public InstallStateFilter InstallFilter
+    {
+        get => _installFilter;
+        set
+        {
+            if (_installFilter == value) return;
+            _installFilter = value;
+            OnPropertyChanged(nameof(InstallFilter));
+            OnPropertyChanged(nameof(IsFilterAll));
+            OnPropertyChanged(nameof(IsFilterInstalled));
+            OnPropertyChanged(nameof(IsFilterNotInstalled));
+            OnPropertyChanged(nameof(InstallFilterLabel));
+            ApplyFilter();
+        }
+    }
+
+    /// <summary>RadioButton bindings for the 安装状态 popup (mutually exclusive via a shared GroupName).</summary>
+    public bool IsFilterAll { get => _installFilter == InstallStateFilter.All; set { if (value) InstallFilter = InstallStateFilter.All; } }
+    public bool IsFilterInstalled { get => _installFilter == InstallStateFilter.Installed; set { if (value) InstallFilter = InstallStateFilter.Installed; } }
+    public bool IsFilterNotInstalled { get => _installFilter == InstallStateFilter.NotInstalled; set { if (value) InstallFilter = InstallStateFilter.NotInstalled; } }
+
+    /// <summary>Label for the 安装状态 dropdown — generic when showing everything, specific once filtered.</summary>
+    public string InstallFilterLabel => (_installFilter switch
+    {
+        InstallStateFilter.Installed => Localizer.T("install.filterState.installed"),
+        InstallStateFilter.NotInstalled => Localizer.T("install.filterState.notInstalled"),
+        _ => Localizer.T("install.filterState"),
+    }) + " ▾";
+
     private bool _hideUpdates;
     public int UpdatableCount => Groups.Sum(g => g.Items.Count(i => i.HasUpdate));
     public bool HasUpdates => UpdatableCount > 0;
     public string UpdateToggleLabel => _hideUpdates ? Localizer.Format("install.showUpdates", UpdatableCount) : Localizer.Format("install.ignoreUpdates", UpdatableCount);
+
+    /// <summary>Label for 更新全部可更新 — every installed item with a known update, regardless of selection.</summary>
+    public string UpdateAllLabel => Localizer.Format("install.updateAllUpgradable", UpdatableCount);
 
     private void ToggleUpdates()
     {
@@ -218,6 +259,8 @@ public sealed class InstallCenterViewModel : LocalizedObject
         OnPropertyChanged(nameof(UpdatableCount));
         OnPropertyChanged(nameof(HasUpdates));
         OnPropertyChanged(nameof(UpdateToggleLabel));
+        OnPropertyChanged(nameof(UpdateAllLabel));
+        CommandManager.InvalidateRequerySuggested();
     }
 
     /// <summary>Selected items that are installed and support updating — gates 更新选中.</summary>
@@ -321,6 +364,8 @@ public sealed class InstallCenterViewModel : LocalizedObject
         OnPropertyChanged(nameof(Subtitle));
         OnPropertyChanged(nameof(UpdateToggleLabel));
         OnPropertyChanged(nameof(GroupFilterLabel));
+        OnPropertyChanged(nameof(UpdateAllLabel));
+        OnPropertyChanged(nameof(InstallFilterLabel));
     }
 
     private string? _loadError;
@@ -412,10 +457,17 @@ public sealed class InstallCenterViewModel : LocalizedObject
             foreach (var i in g.Items)
             {
                 if (!catVisible) i.IsSelected = false;   // 隐藏分类永不参与安装
-                i.IsVisible = q.Length == 0
-                    || i.Name.Contains(q, StringComparison.OrdinalIgnoreCase)
-                    || i.Id.Contains(q, StringComparison.OrdinalIgnoreCase)
-                    || i.Summary.Contains(q, StringComparison.OrdinalIgnoreCase);
+                var stateOk = _installFilter switch
+                {
+                    InstallStateFilter.Installed => i.IsInstalled,
+                    InstallStateFilter.NotInstalled => i.NotInstalled,
+                    _ => true,
+                };
+                i.IsVisible = stateOk
+                    && (q.Length == 0
+                        || i.Name.Contains(q, StringComparison.OrdinalIgnoreCase)
+                        || i.Id.Contains(q, StringComparison.OrdinalIgnoreCase)
+                        || i.Summary.Contains(q, StringComparison.OrdinalIgnoreCase));
                 any |= i.IsVisible;
             }
             g.IsVisible = catVisible && CategoryFilterOn(g.Key) && any;

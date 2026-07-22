@@ -69,6 +69,7 @@
   "ops.tray.opFail": "Fehlgeschlagen: {0}",
   "ops.tray.opOk": "Vorgang erfolgreich",
   "ops.update.confirmBody": "{0} prüfen und aktualisieren?\n\n(Wenn es bereits die neueste Version ist, erscheint „Auf dem neuesten Stand“.)",
+  "ops.update.confirmAllBody": "Alle {0} Softwareelemente mit verfügbarem Update aktualisieren?",
   "ops.update.confirmManyBody": "Die {0} ausgewählten Softwareelemente aktualisieren?",
   "ops.uninstall.body": "{0} deinstallieren?\n\n[Ja] Vollständig löschen (inkl. Benutzerdaten)\n[Nein] Nur deinstallieren, Daten behalten\n[Abbrechen] Nichts tun",
   "ops.web.running": "Läuft · PID {0}",

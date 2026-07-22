@@ -69,6 +69,7 @@
   "ops.tray.opFail": "Failed: {0}",
   "ops.tray.opOk": "Operation succeeded",
   "ops.update.confirmBody": "Check and update {0}?\n\n(If it is already the latest version, it will say “Up to date”.)",
+  "ops.update.confirmAllBody": "Update all {0} software item(s) with an available update?",
   "ops.update.confirmManyBody": "Update the {0} selected software item(s)?",
   "ops.uninstall.body": "Uninstall {0}?\n\n[Yes] Delete completely (incl. user data)\n[No] Uninstall only, keep data\n[Cancel] Do nothing",
   "ops.web.running": "Running · PID {0}",

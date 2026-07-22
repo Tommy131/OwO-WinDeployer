@@ -62,6 +62,7 @@ public sealed class MainViewModel : LocalizedObject
     {
         Install.StartRequested += OnStartRequested;
         Install.UpdateRequested += OnUpdateRequested;
+        Install.UpdateAllRequested += OnUpdateAllRequested;
         Install.DetailRequested += OnDetailRequested;
         Install.LaunchRequested += item => _ = RunQuickOpAsync(item.Model, "launch");
         Install.StopRequested += item => _ = ConfirmRiskAndRun(item.Model, "stop");
@@ -1293,6 +1294,21 @@ public sealed class MainViewModel : LocalizedObject
             .Select(i => i.Model).ToList();
         if (items.Count == 0) return;
         if (Dialogs.Show(Localizer.Format("ops.update.confirmManyBody", items.Count), Localizer.T("verb.update"),
+                MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+
+        SelectedNav = AllNavItems.First(n => ReferenceEquals(n.Page, Progress));
+        _ = RunUpdatesAsync(items);
+    }
+
+    /// <summary>更新全部可更新：忽略当前勾选，直接更新每一个已检测到有可用更新的已安装软件。</summary>
+    private void OnUpdateAllRequested()
+    {
+        if (_catalog == null) return;
+        var items = Install.Groups.SelectMany(g => g.Items)
+            .Where(i => i.HasUpdate)
+            .Select(i => i.Model).ToList();
+        if (items.Count == 0) return;
+        if (Dialogs.Show(Localizer.Format("ops.update.confirmAllBody", items.Count), Localizer.T("verb.update"),
                 MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
 
         SelectedNav = AllNavItems.First(n => ReferenceEquals(n.Page, Progress));
