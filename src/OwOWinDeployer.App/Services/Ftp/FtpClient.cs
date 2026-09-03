@@ -17,7 +17,7 @@ public sealed record FtpRemoteEntry(string Name, bool IsDir, long Size, DateTime
 /// <summary>A minimal, zero-dependency FTP / FTPS client used by the 客户端 tab to browse a remote server and
 /// transfer files. Supports plain FTP, explicit FTPS (AUTH TLS) and implicit FTPS, passive data transfers,
 /// and MLSD with a LIST fallback. Self-signed server certs are accepted (ad-hoc usage).</summary>
-public sealed class FtpClient : IDisposable
+public sealed class FtpClient : IFtpTransferSession, IFtpDirectorySession
 {
     private TcpClient? _tcp;
     private Stream _ctrl = Stream.Null;
@@ -114,12 +114,15 @@ public sealed class FtpClient : IDisposable
 
     // ── browsing ───────────────────────────────────────────────────────────────
     public async Task<List<FtpRemoteEntry>> ListAsync(CancellationToken ct)
+        => await ListPathAsync("", ct);
+
+    private async Task<List<FtpRemoteEntry>> ListPathAsync(string path, CancellationToken ct)
     {
         // Prefer MLSD; fall back to LIST when unsupported.
         var conn = await ConnectDataAsync(ct);
         try
         {
-            var r = await SendAsync("MLSD", ct);
+            var r = await SendAsync("MLSD" + (path.Length > 0 ? " " + path : ""), ct);
             if (r.Code is 150 or 125)
             {
                 var data = await SecureDataAsync(conn, ct);   // TLS handshake AFTER the 150 (server starts its side then)
@@ -134,7 +137,7 @@ public sealed class FtpClient : IDisposable
 
         // LIST fallback
         var conn2 = await ConnectDataAsync(ct);
-        var lr = await SendAsync("LIST", ct);
+        var lr = await SendAsync("LIST" + (path.Length > 0 ? " " + path : ""), ct);
         if (lr.Code is not (150 or 125)) { conn2.Dispose(); throw new IOException("LIST 失败：" + lr.Text); }
         var data2 = await SecureDataAsync(conn2, ct);
         var raw = await ReadAllAsync(data2, ct);
@@ -142,6 +145,9 @@ public sealed class FtpClient : IDisposable
         await ReadResponseAsync(ct);   // 226
         return ParseList(raw);
     }
+
+    async Task<IReadOnlyList<FtpRemoteEntry>> IFtpDirectorySession.ListAsync(string remotePath, CancellationToken cancellationToken)
+        => await ListPathAsync(remotePath, cancellationToken);
 
     public async Task ChangeDirAsync(string path, CancellationToken ct)
     {
@@ -178,6 +184,46 @@ public sealed class FtpClient : IDisposable
             Expect(await ReadResponseAsync(ct), 226);
         }
         catch { conn.Dispose(); throw; }
+    }
+
+    /// <summary>Download exactly one byte range into an existing local file at the same offset. The caller
+    /// must dispose this control session after the range because ending before remote EOF aborts RETR.</summary>
+    public async Task DownloadRangeAsync(
+        string remoteName,
+        string localPath,
+        long offset,
+        long length,
+        IProgress<long>? progress,
+        CancellationToken ct)
+    {
+        if (offset < 0) throw new ArgumentOutOfRangeException(nameof(offset));
+        if (length < 0) throw new ArgumentOutOfRangeException(nameof(length));
+
+        var rest = await SendAsync($"REST {offset}", ct);
+        if (rest.Code != 350)
+            throw new FtpRangeNotSupportedException($"REST failed with {rest.Code}: {rest.Text}");
+
+        var conn = await ConnectDataAsync(ct);
+        try
+        {
+            var response = await SendAsync("RETR " + remoteName, ct);
+            if (response.Code is not (150 or 125))
+                throw new FtpRangeNotSupportedException($"Range RETR failed with {response.Code}: {response.Text}");
+
+            var data = await SecureDataAsync(conn, ct);
+            await using (var output = new FileStream(localPath, FileMode.OpenOrCreate, FileAccess.Write,
+                             FileShare.ReadWrite, 81920, FileOptions.Asynchronous | FileOptions.RandomAccess))
+            {
+                output.Position = offset;
+                await PumpExactAsync(data, output, length, progress, ct);
+            }
+            Close(data, conn);
+        }
+        catch
+        {
+            conn.Dispose();
+            throw;
+        }
     }
 
     public async Task UploadAsync(string localPath, string remoteName, IProgress<long>? progress, CancellationToken ct)
@@ -314,6 +360,48 @@ public sealed class FtpClient : IDisposable
         {
             await to.WriteAsync(buf.AsMemory(0, n), ct);
             progress?.Report(n);
+        }
+        await to.FlushAsync(ct);
+    }
+
+    public async Task EnsureDirectoryAsync(string remotePath, CancellationToken ct)
+    {
+        var normalized = remotePath.Replace('\\', '/');
+        if (normalized.StartsWith('/'))
+        {
+            await ChangeDirAsync("/", ct);
+            normalized = normalized.TrimStart('/');
+        }
+
+        foreach (var segment in normalized.Split('/', StringSplitOptions.RemoveEmptyEntries))
+        {
+            ct.ThrowIfCancellationRequested();
+            try
+            {
+                await ChangeDirAsync(segment, ct);
+            }
+            catch (IOException)
+            {
+                try { await MakeDirAsync(segment, ct); }
+                catch (IOException) { /* another worker may have created it */ }
+                await ChangeDirAsync(segment, ct);
+            }
+        }
+    }
+
+    private static async Task PumpExactAsync(
+        Stream from, Stream to, long length, IProgress<long>? progress, CancellationToken ct)
+    {
+        var buf = new byte[81920];
+        var remaining = length;
+        while (remaining > 0)
+        {
+            var wanted = (int)Math.Min(buf.Length, remaining);
+            var read = await from.ReadAsync(buf.AsMemory(0, wanted), ct);
+            if (read == 0) throw new EndOfStreamException($"Range ended with {remaining} bytes remaining.");
+            await to.WriteAsync(buf.AsMemory(0, read), ct);
+            remaining -= read;
+            progress?.Report(read);
         }
         await to.FlushAsync(ct);
     }

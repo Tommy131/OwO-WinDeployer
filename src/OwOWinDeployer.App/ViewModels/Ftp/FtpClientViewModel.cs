@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
@@ -58,12 +59,27 @@ public sealed class FtpClientViewModel : LocalizedObject
 {
     private FtpClient? _client;
     private CancellationTokenSource? _cts;
+    private FtpConnectionSnapshot? _connectionSnapshot;
+    private FtpTransferSessionFactory? _transferSessions;
+    private FtpTransferExecutor? _transferExecutor;
+    private FtpTransferCoordinator? _transferCoordinator;
+    private FtpTransferPlanner? _transferPlanner;
+    private readonly FtpLogBuffer _logBuffer = new();
+    private readonly ConcurrentDictionary<Guid, FtpTransferJob> _dirtyTransferJobs = new();
+    private readonly List<CancellationTokenSource> _planningCancellations = new();
+    private readonly object _planningGate = new();
+    private TaskCompletionSource _planningIdle = CompletedSource();
+    private readonly Dictionary<Guid, FtpTransferRowViewModel> _transferRowsById = new();
+    private readonly HashSet<Guid> _hiddenTransferIds = new();
+    private readonly System.Windows.Threading.DispatcherTimer _transferUiTimer;
+    private int _planningCount;
+    private bool _disconnecting;
 
     public FtpClientViewModel()
     {
         _localDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         ConnectCommand = new RelayCommand(_ => _ = ConnectAsync(), _ => !Connected && !Busy);
-        DisconnectCommand = new RelayCommand(_ => Disconnect(), _ => Connected);
+        DisconnectCommand = new RelayCommand(_ => _ = DisconnectAsync(), _ => Connected && !_disconnecting);
         RefreshRemoteCommand = new RelayCommand(_ => _ = ListRemoteAsync(), _ => Connected && !Busy);
         RemoteUpCommand = new RelayCommand(_ => _ = RemoteUpAsync(), _ => Connected && !Busy);
         OpenRemoteCommand = new RelayCommand(p => { if (p is FtpRemoteRowVm r) _ = OpenRemoteAsync(r); });
@@ -85,8 +101,21 @@ public sealed class FtpClientViewModel : LocalizedObject
 
         SaveProfileCommand = new RelayCommand(_ => SaveProfile());
         DeleteProfileCommand = new RelayCommand(_ => DeleteProfile(), _ => SelectedProfile != null);
+        CancelTransferCommand = new RelayCommand(p => { if (p is FtpTransferRowViewModel row) CancelTransfer(row); },
+            p => p is FtpTransferRowViewModel { CanCancel: true });
+        CancelAllTransfersCommand = new RelayCommand(_ => CancelAllTransfers(), _ => HasActiveTransfers);
+        ClearFinishedTransfersCommand = new RelayCommand(_ => ClearFinishedTransfers(),
+            _ => TransferRows.Any(x => x.State is FtpTransferState.Completed or FtpTransferState.Canceled));
+        ToggleTransferQueueCommand = new RelayCommand(_ => QueueExpanded = !QueueExpanded, _ => HasTransfers);
         LoadProfiles();
         ListLocal();
+
+        _transferUiTimer = new System.Windows.Threading.DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(250),
+        };
+        _transferUiTimer.Tick += (_, _) => RefreshTransferUi();
+        _transferUiTimer.Start();
     }
 
     // ── connection form ────────────────────────────────────────────────────────
@@ -112,6 +141,11 @@ public sealed class FtpClientViewModel : LocalizedObject
     private bool _busy; public bool Busy { get => _busy; private set { if (Set(ref _busy, value)) { OnPropertyChanged(nameof(StatusText)); Requery(); } } }
     public string StatusText => _connected ? Localizer.Format("ftp.client.connected", Host) : _busy ? Localizer.T("ftp.client.connecting") : Localizer.T("ftp.client.notConnected");
     public string StatusBrush => _connected ? "OkFg" : "TextTertiary";
+    private string _connectedDisplayName = "";
+    public string ConnectedTitle => Localizer.Format("ftp.client.connectedAs", _connectedDisplayName);
+    public string ConnectedDetails => _connectionSnapshot == null ? "" : Localizer.Format("ftp.client.connectedDetails",
+        string.IsNullOrWhiteSpace(_connectionSnapshot.UserName) ? Localizer.T("ftp.client.anonymous") : _connectionSnapshot.UserName,
+        _connectionSnapshot.Host, _connectionSnapshot.Port, TlsText(_connectionSnapshot.TlsMode));
 
     private string _note = Localizer.T("ftp.client.note");
     public string Note { get => _note; set => Set(ref _note, value); }
@@ -119,12 +153,25 @@ public sealed class FtpClientViewModel : LocalizedObject
     private string _logText = "";
     public string LogText { get => _logText; private set => Set(ref _logText, value); }
 
-    // ── transfer progress (speed / ETA) ────────────────────────────────────────
-    private bool _transferring; public bool Transferring { get => _transferring; private set => Set(ref _transferring, value); }
-    private double _progressValue; public double ProgressValue { get => _progressValue; private set => Set(ref _progressValue, value); }
-    private string _transferTitle = ""; public string TransferTitle { get => _transferTitle; private set => Set(ref _transferTitle, value); }
-    private string _speedText = "—"; public string SpeedText { get => _speedText; private set => Set(ref _speedText, value); }
-    private string _etaText = "—"; public string EtaText { get => _etaText; private set => Set(ref _etaText, value); }
+    // ── background transfer queue ─────────────────────────────────────────────
+    public ObservableCollection<FtpTransferRowViewModel> TransferRows { get; } = new();
+    private bool _hasTransfers; public bool HasTransfers { get => _hasTransfers; private set => Set(ref _hasTransfers, value); }
+    private bool _hasActiveTransfers; public bool HasActiveTransfers { get => _hasActiveTransfers; private set { if (Set(ref _hasActiveTransfers, value)) Requery(); } }
+    private bool _queueExpanded = true; public bool QueueExpanded { get => _queueExpanded; set => Set(ref _queueExpanded, value); }
+    private string _transferSummary = ""; public string TransferSummary { get => _transferSummary; private set => Set(ref _transferSummary, value); }
+    private string _aggregateSpeedText = "—"; public string AggregateSpeedText { get => _aggregateSpeedText; private set => Set(ref _aggregateSpeedText, value); }
+    private int _fileConcurrency = 4;
+    public int FileConcurrency
+    {
+        get => _fileConcurrency;
+        set
+        {
+            var normalized = Math.Clamp(value, 1, 8);
+            if (!Set(ref _fileConcurrency, normalized)) return;
+            _transferCoordinator?.SetMaxConcurrentFiles(normalized);
+        }
+    }
+    public IReadOnlyList<int> ConcurrencyOptions { get; } = Enumerable.Range(1, 8).ToArray();
 
     // ── remote / local listings ──────────────────────────────────────────────
     public ObservableCollection<FtpRemoteRowVm> RemoteEntries { get; } = new();
@@ -163,6 +210,10 @@ public sealed class FtpClientViewModel : LocalizedObject
     public RelayCommand DeleteLocalCommand { get; }
     public RelayCommand SaveProfileCommand { get; }
     public RelayCommand DeleteProfileCommand { get; }
+    public RelayCommand CancelTransferCommand { get; }
+    public RelayCommand CancelAllTransfersCommand { get; }
+    public RelayCommand ClearFinishedTransfersCommand { get; }
+    public RelayCommand ToggleTransferQueueCommand { get; }
 
     // ── saved credentials (site manager) ───────────────────────────────────────
     public ObservableCollection<FtpClientProfile> Profiles { get; } = new();
@@ -199,7 +250,24 @@ public sealed class FtpClientViewModel : LocalizedObject
             RemoteEntries.Clear();
             foreach (var e in entries) RemoteEntries.Add(new FtpRemoteRowVm(e));
             OnPropertyChanged(nameof(NoRemote));
+            _connectedDisplayName = SelectedProfile is { } profile &&
+                                    profile.Host.Equals(Host.Trim(), StringComparison.OrdinalIgnoreCase) &&
+                                    profile.Port == Port
+                ? profile.Name
+                : Localizer.Format("ftp.client.profileDefaultName",
+                    string.IsNullOrWhiteSpace(UserName) ? Localizer.T("ftp.client.anonymous") : UserName,
+                    Host.Trim(), Port);
+            _connectionSnapshot = new FtpConnectionSnapshot(Host.Trim(), Port, _tlsMode, UserName, Password,
+                _connectedDisplayName);
+            _transferSessions = new FtpTransferSessionFactory();
+            _transferSessions.Log += AppendLog;
+            _transferExecutor = new FtpTransferExecutor(_connectionSnapshot, _transferSessions);
+            _transferCoordinator = new FtpTransferCoordinator(_transferExecutor, FileConcurrency);
+            _transferCoordinator.JobChanged += OnTransferJobChanged;
+            _transferPlanner = new FtpTransferPlanner(_transferSessions);
             Connected = true;
+            OnPropertyChanged(nameof(ConnectedTitle));
+            OnPropertyChanged(nameof(ConnectedDetails));
             AuditLog.Action($"FTP 客户端连接 {Host}:{Port} · TLS {_tlsMode}");
             Note = Localizer.Format("ftp.client.connectedNote", Host);
         }
@@ -216,16 +284,84 @@ public sealed class FtpClientViewModel : LocalizedObject
         finally { Busy = false; }
     }
 
-    private void Disconnect()
+    private async Task DisconnectAsync()
     {
+        if (_disconnecting) return;
+        if (HasActiveTransfers && Dialogs.Show(Localizer.T("ftp.transfer.disconnectConfirm"),
+                Localizer.T("ftp.transfer.disconnectTitle"), MessageBoxButton.YesNo,
+                MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+
+        _disconnecting = true;
+        Requery();
+        try
+        {
+            await StopTransfersAsync();
+            try { _cts?.Cancel(); } catch { }
+            try { if (_client != null) _ = _client.QuitAsync(CancellationToken.None); } catch { }
+            _client?.Dispose();
+            _client = null;
+            _cts?.Dispose();
+            _cts = null;
+            Connected = false;
+            RemoteEntries.Clear();
+            OnPropertyChanged(nameof(NoRemote));
+            Note = Localizer.T("ftp.client.disconnected");
+        }
+        finally
+        {
+            _disconnecting = false;
+            Requery();
+        }
+    }
+
+    private async Task StopTransfersAsync()
+    {
+        CancelPlanning();
+        await WaitForPlanningAsync().ConfigureAwait(true);
+        var coordinator = _transferCoordinator;
+        coordinator?.CancelAll();
+        if (coordinator != null)
+        {
+            try { await coordinator.DisposeAsync(); } catch { }
+        }
+        RefreshTransferUi();
+        if (coordinator != null) coordinator.JobChanged -= OnTransferJobChanged;
+        _transferCoordinator = null;
+        if (_transferSessions != null) _transferSessions.Log -= AppendLog;
+        var executor = _transferExecutor;
+        _transferExecutor = null;
+        DisposeExecutorAfterWorkers(coordinator, executor);
+        _transferSessions = null;
+        _transferPlanner = null;
+        _connectionSnapshot = null;
+        OnPropertyChanged(nameof(ConnectedTitle));
+        OnPropertyChanged(nameof(ConnectedDetails));
+    }
+
+    public void Shutdown()
+    {
+        _transferUiTimer.Stop();
+        CancelPlanning();
+        try { WaitForPlanningAsync().WaitAsync(TimeSpan.FromSeconds(3)).GetAwaiter().GetResult(); } catch { }
+        var coordinator = _transferCoordinator;
+        _transferCoordinator = null;
+        coordinator?.CancelAll();
+        if (coordinator != null) coordinator.JobChanged -= OnTransferJobChanged;
+        if (coordinator != null)
+        {
+            try { coordinator.DisposeAsync().AsTask().GetAwaiter().GetResult(); } catch { }
+        }
+        if (_transferSessions != null) _transferSessions.Log -= AppendLog;
+        var executor = _transferExecutor;
+        _transferExecutor = null;
+        DisposeExecutorAfterWorkers(coordinator, executor);
+        _transferSessions = null;
+        _transferPlanner = null;
         try { _cts?.Cancel(); } catch { }
-        try { if (_client != null) _ = _client.QuitAsync(CancellationToken.None); } catch { }
+        _cts?.Dispose();
+        _cts = null;
         _client?.Dispose();
         _client = null;
-        Connected = false;
-        RemoteEntries.Clear();
-        OnPropertyChanged(nameof(NoRemote));
-        Note = Localizer.T("ftp.client.disconnected");
     }
 
     public bool NoRemote => RemoteEntries.Count == 0;
@@ -268,67 +404,204 @@ public sealed class FtpClientViewModel : LocalizedObject
         await ListRemoteAsync();
     }
 
-    // ── transfers (batch, with speed / ETA) ────────────────────────────────────
+    // ── background transfers ──────────────────────────────────────────────────
     private async Task DownloadAsync()
     {
-        if (_client == null) return;
+        if (_transferCoordinator == null || _transferPlanner == null || _connectionSnapshot == null) return;
         var items = BatchRemote();
         if (items.Count == 0) return;
-        Busy = true;
-        var counter = NewCounter();
-        var onFile = new Progress<string>(name => TransferTitle = Localizer.Format("ftp.client.downloadProgress", items.Count, name));
+        var coordinator = _transferCoordinator;
+        var planner = _transferPlanner;
+        var connection = _connectionSnapshot;
+        var remoteDirectory = RemoteDir;
+        var localDirectory = LocalDir;
+        var batchId = Guid.NewGuid();
+        using var planning = RegisterPlanning();
+        QueueExpanded = true;
+        Note = Localizer.T("ftp.transfer.scanning");
+        var queued = 0;
         try
         {
-            long total = 0;   // pre-scan sizes for an accurate ETA (folders summed recursively)
-            foreach (var r in items) total += r.IsDir ? await Task.Run(() => _client.RemoteDirSizeAsync(r.Name, _cts!.Token)) : r.Model.Size;
-            BeginTransfer(Localizer.Format("ftp.client.batchDownload", items.Count), total);
-            foreach (var r in items)
+            await Task.Run(async () =>
             {
-                _cts!.Token.ThrowIfCancellationRequested();
-                // Run transfers on a thread-pool thread. The FTP client's async IO has no ConfigureAwait(false),
-                // so under the UI sync-context every chunk's continuation would post back to the UI thread —
-                // flooding it on large/fast transfers and freezing the GUI. Off the UI context the continuations
-                // run on the pool; UI updates (title/list) below resume on the UI thread after the await.
-                if (r.IsDir) await Task.Run(() => _client.DownloadDirectoryAsync(r.Name, LocalDir, onFile, counter, _cts!.Token));
-                else { TransferTitle = Localizer.Format("ftp.client.downloadOne", r.Name); await Task.Run(() => _client.DownloadAsync(r.Name, Path.Combine(LocalDir, r.Name), counter, _cts!.Token)); }
-            }
-            AuditLog.Action($"FTP 下载 {items.Count} 项 → {LocalDir}");
-            Note = Localizer.Format("ftp.client.downloaded", items.Count, LocalDir);
+                await foreach (var request in planner.PlanDownloadsAsync(connection,
+                                   items.Select(x => x.Model).ToList(), remoteDirectory, localDirectory,
+                                   batchId, planning.Token))
+                {
+                    coordinator.Enqueue(new[] { request });
+                    queued++;
+                }
+            }, planning.Token);
+            Note = Localizer.Format("ftp.transfer.queuedCount", queued);
+            await coordinator.WhenIdleAsync(planning.Token);
+            AuditLog.Action($"FTP 下载批次完成 · {queued} 项 → {localDirectory}");
             ListLocal();
         }
-        catch (OperationCanceledException) { Note = Localizer.T("ftp.client.downloadCanceled"); }
+        catch (OperationCanceledException) { Note = Localizer.T("ftp.transfer.allCanceled"); }
         catch (Exception ex) { Note = Localizer.Format("ftp.client.downloadFailed", ex.Message); }
-        finally { EndTransfer(); Busy = false; }
+        finally { UnregisterPlanning(planning); }
     }
 
     private async Task UploadAsync()
     {
-        if (_client == null) return;
+        if (_transferCoordinator == null || _transferPlanner == null) return;
         var items = BatchLocal();
         if (items.Count == 0) return;
-        Busy = true;
-        var counter = NewCounter();
-        var onFile = new Progress<string>(name => TransferTitle = Localizer.Format("ftp.client.uploadProgress", items.Count, name));
+        var coordinator = _transferCoordinator;
+        var planner = _transferPlanner;
+        var remoteDirectory = RemoteDir;
+        var batchId = Guid.NewGuid();
+        using var planning = RegisterPlanning();
+        QueueExpanded = true;
+        Note = Localizer.T("ftp.transfer.scanning");
+        var queued = 0;
         try
         {
-            long total = 0;
-            foreach (var l in items) total += LocalSize(l);
-            BeginTransfer(Localizer.Format("ftp.client.batchUpload", items.Count), total);
-            foreach (var l in items)
+            await Task.Run(async () =>
             {
-                _cts!.Token.ThrowIfCancellationRequested();
-                // Off the UI sync-context (see DownloadAsync) so IO continuations don't flood the UI thread.
-                if (l.IsDir) await Task.Run(() => _client.UploadDirectoryAsync(l.Path, l.Name, onFile, counter, _cts!.Token));
-                else { TransferTitle = Localizer.Format("ftp.client.uploadOne", l.Name); await Task.Run(() => _client.UploadAsync(l.Path, l.Name, counter, _cts!.Token)); }
-            }
-            AuditLog.Action($"FTP 上传 {items.Count} 项 → {RemoteDir}");
-            Note = Localizer.Format("ftp.client.uploaded", items.Count, RemoteDir);
-            await ListRemoteAsync();
+                await foreach (var request in planner.PlanUploadsAsync(items.Select(x => x.Path).ToList(),
+                                   remoteDirectory, batchId, planning.Token))
+                {
+                    coordinator.Enqueue(new[] { request });
+                    queued++;
+                }
+            }, planning.Token);
+            Note = Localizer.Format("ftp.transfer.queuedCount", queued);
+            await coordinator.WhenIdleAsync(planning.Token);
+            AuditLog.Action($"FTP 上传批次完成 · {queued} 项 → {remoteDirectory}");
+            if (Connected && !Busy) await ListRemoteAsync();
         }
-        catch (OperationCanceledException) { Note = Localizer.T("ftp.client.uploadCanceled"); }
+        catch (OperationCanceledException) { Note = Localizer.T("ftp.transfer.allCanceled"); }
         catch (Exception ex) { Note = Localizer.Format("ftp.client.uploadFailed", ex.Message); }
-        finally { EndTransfer(); Busy = false; }
+        finally { UnregisterPlanning(planning); }
     }
+
+    private CancellationTokenSource RegisterPlanning()
+    {
+        var cancellation = _cts == null
+            ? new CancellationTokenSource()
+            : CancellationTokenSource.CreateLinkedTokenSource(_cts.Token);
+        lock (_planningGate)
+        {
+            if (Interlocked.Increment(ref _planningCount) == 1) _planningIdle = NewSource();
+            _planningCancellations.Add(cancellation);
+        }
+        return cancellation;
+    }
+
+    private void UnregisterPlanning(CancellationTokenSource cancellation)
+    {
+        lock (_planningGate)
+        {
+            _planningCancellations.Remove(cancellation);
+            if (Interlocked.Decrement(ref _planningCount) == 0) _planningIdle.TrySetResult();
+        }
+    }
+
+    private Task WaitForPlanningAsync()
+    {
+        lock (_planningGate) return _planningIdle.Task;
+    }
+
+    private static void DisposeExecutorAfterWorkers(FtpTransferCoordinator? coordinator, FtpTransferExecutor? executor)
+    {
+        if (executor == null) return;
+        if (coordinator == null || coordinator.WorkersCompletion.IsCompleted)
+        {
+            executor.Dispose();
+            return;
+        }
+        _ = coordinator.WorkersCompletion.ContinueWith(_ => executor.Dispose(), CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+    }
+
+    private static TaskCompletionSource NewSource()
+        => new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    private static TaskCompletionSource CompletedSource()
+    {
+        var source = NewSource();
+        source.SetResult();
+        return source;
+    }
+
+    private void CancelPlanning()
+    {
+        CancellationTokenSource[] cancellations;
+        lock (_planningGate) cancellations = _planningCancellations.ToArray();
+        foreach (var cancellation in cancellations)
+        {
+            try { cancellation.Cancel(); } catch (ObjectDisposedException) { }
+        }
+    }
+
+    private void CancelTransfer(FtpTransferRowViewModel row)
+    {
+        _transferCoordinator?.Cancel(row.Id);
+        RefreshTransferUi();
+    }
+
+    private void CancelAllTransfers()
+    {
+        CancelPlanning();
+        _transferCoordinator?.CancelAll();
+        Note = Localizer.T("ftp.transfer.allCanceling");
+        RefreshTransferUi();
+    }
+
+    private void ClearFinishedTransfers()
+    {
+        foreach (var row in TransferRows
+                     .Where(x => x.State is FtpTransferState.Completed or FtpTransferState.Canceled)
+                     .ToList())
+        {
+            _hiddenTransferIds.Add(row.Id);
+            _transferRowsById.Remove(row.Id);
+            TransferRows.Remove(row);
+            _transferCoordinator?.Remove(row.Id);
+        }
+        RefreshTransferUi();
+    }
+
+    private void RefreshTransferUi()
+    {
+        FlushPendingLogLines();
+        foreach (var pair in _dirtyTransferJobs.ToArray())
+        {
+            if (!_dirtyTransferJobs.TryRemove(pair.Key, out var job)) continue;
+            if (_hiddenTransferIds.Contains(job.Id)) continue;
+            if (!_transferRowsById.TryGetValue(job.Id, out var row))
+            {
+                row = new FtpTransferRowViewModel(job);
+                _transferRowsById.Add(job.Id, row);
+                TransferRows.Add(row);
+            }
+            row.Refresh();
+        }
+
+        var planning = Volatile.Read(ref _planningCount);
+        var active = planning + TransferRows.Count(x => x.State is FtpTransferState.Connecting
+            or FtpTransferState.Transferring or FtpTransferState.Completing or FtpTransferState.Canceling);
+        var queued = TransferRows.Count(x => x.State == FtpTransferState.Queued);
+        var speed = TransferRows.Sum(x => x.BytesPerSecond);
+        HasTransfers = planning > 0 || TransferRows.Count > 0;
+        HasActiveTransfers = active > 0 || queued > 0;
+        TransferSummary = Localizer.Format("ftp.transfer.summary", active, queued);
+        AggregateSpeedText = speed > 0 ? FtpTransferRowViewModel.FormatSpeed(speed) : "—";
+        Requery();
+    }
+
+    private void FlushPendingLogLines()
+    {
+        if (_logBuffer.TryTakeSnapshot(out var logText)) LogText = logText;
+    }
+
+    private static string TlsText(string mode) => Localizer.T(mode switch
+    {
+        "none" => "ftp.client.plaintext",
+        "implicit" => "ftp.client.tlsImplicit",
+        _ => "ftp.client.tlsExplicit",
+    });
 
     // The right-clicked single row (Grid_RightSelect selects exactly one) or the multi-selection.
     private List<FtpRemoteRowVm> BatchRemote()
@@ -338,72 +611,6 @@ public sealed class FtpClientViewModel : LocalizedObject
     private List<FtpLocalRowVm> BatchLocal()
         => _selLocals.Count > 0 ? _selLocals.ToList()
          : SelectedLocal is { IsUp: false } s ? new List<FtpLocalRowVm> { s } : new();
-
-    private static long LocalSize(FtpLocalRowVm l)
-    {
-        try { return l.IsDir ? Directory.EnumerateFiles(l.Path, "*", SearchOption.AllDirectories).Sum(f => new FileInfo(f).Length) : l.Size; }
-        catch { return l.Size; }
-    }
-
-    // ── transfer progress engine (speed / ETA sampled on a timer) ───────────────
-    private sealed class ByteCounter : IProgress<long>
-    {
-        private long _total;
-        public long Total => Interlocked.Read(ref _total);
-        public void Report(long delta) => Interlocked.Add(ref _total, delta);   // called from the transfer thread
-    }
-
-    private ByteCounter? _counter;
-    private long _xferTotal, _lastBytes, _lastMs;
-    private readonly System.Diagnostics.Stopwatch _xferSw = System.Diagnostics.Stopwatch.StartNew();
-    private System.Windows.Threading.DispatcherTimer? _xferTimer;
-
-    private ByteCounter NewCounter() { var c = new ByteCounter(); _counter = c; return c; }
-
-    private void BeginTransfer(string title, long total)
-    {
-        _xferTotal = total; _lastBytes = 0; _lastMs = _xferSw.ElapsedMilliseconds;
-        TransferTitle = title; SpeedText = "—"; EtaText = total > 0 ? Localizer.T("ftp.client.etaCalculating") : "—"; ProgressValue = 0;
-        Transferring = true;
-        _xferTimer ??= new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
-        _xferTimer.Tick -= OnXferTick; _xferTimer.Tick += OnXferTick; _xferTimer.Start();
-    }
-
-    private void EndTransfer()
-    {
-        _xferTimer?.Stop();
-        if (_counter is { } c && _xferTotal > 0) ProgressValue = Math.Min(100, c.Total * 100.0 / _xferTotal);
-        Transferring = false;
-        _counter = null;
-    }
-
-    private void OnXferTick(object? s, EventArgs e)
-    {
-        var done = _counter?.Total ?? 0;
-        var nowMs = _xferSw.ElapsedMilliseconds;
-        var dt = (nowMs - _lastMs) / 1000.0;
-        if (dt <= 0) return;
-        var speed = Math.Max(0, (done - _lastBytes) / dt);   // bytes/sec over the last interval
-        SpeedText = HumanSpeed(speed);
-        if (_xferTotal > 0)
-        {
-            ProgressValue = Math.Min(100, done * 100.0 / _xferTotal);
-            EtaText = speed > 1 ? HumanTime((_xferTotal - done) / speed) : Localizer.T("ftp.client.etaCalculating");
-        }
-        _lastBytes = done; _lastMs = nowMs;
-    }
-
-    private static string HumanSpeed(double bps)
-        => bps >= 1024 * 1024 ? $"{bps / 1024 / 1024:0.0} MB/s" : bps >= 1024 ? $"{bps / 1024:0.0} KB/s" : $"{bps:0} B/s";
-
-    private static string HumanTime(double sec)
-    {
-        if (double.IsNaN(sec) || double.IsInfinity(sec) || sec < 0) return "—";
-        if (sec < 1) return Localizer.T("ftp.time.aboutOneSecond");
-        if (sec < 60) return Localizer.Format("ftp.time.aboutSeconds", (int)Math.Round(sec));
-        if (sec < 3600) return Localizer.Format("ftp.time.aboutMinutes", (int)(sec / 60), (int)(sec % 60));
-        return Localizer.Format("ftp.time.aboutHours", (int)(sec / 3600), (int)(sec % 3600 / 60));
-    }
 
     private async Task DeleteRemoteAsync()
     {
@@ -607,26 +814,35 @@ public sealed class FtpClientViewModel : LocalizedObject
     {
         if (_client == null || SelectedRemote is not { } r) return;
         if (r.IsDir) { await OpenRemoteAsync(r); return; }
-        Busy = true;
+        if (_transferCoordinator == null || _connectionSnapshot == null) return;
+        var coordinator = _transferCoordinator;
         try
         {
             var dir = Path.Combine(Path.GetTempPath(), "OwOWinDeployerFtp");
             Directory.CreateDirectory(dir);
-            var tmp = Path.Combine(dir, r.Name);
+            var tmp = Path.Combine(dir, Guid.NewGuid().ToString("N") + "-" + FtpTransferPlanner.SafeLocalName(r.Name));
             Note = Localizer.Format("ftp.client.openingRemote", r.Name);
-            await Task.Run(() => _client.DownloadAsync(r.Name, tmp, null, _cts!.Token));   // off UI context — see DownloadAsync
+            QueueExpanded = true;
+            var request = new FtpTransferRequest(FtpTransferDirection.Download,
+                FtpTransferPlanner.CombineRemote(RemoteDir, r.Name), tmp, r.Model.Size, Guid.NewGuid());
+            var job = coordinator.Enqueue(new[] { request }).Single();
+            await job.Completion;
+            if (job.State != FtpTransferState.Completed)
+            {
+                Note = job.State == FtpTransferState.Canceled
+                    ? Localizer.T("ftp.transfer.canceled")
+                    : Localizer.Format("ftp.client.openFailed", job.Error ?? Localizer.T("ftp.transfer.failedGeneric"));
+                return;
+            }
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(tmp) { UseShellExecute = true });
             Note = Localizer.Format("ftp.client.openedRemote", r.Name);
         }
         catch (Exception ex) { Note = Localizer.Format("ftp.client.openFailed", ex.Message); }
-        finally { Busy = false; }
     }
 
-    private void AppendLog(string line)
-        => Application.Current.Dispatcher.BeginInvoke(() =>
-        {
-            LogText = (LogText.Length > 12000 ? LogText[^9000..] : LogText) + line + "\n";
-        });
+    private void AppendLog(string line) => _logBuffer.Append(line);
+
+    private void OnTransferJobChanged(FtpTransferJob job) => _dirtyTransferJobs[job.Id] = job;
 
     private static void Requery() => System.Windows.Input.CommandManager.InvalidateRequerySuggested();
 
@@ -635,5 +851,9 @@ public sealed class FtpClientViewModel : LocalizedObject
         base.OnCultureChanged();
         foreach (var r in RemoteEntries) r.RaiseAllPropertiesChanged();
         foreach (var l in LocalEntries) l.RaiseAllPropertiesChanged();
+        foreach (var row in TransferRows) row.RaiseAllPropertiesChanged();
+        OnPropertyChanged(nameof(ConnectedTitle));
+        OnPropertyChanged(nameof(ConnectedDetails));
+        RefreshTransferUi();
     }
 }

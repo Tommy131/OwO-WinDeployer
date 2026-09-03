@@ -53,5 +53,9 @@ public sealed class FtpViewModel : ObservableObject
     public void Deactivate() => Server.StopLive();
 
     /// <summary>App is closing — release the listening ports.</summary>
-    public void Shutdown() => _server.Stop();
+    public void Shutdown()
+    {
+        Client.Shutdown();
+        _server.Stop();
+    }
 }

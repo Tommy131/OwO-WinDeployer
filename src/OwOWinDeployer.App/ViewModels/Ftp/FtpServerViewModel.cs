@@ -38,8 +38,9 @@ public sealed class FtpServerViewModel : LocalizedObject
 {
     private readonly FtpServer _server;
     private readonly Func<FtpServerConfig> _configProvider;
-    private readonly Queue<string> _logLines = new();
+    private readonly FtpLogBuffer _logBuffer = new();
     private DispatcherTimer? _timer;
+    private int _connectionsDirty;
 
     public FtpServerViewModel(FtpServer server, Func<FtpServerConfig> configProvider)
     {
@@ -47,7 +48,7 @@ public sealed class FtpServerViewModel : LocalizedObject
         _configProvider = configProvider;
         StartCommand = new RelayCommand(_ => Start(), _ => !Running);
         StopCommand = new RelayCommand(_ => Stop(), _ => Running);
-        ClearLogCommand = new RelayCommand(_ => { _logLines.Clear(); LogText = ""; });
+        ClearLogCommand = new RelayCommand(_ => { _logBuffer.Clear(); LogText = ""; });
 
         _server.Logged += OnLogged;
         _server.ConnectionsChanged += OnConnectionsChanged;
@@ -144,15 +145,10 @@ public sealed class FtpServerViewModel : LocalizedObject
     private void OnLogged(FtpLogEntry e)
     {
         var line = $"{e.Time:HH:mm:ss} " + (e.ConnId > 0 ? $"[#{e.ConnId}] " : "") + e.Text;
-        Dispatcher().BeginInvoke(() =>
-        {
-            _logLines.Enqueue(line);
-            while (_logLines.Count > 500) _logLines.Dequeue();
-            LogText = string.Join("\n", _logLines);
-        });
+        _logBuffer.Append(line);
     }
 
-    private void OnConnectionsChanged() => Dispatcher().BeginInvoke(RefreshConnections);
+    private void OnConnectionsChanged() => Interlocked.Exchange(ref _connectionsDirty, 1);
 
     private void RefreshConnections()
     {
@@ -182,6 +178,8 @@ public sealed class FtpServerViewModel : LocalizedObject
 
     private void OnTick(object? s, EventArgs e)
     {
+        if (Interlocked.Exchange(ref _connectionsDirty, 0) != 0) RefreshConnections();
+        if (_logBuffer.TryTakeSnapshot(out var logText)) LogText = logText;
         if (_server.Running && _server.StartedAt is DateTime t)
             UptimeText = FormatUptime(DateTime.Now - t);
         else UptimeText = "—";
@@ -209,8 +207,6 @@ public sealed class FtpServerViewModel : LocalizedObject
         catch { /* best effort */ }
         return list.Distinct();
     }
-
-    private static Dispatcher Dispatcher() => Application.Current.Dispatcher;
 
     private static void Error(string msg) => Dialogs.Show(msg, Localizer.T("ftp.server.errorTitle"), MessageBoxButton.OK, MessageBoxImage.Warning);
 }

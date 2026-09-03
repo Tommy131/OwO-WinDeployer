@@ -18,8 +18,18 @@
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
 
-    <!-- connection form -->
-    <Border Grid.Row="0" Style="{StaticResource Card}" Padding="16,12">
+    <!-- Disconnected: full connection form. -->
+    <Border Grid.Row="0" Padding="16,12">
+      <Border.Style>
+        <Style TargetType="Border" BasedOn="{StaticResource Card}">
+          <Setter Property="Visibility" Value="Visible" />
+          <Style.Triggers>
+            <DataTrigger Binding="{Binding Connected}" Value="True">
+              <Setter Property="Visibility" Value="Collapsed" />
+            </DataTrigger>
+          </Style.Triggers>
+        </Style>
+      </Border.Style>
       <StackPanel>
         <!-- saved credentials (site manager) -->
         <StackPanel Orientation="Horizontal" Margin="0,0,0,10" VerticalAlignment="Center">
@@ -61,7 +71,6 @@
           <RadioButton Content="{DynamicResource S.ftp.client.tlsExplicit}" GroupName="cliTls" IsChecked="{Binding IsTlsExplicit}" Margin="0,0,14,0" />
           <RadioButton Content="{DynamicResource S.ftp.client.tlsImplicit}" GroupName="cliTls" IsChecked="{Binding IsTlsImplicit}" Margin="0,0,20,0" />
           <Button Content="{DynamicResource S.ftp.client.connect}" Style="{StaticResource OkButton}" Margin="0,0,8,0" Command="{Binding ConnectCommand}" />
-          <Button Content="{DynamicResource S.ftp.client.disconnect}" Style="{StaticResource DangerButton}" Command="{Binding DisconnectCommand}" />
           <TextBlock Text="{Binding StatusText}" FontSize="12.5" FontWeight="SemiBold" Margin="16,0,0,0" VerticalAlignment="Center">
             <TextBlock.Style>
               <Style TargetType="TextBlock">
@@ -76,6 +85,33 @@
           </TextBlock>
         </StackPanel>
       </StackPanel>
+    </Border>
+
+    <!-- Connected: compact identity and endpoint strip. -->
+    <Border Grid.Row="0" Height="44" Padding="12,0">
+      <Border.Style>
+        <Style TargetType="Border" BasedOn="{StaticResource Card}">
+          <Setter Property="Visibility" Value="Collapsed" />
+          <Style.Triggers>
+            <DataTrigger Binding="{Binding Connected}" Value="True">
+              <Setter Property="Visibility" Value="Visible" />
+            </DataTrigger>
+          </Style.Triggers>
+        </Style>
+      </Border.Style>
+      <DockPanel LastChildFill="True">
+        <Button DockPanel.Dock="Right" Content="{DynamicResource S.ftp.client.disconnect}"
+                Style="{StaticResource DangerButton}" Command="{Binding DisconnectCommand}" />
+        <Ellipse DockPanel.Dock="Left" Width="8" Height="8" Margin="0,0,10,0"
+                 Fill="{DynamicResource OkFg}" VerticalAlignment="Center" />
+        <StackPanel VerticalAlignment="Center">
+          <TextBlock Text="{Binding ConnectedTitle}" FontSize="12.5" FontWeight="SemiBold"
+                     Foreground="{DynamicResource TextPrimary}" />
+          <TextBlock Text="{Binding ConnectedDetails}" FontSize="10.5"
+                     Foreground="{DynamicResource TextTertiary}" TextTrimming="CharacterEllipsis"
+                     ToolTip="{Binding ConnectedDetails}" />
+        </StackPanel>
+      </DockPanel>
     </Border>
 
     <!-- dual pane -->
@@ -217,38 +253,123 @@
       </Border>
     </Grid>
 
-    <StackPanel Grid.Row="2" Margin="2,8,0,0">
-      <!-- live transfer progress: speed + ETA -->
-      <Border Style="{StaticResource Card}" Padding="12,8" Margin="0,0,0,6"
-              Visibility="{Binding Transferring, Converter={StaticResource BoolToVis}}">
+    <!-- Background transfer queue. -->
+    <Border Grid.Row="2" Style="{StaticResource Card}" Padding="0" Margin="0,8,0,0"
+            Visibility="{Binding HasTransfers, Converter={StaticResource BoolToVis}}">
+      <Expander IsExpanded="{Binding QueueExpanded, Mode=TwoWay}" HorizontalContentAlignment="Stretch">
+        <Expander.Header>
+          <DockPanel MinHeight="38" LastChildFill="True">
+            <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
+              <TextBlock Text="{DynamicResource S.ftp.transfer.title}" FontSize="12.5" FontWeight="SemiBold"
+                         Foreground="{DynamicResource TextPrimary}" Margin="4,0,12,0" />
+              <TextBlock Text="{Binding TransferSummary}" FontSize="11.5" Foreground="{DynamicResource TextSecondary}"
+                         VerticalAlignment="Center" />
+            </StackPanel>
+            <TextBlock Text="{Binding AggregateSpeedText}" FontSize="11.5" FontWeight="SemiBold"
+                       Foreground="{DynamicResource Accent}" VerticalAlignment="Center"
+                       HorizontalAlignment="Right" Margin="12,0,8,0" />
+          </DockPanel>
+        </Expander.Header>
         <Grid>
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="Auto" />
-          </Grid.ColumnDefinitions>
-          <StackPanel Grid.Column="0" Margin="0,0,14,0" VerticalAlignment="Center">
-            <TextBlock Text="{Binding TransferTitle}" FontSize="12.5" Foreground="{DynamicResource TextPrimary}" TextTrimming="CharacterEllipsis" />
-            <ProgressBar Height="6" Minimum="0" Maximum="100" Value="{Binding ProgressValue, Mode=OneWay}" Margin="0,6,0,0"
-                         Foreground="{DynamicResource Accent}" Background="{DynamicResource BorderSoft}" BorderThickness="0" />
-          </StackPanel>
-          <StackPanel Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right">
-            <TextBlock FontSize="12.5" HorizontalAlignment="Right" Foreground="{DynamicResource Accent}">
-              <Run Text="{DynamicResource S.ftp.client.speed}" /><Run Text="{Binding SpeedText, Mode=OneWay}" FontWeight="SemiBold" />
-            </TextBlock>
-            <TextBlock FontSize="12" HorizontalAlignment="Right" Margin="0,2,0,0" Foreground="{DynamicResource TextSecondary}">
-              <Run Text="{DynamicResource S.ftp.client.eta}" /><Run Text="{Binding EtaText, Mode=OneWay}" />
-            </TextBlock>
-          </StackPanel>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+          </Grid.RowDefinitions>
+          <DockPanel Grid.Row="0" Margin="8,3,8,5" LastChildFill="False">
+            <Button DockPanel.Dock="Right" Content="{DynamicResource S.ftp.transfer.cancelAll}"
+                    Style="{StaticResource DangerButton}" Command="{Binding CancelAllTransfersCommand}"
+                    Margin="6,0,0,0" />
+            <Button DockPanel.Dock="Right" Content="{DynamicResource S.ftp.transfer.clearFinished}"
+                    Style="{StaticResource MiniButton}" Command="{Binding ClearFinishedTransfersCommand}"
+                    Margin="6,0,0,0" />
+            <TextBlock DockPanel.Dock="Left" Text="{DynamicResource S.ftp.transfer.concurrency}"
+                       FontSize="11" Foreground="{DynamicResource TextTertiary}"
+                       VerticalAlignment="Center" />
+            <ComboBox DockPanel.Dock="Left" Width="54" Height="28" Margin="6,0,0,0"
+                      ItemsSource="{Binding ConcurrencyOptions}" SelectedItem="{Binding FileConcurrency}" />
+          </DockPanel>
+          <DataGrid Grid.Row="1" ItemsSource="{Binding TransferRows}" AutoGenerateColumns="False" IsReadOnly="True"
+                    HeadersVisibility="Column" CanUserAddRows="False" GridLinesVisibility="Horizontal"
+                    Background="Transparent" BorderThickness="0" MaxHeight="220" MinHeight="76"
+                    EnableRowVirtualization="True" VirtualizingPanel.IsVirtualizing="True"
+                    VirtualizingPanel.VirtualizationMode="Recycling" ScrollViewer.CanContentScroll="True">
+            <DataGrid.Columns>
+            <DataGridTemplateColumn Header="{DynamicResource S.ftp.transfer.direction}" Width="96">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate>
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding DirectionIcon}" FontFamily="Segoe MDL2 Assets" FontSize="13"
+                               Foreground="{DynamicResource Accent}" Margin="0,0,6,0" />
+                    <TextBlock Text="{Binding DirectionText}" />
+                  </StackPanel>
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTextColumn Header="{DynamicResource S.ftp.col.name}" Binding="{Binding Name}" Width="*" />
+            <DataGridTextColumn Header="{DynamicResource S.ftp.transfer.target}" Binding="{Binding Target}" Width="1.2*" />
+            <DataGridTextColumn Header="{DynamicResource S.ftp.col.size}" Binding="{Binding SizeText}" Width="82" />
+            <DataGridTemplateColumn Header="{DynamicResource S.ftp.transfer.progress}" Width="130">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate>
+                  <Grid>
+                    <ProgressBar Height="5" Minimum="0" Maximum="100" Value="{Binding ProgressValue}"
+                                 Foreground="{DynamicResource Accent}" Background="{DynamicResource BorderSoft}"
+                                 BorderThickness="0" VerticalAlignment="Center" Margin="0,0,34,0" />
+                    <TextBlock Text="{Binding ProgressText}" FontSize="10.5" HorizontalAlignment="Right"
+                               Foreground="{DynamicResource TextSecondary}" />
+                  </Grid>
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTextColumn Header="{DynamicResource S.ftp.transfer.speed}" Binding="{Binding SpeedText}" Width="86" />
+            <DataGridTextColumn Header="{DynamicResource S.ftp.transfer.eta}" Binding="{Binding EtaText}" Width="94" />
+            <DataGridTemplateColumn Header="{DynamicResource S.ftp.transfer.status}" Width="150">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding StateText}" TextTrimming="CharacterEllipsis" ToolTip="{Binding StateText}">
+                    <TextBlock.Style>
+                      <Style TargetType="TextBlock">
+                        <Setter Property="Foreground" Value="{DynamicResource TextSecondary}" />
+                        <Style.Triggers>
+                          <DataTrigger Binding="{Binding IsFailed}" Value="True">
+                            <Setter Property="Foreground" Value="{DynamicResource FailFg}" />
+                          </DataTrigger>
+                        </Style.Triggers>
+                      </Style>
+                    </TextBlock.Style>
+                  </TextBlock>
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            <DataGridTemplateColumn Width="40">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate>
+                  <Button Content="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="12"
+                          Style="{StaticResource MiniButton}" Padding="5,2"
+                          ToolTip="{DynamicResource S.ftp.transfer.cancel}"
+                          Command="{Binding DataContext.CancelTransferCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                          CommandParameter="{Binding}" />
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+            </DataGridTemplateColumn>
+            </DataGrid.Columns>
+          </DataGrid>
         </Grid>
-      </Border>
-      <TextBlock Text="{Binding Note}" FontSize="12" Foreground="{DynamicResource TextTertiary}" TextWrapping="Wrap" />
-    </StackPanel>
-
-    <!-- log -->
-    <Border Grid.Row="3" Style="{StaticResource Card}" Padding="0" Margin="0,8,0,0" Height="110">
-      <TextBox x:Name="LogBox" Text="{Binding LogText, Mode=OneWay}" IsReadOnly="True"
-               FontFamily="Consolas" FontSize="11" BorderThickness="0" Background="Transparent"
-               VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" TextWrapping="NoWrap" Margin="8,6" />
+      </Expander>
     </Border>
+
+    <StackPanel Grid.Row="3" Margin="2,7,0,0">
+      <TextBlock Text="{Binding Note}" FontSize="12" Foreground="{DynamicResource TextTertiary}"
+                 TextWrapping="Wrap" Margin="0,0,0,5" />
+      <Expander Header="{DynamicResource S.ftp.transfer.protocolLog}" IsExpanded="False"
+                Foreground="{DynamicResource TextSecondary}" FontSize="11.5">
+        <Border Style="{StaticResource Card}" Padding="0" Margin="0,5,0,0" Height="100">
+          <TextBox x:Name="LogBox" Text="{Binding LogText, Mode=OneWay}" IsReadOnly="True"
+                   FontFamily="Consolas" FontSize="11" BorderThickness="0" Background="Transparent"
+                   VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                   TextWrapping="NoWrap" Margin="8,6" />
+        </Border>
+      </Expander>
+    </StackPanel>
   </Grid>
 </UserControl>
