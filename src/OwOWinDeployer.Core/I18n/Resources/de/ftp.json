@@ -3,6 +3,8 @@
   "ftp.client.batchDownload": "{0} Element(e) herunterladen",
   "ftp.client.batchUpload": "{0} Element(e) hochladen",
   "ftp.client.certChanged": "TLS-Zertifikat für {0} weicht vom gepinnten ab — Verbindung abgelehnt (möglicher MITM). Falls die Änderung erwartet ist, entfernen Sie den Eintrag in ftp_trust.json.",
+  "ftp.client.certChangedTitle": "Zertifikat geändert",
+  "ftp.client.certChangedRetrust": "Das TLS-Zertifikat für {0} hat sich geändert (neuer Fingerabdruck {1}…).\n\nFalls dies erwartet war (z. B. Server-Neuinstallation oder neu generiertes Zertifikat), klicken Sie Ja, um dem neuen Zertifikat zu vertrauen und die Verbindung neu aufzubauen.\nFalls Sie unsicher sind, klicken Sie Nein, um abzubrechen.",
   "ftp.client.connect": "Verbinden",
   "ftp.client.connectFailed": "Verbindung fehlgeschlagen: {0} (prüfen Sie, ob Host, Port und Verschlüsselungsmodus mit dem Server übereinstimmen)",
   "ftp.client.connectFailedCanceled": "Zeitüberschreitung oder abgebrochen",

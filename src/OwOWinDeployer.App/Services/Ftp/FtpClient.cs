@@ -27,6 +27,10 @@ public sealed class FtpClient : IFtpTransferSession, IFtpDirectorySession
     private readonly byte[] _rbuf = new byte[4096];
     private int _rpos, _rlen;
 
+    /// <summary>When a connect attempt is rejected because the server cert differs from the pinned one, this is
+    /// set to the new cert's SHA-256 hex thumbprint so the caller can offer to re-trust and retry.</summary>
+    public string? PendingCertThumbprint { get; private set; }
+
     public string CurrentDir { get; private set; } = "/";
     public bool Connected => _tcp?.Connected == true;
     public event Action<string>? Log;
@@ -108,6 +112,8 @@ public sealed class FtpClient : IFtpTransferSession, IFtpDirectorySession
         }
         if (string.Equals(pinned, thumb, StringComparison.OrdinalIgnoreCase)) return true;
 
+        // Cert changed — record the new thumbprint so the caller can offer to re-trust and retry.
+        PendingCertThumbprint = thumb;
         Log?.Invoke(Localizer.Format("ftp.client.certChanged", _host));
         return false;   // pinned cert changed → refuse the connection
     }

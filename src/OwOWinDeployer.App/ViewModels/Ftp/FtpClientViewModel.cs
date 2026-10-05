@@ -273,11 +273,31 @@ public sealed class FtpClientViewModel : LocalizedObject
         }
         catch (Exception ex)
         {
+            // Check whether the failure was a TOFU cert-change rejection before disposing the client,
+            // because PendingCertThumbprint lives on the FtpClient instance.
+            var pendingThumb = client.PendingCertThumbprint;
             try { client.Dispose(); } catch { }
             _client = null;
             Connected = false;
             RemoteEntries.Clear();
             OnPropertyChanged(nameof(NoRemote));
+
+            if (pendingThumb != null && !(ex is OperationCanceledException))
+            {
+                // Offer to re-trust the new cert and retry once.
+                var hostKey = $"{Host.Trim()}:{Port}";
+                var msg = Localizer.Format("ftp.client.certChangedRetrust", Host.Trim(), pendingThumb[..16]);
+                var result = Dialogs.Show(msg, Localizer.T("ftp.client.certChangedTitle"),
+                    MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                if (result == MessageBoxResult.Yes)
+                {
+                    FtpTrustStore.Remove(hostKey);
+                    Busy = false;
+                    _ = ConnectAsync();   // retry — new FtpClient will re-pin the new cert
+                    return;
+                }
+            }
+
             Note = Localizer.Format("ftp.client.connectFailed",
                 ex is OperationCanceledException ? Localizer.T("ftp.client.connectFailedCanceled") : ex.Message);
         }

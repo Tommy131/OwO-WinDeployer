@@ -3,6 +3,8 @@
   "ftp.client.batchDownload": "Download {0} item(s)",
   "ftp.client.batchUpload": "Upload {0} item(s)",
   "ftp.client.certChanged": "TLS certificate for {0} differs from the pinned one — connection refused (possible MITM). If this change is expected, remove the entry in ftp_trust.json.",
+  "ftp.client.certChangedTitle": "Certificate Changed",
+  "ftp.client.certChangedRetrust": "The TLS certificate for {0} has changed (new fingerprint {1}…).\n\nIf this is expected (e.g. the server was reinstalled or its certificate was regenerated), click Yes to trust the new certificate and reconnect.\nIf you are unsure, click No to abort.",
   "ftp.client.connect": "Connect",
   "ftp.client.connectFailed": "Connection failed: {0} (check that the host, port and encryption mode match the server)",
   "ftp.client.connectFailedCanceled": "Connection timed out or was cancelled",

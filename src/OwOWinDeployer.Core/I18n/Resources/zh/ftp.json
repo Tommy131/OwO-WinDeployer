@@ -3,6 +3,8 @@
   "ftp.client.batchDownload": "下载 {0} 项",
   "ftp.client.batchUpload": "上传 {0} 项",
   "ftp.client.certChanged": "{0} 的 TLS 证书与已固定的不一致，已拒绝连接（可能存在中间人攻击）。若此变更符合预期，请删除 ftp_trust.json 中的对应记录。",
+  "ftp.client.certChangedTitle": "证书已变更",
+  "ftp.client.certChangedRetrust": "{0} 的 TLS 证书已更换（新指纹 {1}…）。\n\n若此为预期变更（例如服务器重装或重新生成了证书），点「是」信任新证书并重新连接。\n若不确定，点「否」终止连接。",
   "ftp.client.connect": "连接",
   "ftp.client.connectFailed": "连接失败：{0}（请检查主机、端口与加密方式是否与服务器一致）",
   "ftp.client.connectFailedCanceled": "连接超时或被取消",

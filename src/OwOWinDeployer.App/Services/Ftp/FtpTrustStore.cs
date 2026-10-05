@@ -47,4 +47,20 @@ public static class FtpTrustStore
             catch { /* best effort */ }
         }
     }
+
+    /// <summary>Remove the pinned thumbprint for a host:port so the next connection can re-pin a new cert.</summary>
+    public static void Remove(string hostKey)
+    {
+        lock (Gate)
+        {
+            try
+            {
+                var map = LoadMap();
+                if (!map.Remove(hostKey)) return;
+                Directory.CreateDirectory(DirPath);
+                File.WriteAllText(FilePathValue, JsonSerializer.Serialize(map, Opt));
+            }
+            catch { /* best effort */ }
+        }
+    }
 }
