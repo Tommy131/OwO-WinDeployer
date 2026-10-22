@@ -566,19 +566,13 @@ public sealed class MainViewModel : LocalizedObject
         Install.RefreshUpdateState();
     }
 
-    /// <summary>Prefetch and cache detail metadata for every item so card clicks are instant.</summary>
-    private static async Task PrefetchDetailsAsync(IReadOnlyList<AppItemViewModel> items)
-    {
-        using var gate = new SemaphoreSlim(6);
-        var tasks = items.Select(async vm =>
+    /// <summary>Cache registry detail for every item. <c>winget show</c> stays on the card the user actually opens.</summary>
+    private static Task PrefetchDetailsAsync(IReadOnlyList<AppItemViewModel> items)
+        => Task.Run(() =>
         {
-            await gate.WaitAsync();
-            try { await DetailService.FetchAsync(vm.Model); }
-            catch { /* ignore */ }
-            finally { gate.Release(); }
+            foreach (var vm in items)
+                try { DetailService.RememberBasic(vm.Model); } catch { /* one bad registry entry skips that card */ }
         });
-        await Task.WhenAll(tasks);
-    }
 
     private void OnStartRequested()
     {

@@ -66,6 +66,7 @@ public static class HardwareMonitor
 
     public static HwSample Sample()
     {
+        TryInit();
         var s = new HwSample();
         lock (Gate)
         {

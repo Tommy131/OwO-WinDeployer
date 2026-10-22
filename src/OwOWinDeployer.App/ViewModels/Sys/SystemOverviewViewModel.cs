@@ -178,18 +178,7 @@ public sealed class SystemOverviewViewModel : LocalizedObject
     /// <summary>True when NOT elevated — surfaces the "以管理员身份运行" button (CPU 温度/功耗 需管理员).</summary>
     public bool ShowAdminHint => !Elevated;
 
-    private static void RelaunchAsAdmin()
-    {
-        try
-        {
-            var exe = Environment.ProcessPath;
-            if (string.IsNullOrEmpty(exe)) return;
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(exe) { UseShellExecute = true, Verb = "runas" });
-            System.Windows.Application.Current.Shutdown();
-        }
-        catch (System.ComponentModel.Win32Exception) { /* user declined UAC */ }
-        catch { /* ignore */ }
-    }
+    private static void RelaunchAsAdmin() => App.RelaunchElevated();
 
     private bool _isLoading;
     public bool IsLoading { get => _isLoading; set { if (Set(ref _isLoading, value)) OnPropertyChanged(nameof(IsReady)); } }
@@ -250,7 +239,6 @@ public sealed class SystemOverviewViewModel : LocalizedObject
     // ── live timer ──────────────────────────────────────────────────────────
     public void StartLive()
     {
-        HardwareMonitor.TryInit();
         _timer ??= new DispatcherTimer { Interval = TimeSpan.FromSeconds(2) };
         _timer.Tick -= OnTick;
         _timer.Tick += OnTick;

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Threading;
@@ -19,6 +20,8 @@ public partial class App : Application
     // the first one to surface its window (important since it can be minimized to the tray).
     private const string InstanceMutexName = @"Local\OwO.WinDeployer.SingleInstance.{8F3A6C21-4D7E-4B9A-9C2F-1E5A7D0B3F44}";
     private const string ActivateEventName = @"Local\OwO.WinDeployer.Activate.{8F3A6C21-4D7E-4B9A-9C2F-1E5A7D0B3F44}";
+    /// <summary>Passed to the elevated process so it waits for this instance to drop the single-instance mutex.</summary>
+    public const string ElevatedRestartSwitch = "--elevated-restart";
     private Mutex? _instanceMutex;
     private EventWaitHandle? _activateEvent;
     private bool _isPrimary;
@@ -36,11 +39,12 @@ public partial class App : Application
 
         // Only the first instance proceeds. A duplicate launch signals the running instance to come to the
         // foreground, then shuts itself down before creating any window.
-        _instanceMutex = new Mutex(initiallyOwned: true, InstanceMutexName, out _isPrimary);
-        if (!_isPrimary)
+        var elevatedHandoff = e.Args.Any(a => string.Equals(a, ElevatedRestartSwitch, StringComparison.OrdinalIgnoreCase));
+        if (!AcquireInstanceMutex(elevatedHandoff))
         {
-            try { EventWaitHandle.OpenExisting(ActivateEventName).Set(); }
-            catch { /* primary may be exiting; nothing to surface */ }
+            if (!elevatedHandoff)
+                try { EventWaitHandle.OpenExisting(ActivateEventName).Set(); }
+                catch { /* primary may be exiting; nothing to surface */ }
             Shutdown();
             return;
         }
@@ -184,6 +188,56 @@ public partial class App : Application
             File.AppendAllText(Path.Combine(SettingsStore.Folder, "crash.log"), $"==== {DateTime.Now:O} [{source}] ====\n{ex}\n\n");
         }
         catch { /* best effort */ }
+    }
+
+    /// <summary>Start an elevated copy and exit this one. The new process waits until this instance releases
+        /// the single-instance mutex; shutting down first made the elevated copy see a live instance and quit.</summary>
+    public static void RelaunchElevated()
+    {
+        var exe = Environment.ProcessPath;
+        if (string.IsNullOrEmpty(exe)) return;
+        var app = Current as App;
+        try
+        {
+            var started = Process.Start(new ProcessStartInfo(exe, ElevatedRestartSwitch)
+            {
+                UseShellExecute = true,
+                Verb = "runas",
+            });
+            if (started == null) return;
+        }
+        catch (System.ComponentModel.Win32Exception) { return; /* user declined UAC */ }
+        catch { return; }
+        app?.ReleaseInstanceGuard();
+        Current?.Shutdown();
+    }
+
+    private bool AcquireInstanceMutex(bool waitForHandoff)
+    {
+        if (!waitForHandoff)
+        {
+            _instanceMutex = new Mutex(initiallyOwned: true, InstanceMutexName, out _isPrimary);
+            return _isPrimary;
+        }
+
+        // The outgoing process releases the mutex after Process.Start returns, which is after this
+        // process has already entered startup. Wait instead of treating that as a second instance.
+        _instanceMutex = new Mutex(initiallyOwned: false, InstanceMutexName);
+        for (var i = 0; i < 40; i++)
+        {
+            try
+            {
+                if (_instanceMutex.WaitOne(500)) { _isPrimary = true; return true; }
+            }
+            catch (AbandonedMutexException) { _isPrimary = true; return true; }
+        }
+        return false;
+    }
+
+    private void ReleaseInstanceGuard()
+    {
+        _isPrimary = false;
+        try { _instanceMutex?.ReleaseMutex(); } catch { /* already released, or this process never owned it */ }
     }
 
     protected override void OnExit(ExitEventArgs e)

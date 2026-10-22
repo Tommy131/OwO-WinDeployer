@@ -71,6 +71,17 @@ public static class DetailService
         return result;
     }
 
+    /// <summary>Cache the registry-only detail. Startup uses this so opening the app does not spawn a
+/// <c>winget show</c> for every catalog item.</summary>
+    public static void RememberBasic(CatalogItem item)
+    {
+        lock (Gate)
+        {
+            if (Cache.ContainsKey(item.Id)) return;
+            Cache[item.Id] = ComputeBasic(item);
+        }
+    }
+
     public static async Task<DetailInfo> FetchAsync(CatalogItem item)
     {
         lock (Gate)

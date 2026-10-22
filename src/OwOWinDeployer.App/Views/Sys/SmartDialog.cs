@@ -309,18 +309,7 @@ public sealed class SmartDialog : Window
             || bus.Equals("SCSI", StringComparison.OrdinalIgnoreCase) || bus.Equals("SAS", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static void RelaunchAsAdmin()
-    {
-        try
-        {
-            var exe = Environment.ProcessPath;
-            if (string.IsNullOrEmpty(exe)) return;
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(exe) { UseShellExecute = true, Verb = "runas" });
-            System.Windows.Application.Current.Shutdown();
-        }
-        catch (System.ComponentModel.Win32Exception) { /* user declined UAC */ }
-        catch { /* ignore */ }
-    }
+    private static void RelaunchAsAdmin() => App.RelaunchElevated();
 
     private static bool IsElevated()
     {

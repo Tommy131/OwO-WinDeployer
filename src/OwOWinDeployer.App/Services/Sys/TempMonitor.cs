@@ -89,8 +89,8 @@ public static class TempMonitor
     {
         lock (Gate)
         {
-            HardwareMonitor.TryInit();
-            _timer ??= new Timer(_ => Tick(), null, TimeSpan.FromSeconds(3), Interval);
+            // First sample stays off the UI thread and behind the startup catalog scan.
+            _timer ??= new Timer(_ => Tick(), null, TimeSpan.FromSeconds(20), Interval);
         }
     }
 
@@ -117,6 +117,7 @@ public static class TempMonitor
             if (!cfg.Enabled) return;
             var reminderMs = Math.Max(10, cfg.ReminderSeconds) * 1000L;
 
+            HardwareMonitor.TryInit();
             var hw = HardwareMonitor.Sample();
             if (cfg.CpuOn)
                 Evaluate("cpu", Localizer.T("tempmon.device.cpu"), TempOrNull(hw.CpuTemp), cfg.CpuThreshold, cfg.Tts, reminderMs);
